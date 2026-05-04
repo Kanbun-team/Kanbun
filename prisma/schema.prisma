@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  username         String   @unique
+  passwordHash     String
+  displayName      String?
+  avatarUrl        String?
+  role             String   @default("member")
+  accessTasks      Boolean  @default(true)
+  themePreference  String   @default("system")
+  locale           String   @default("en")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  boards            BoardMember[]
+  createdBoards     Board[]              @relation("BoardCreator")
+  createdCards      TaskCard[]           @relation("CardCreator")
+  cardAssignments   TaskCardAssignee[]
+  taskComments      TaskCardComment[]
+  completedSubtasks TaskSubtask[]        @relation("SubtaskCompleter")
+  createdBlocks     TaskBlock[]          @relation("BlockCreator")
+  taskMoves         TaskCardMoveEvent[]  @relation("MoveActor")
+  sessions          UserSession[]
+}
+
+model Board {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  archived     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdById  String
+  createdBy    User     @relation("BoardCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  members BoardMember[]
+  columns BoardColumn[]
+  tags    BoardTag[]
+
+  @@index([createdById])
+}
+
+model BoardMember {
+  boardId String
+  userId  String
+  role    String   @default("member")
+  addedAt DateTime @default(now())
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+}
+
+model BoardColumn {
+  id       String @id @default(cuid())
+  boardId  String
+  name     String
+  position Int
+
+  board Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards TaskCard[]
+
+  @@index([boardId, position])
+}
+
+model TaskCard {
+  id          String   @id @default(cuid())
+  columnId    String
+  title       String
+  description String?
+  position    Int
+  priority    String   @default("normal")
+  deadline    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+
+  column     BoardColumn        @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdBy  User               @relation("CardCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  assignees  TaskCardAssignee[]
+  comments   TaskCardComment[]
+  subtasks   TaskSubtask[]
+  tags       TaskCardTag[]
+  blocking   TaskBlock[]        @relation("CardBlocker")
+  blockedBy  TaskBlock[]        @relation("CardBlocked")
+
+  @@index([columnId, position])
+  @@index([createdById])
+}
+
+model BoardTag {
+  id        String   @id @default(cuid())
+  boardId   String
+  name      String
+  color     String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  board Board         @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards TaskCardTag[]
+
+  @@index([boardId])
+}
+
+model TaskCardTag {
+  cardId String
+  tagId  String
+
+  card TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  tag  BoardTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, tagId])
+  @@index([tagId])
+}
+
+model TaskBlock {
+  id          String   @id @default(cuid())
+  blockerId   String
+  blockedId   String
+  createdAt   DateTime @default(now())
+  createdById String
+
+  blocker   TaskCard @relation("CardBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   TaskCard @relation("CardBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("BlockCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model TaskSubtask {
+  id              String    @id @default(cuid())
+  cardId          String
+  title           String
+  done            Boolean   @default(false)
+  position        Int
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+  completedById   String?
+
+  card        TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  completedBy User?    @relation("SubtaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([cardId, position])
+}
+
+model TaskCardAssignee {
+  cardId String
+  userId String
+
+  card TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
+
+model TaskCardComment {
+  id        String   @id @default(cuid())
+  cardId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  card   TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model TaskCardMoveEvent {
+  id              String   @id @default(cuid())
+  cardId          String
+  cardTitle       String
+  boardId         String
+  fromColumnName  String?
+  toColumnName    String
+  userId          String?
+  createdAt       DateTime @default(now())
+
+  user User? @relation("MoveActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String
+  deviceType  String   @default("web")
+  userAgent   String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lastSeenAt])
+}

@@ -1,0 +1,18 @@
+services:
+  kanbun:
+    build: .
+    image: kanbun:latest
+    container_name: kanbun
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "file:/data/kanbun.db"
+      AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET in .env}"
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+    volumes:
+      - kanbun-data:/data
+
+volumes:
+  kanbun-data:
