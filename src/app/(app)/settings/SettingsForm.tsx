@@ -60,7 +60,7 @@ export default function SettingsForm({ locale, initial }: Props) {
       <section className="surface border rounded-xl p-4 space-y-3">
         <h2 className="font-medium">{t("settingsLanguage", locale)}</h2>
         <div className="flex gap-2">
-          {(["en", "pl"] as const).map((lng) => (
+          {(["en", "it", "pl"] as const).map((lng) => (
             <button
               key={lng}
               type="button"
@@ -77,7 +77,8 @@ export default function SettingsForm({ locale, initial }: Props) {
                   : "border-[var(--border)]"
               }`}
             >
-              {lng === "en" ? t("langEnglish", locale) : t("langPolish", locale)}
+              {lng === "en" ? t("langEnglish", locale) : 
+                lng === "it" ? t("langItalian", locale) : t("langPolish", locale)}
             </button>
           ))}
         </div>
