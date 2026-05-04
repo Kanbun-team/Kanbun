@@ -56,6 +56,10 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
+          build-args: |
+            KANBUN_BUILD_SHA=${{ github.sha }}
+            KANBUN_BUILD_DATE=${{ steps.meta.outputs.version }}
+            KANBUN_REPO_URL=https://github.com/${{ github.repository }}
 
   release:
     name: Create GitHub release

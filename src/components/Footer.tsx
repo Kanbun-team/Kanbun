@@ -2,6 +2,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import { t, type Locale } from "@/lib/i18n";
 import { editionLabel, getEdition } from "@/lib/edition";
+import { versionLabel, versionTooltip, versionUrl } from "@/lib/version";
 
 export default async function Footer({ locale }: { locale: Locale }) {
   const year = new Date().getFullYear();
@@ -23,6 +24,15 @@ export default async function Footer({ locale }: { locale: Locale }) {
           >
             {editionLabel(edition)}
           </span>
+          <a
+            href={versionUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={versionTooltip()}
+            className="text-xs font-mono opacity-70 hover:opacity-100 hover:underline"
+          >
+            {versionLabel()}
+          </a>
           <span>&copy; {year}</span>
           <span>{t("footerCopyright", locale)}</span>
         </div>

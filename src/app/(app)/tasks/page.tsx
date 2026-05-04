@@ -56,26 +56,26 @@ export default async function TasksIndexPage() {
       {boards.length === 0 ? (
         <p className="opacity-70 text-sm">{t("boardsEmpty", locale)}</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
           {boards.map((b) => (
-            <li key={b.id}>
+            <li key={b.id} className="h-full">
               <Link
                 href={`/tasks/${b.id}`}
-                className="block surface border rounded-xl p-4 hover:border-brand-500 transition"
+                className="flex flex-col h-full min-h-[150px] surface border rounded-xl p-4 hover:border-brand-500 transition"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-semibold truncate">{b.name}</div>
                   {b.archived && (
-                    <span className="text-xs opacity-60">{t("boardArchived", locale)}</span>
+                    <span className="text-xs opacity-60 shrink-0">{t("boardArchived", locale)}</span>
                   )}
                 </div>
-                {b.description && (
-                  <p className="text-sm opacity-70 mt-1 line-clamp-2">{b.description}</p>
-                )}
+                <p className="text-sm opacity-70 mt-1 line-clamp-2 min-h-[2.5em]">
+                  {b.description ?? ""}
+                </p>
+                <div className="flex-grow" />
                 <div className="flex items-center justify-between mt-3 text-xs opacity-60">
                   <span>
-                    {b._count.columns} {t("columnAdd", locale).toLowerCase().includes("col") ? "cols" : "cols"}
-                    {" "}/ {b._count.members} {t("boardMembers", locale).toLowerCase()}
+                    {b._count.columns} cols / {b._count.members} {t("boardMembers", locale).toLowerCase()}
                   </span>
                 </div>
               </Link>
