@@ -43,7 +43,7 @@ You agree to notify the Maintainer of any facts or circumstances of which You be
 
 For pull requests, the easiest path is the CLA assistant bot configured on this repository. The bot will comment on your first PR with a one-click sign flow. Once accepted, your signature applies to all future contributions.
 
-If you cannot use the bot (for example, if You contribute on behalf of a company), email a signed copy of this document to: **me@mrellwart.com**.
+If you cannot use the bot (for example, if You contribute on behalf of a company), email a signed copy of this document to: **mrsanten@tuta.com**.
 
 ## Alternative for trivial fixes
 

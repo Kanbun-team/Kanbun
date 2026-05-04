@@ -1,18 +1,18 @@
-import { type Role, ROLES } from "@/lib/labels";
+import { asAppRole, type Role } from "@/lib/labels";
 
 export function asRole(role: string): Role {
-  return (ROLES as readonly string[]).includes(role) ? (role as Role) : "support";
+  return asAppRole(role);
 }
 
 export const can = {
   manageUsers(role: string): boolean {
-    return asRole(role) === "admin";
+    return asAppRole(role) === "admin";
   },
   accessAdmin(role: string): boolean {
-    return asRole(role) === "admin";
+    return asAppRole(role) === "admin";
   },
   isAdmin(role: string): boolean {
-    return asRole(role) === "admin";
+    return asAppRole(role) === "admin";
   },
 };
 

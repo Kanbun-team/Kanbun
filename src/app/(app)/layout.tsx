@@ -10,21 +10,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (result.status === "bad-cookie") redirect("/api/auth/clear?to=/login");
   if (result.status === "anonymous") redirect("/login");
 
-  const user = result.session.user;
   const locale = await getLocale();
-  const canSeeTasks = user.accessTasks || user.role === "admin";
 
   return (
     <div className="min-h-screen flex flex-col">
       <AppNav locale={locale} />
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-6">
-        {canSeeTasks ? children : (
-          <div className="surface border rounded-xl p-6">
-            <p className="opacity-80 text-sm">
-              You do not have access to this panel. Ask an administrator.
-            </p>
-          </div>
-        )}
+        {children}
       </main>
       <Footer locale={locale} />
       <SessionPing />

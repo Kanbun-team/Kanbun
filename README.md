@@ -130,7 +130,7 @@ export default {
 Kanbun is dual-licensed.
 
 - **AGPL-3.0-only** for open-source / self-hosted use. Full text in [LICENSE](./LICENSE).
-- **Commercial license** available for organizations that cannot accept the AGPL network-copyleft clause, or for OEM / SaaS embedding. Contact: **me@mrellwart.com**.
+- **Commercial license** available for organizations that cannot accept the AGPL network-copyleft clause, or for OEM / SaaS embedding. Contact: **mrsanten@tuta.com**.
 
 See [LICENSING.md](./LICENSING.md) for the long form.
 

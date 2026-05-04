@@ -14,7 +14,6 @@ model User {
   displayName      String?
   avatarUrl        String?
   role             String   @default("member")
-  accessTasks      Boolean  @default(true)
   themePreference  String   @default("system")
   locale           String   @default("en")
   createdAt        DateTime @default(now())
@@ -35,17 +34,32 @@ model Board {
   id           String   @id @default(cuid())
   name         String
   description  String?
+  color        String   @default("#2563eb")
   archived     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   createdById  String
   createdBy    User     @relation("BoardCreator", fields: [createdById], references: [id], onDelete: Cascade)
 
+  categoryId String?
+  category   BoardCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   members BoardMember[]
   columns BoardColumn[]
   tags    BoardTag[]
 
   @@index([createdById])
+  @@index([categoryId])
+}
+
+model BoardCategory {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#64748b")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  boards Board[]
 }
 
 model BoardMember {

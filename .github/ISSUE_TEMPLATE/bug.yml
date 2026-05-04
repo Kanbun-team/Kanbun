@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for taking the time to file a bug. The more concrete the report, the faster it can be fixed.
 
-        - For security vulnerabilities, please email **me@mrellwart.com** instead of opening a public issue.
+        - For security vulnerabilities, please email **mrsanten@tuta.com** instead of opening a public issue.
         - For commercial / hosted-version questions, see [LICENSING.md](../blob/main/LICENSING.md).
 
   - type: checkboxes

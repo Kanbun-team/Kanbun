@@ -31,7 +31,6 @@ async function main() {
           passwordHash,
           displayName,
           role: "admin",
-          accessTasks: true,
         },
       });
       console.log(`Updated existing user '${username}' to admin.`);
@@ -42,7 +41,6 @@ async function main() {
           passwordHash,
           displayName,
           role: "admin",
-          accessTasks: true,
         },
       });
       console.log(`Created admin user '${username}'.`);

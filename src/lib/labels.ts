@@ -31,18 +31,21 @@ export function priorityClass(p: string): string {
   }
 }
 
-export const ROLES = ["support", "dev", "mod", "admin"] as const;
+export const ROLES = ["member", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
+export function asAppRole(role: string): Role {
+  return role === "admin" ? "admin" : "member";
+}
+
 export function roleFullLabel(role: string, locale: Locale): string {
-  const map: Record<string, DictKey> = {
-    support: "roleSupport",
-    dev: "roleDev",
-    mod: "roleMod",
-    admin: "roleAdmin",
-  };
-  const key = map[role];
-  return key ? t(key, locale) : t("roleMember", locale);
+  return asAppRole(role) === "admin" ? t("roleAdmin", locale) : t("roleMember", locale);
+}
+
+export function roleBadgeClass(role: string): string {
+  return asAppRole(role) === "admin"
+    ? "bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200"
+    : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 }
 
 export function boardRoleLabel(role: string, locale: Locale): string {

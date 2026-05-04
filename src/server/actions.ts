@@ -91,8 +91,7 @@ const userCreateSchema = z.object({
     .regex(/^[a-z0-9_.-]+$/i, "Invalid username"),
   password: z.string().min(6).max(256),
   displayName: z.string().trim().max(64).optional().nullable(),
-  role: z.enum(["support", "dev", "mod", "admin"]),
-  accessTasks: z.coerce.boolean(),
+  role: z.enum(["member", "admin"]),
 });
 
 export async function adminCreateUserAction(formData: FormData) {
@@ -101,8 +100,7 @@ export async function adminCreateUserAction(formData: FormData) {
     username: formData.get("username"),
     password: formData.get("password"),
     displayName: formData.get("displayName") || null,
-    role: formData.get("role") || "support",
-    accessTasks: formData.get("accessTasks") === "on" || formData.get("accessTasks") === "true",
+    role: formData.get("role") || "member",
   });
   const passwordHash = await bcrypt.hash(data.password, 12);
   await prisma.user.create({
@@ -111,7 +109,6 @@ export async function adminCreateUserAction(formData: FormData) {
       passwordHash,
       displayName: data.displayName ?? data.username,
       role: data.role,
-      accessTasks: data.accessTasks,
     },
   });
   revalidatePath("/admin/users");
@@ -119,8 +116,7 @@ export async function adminCreateUserAction(formData: FormData) {
 
 const userUpdateSchema = z.object({
   userId: z.string().min(1),
-  role: z.enum(["support", "dev", "mod", "admin"]),
-  accessTasks: z.coerce.boolean(),
+  role: z.enum(["member", "admin"]),
   displayName: z.string().trim().max(64).optional().nullable(),
 });
 
@@ -129,14 +125,12 @@ export async function adminUpdateUserAction(formData: FormData) {
   const data = userUpdateSchema.parse({
     userId: formData.get("userId"),
     role: formData.get("role"),
-    accessTasks: formData.get("accessTasks") === "on" || formData.get("accessTasks") === "true",
     displayName: formData.get("displayName") || null,
   });
   await prisma.user.update({
     where: { id: data.userId },
     data: {
       role: data.role,
-      accessTasks: data.accessTasks,
       displayName: data.displayName ?? undefined,
     },
   });

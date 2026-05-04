@@ -13,7 +13,6 @@ export async function loadBoardAccess(boardId: string): Promise<BoardAccess> {
   const session = await auth();
   const user = session?.user;
   if (!user?.id) throw new Error("Unauthorized");
-  if (!user.accessTasks && user.role !== "admin") throw new Error("Forbidden");
 
   const board = await prisma.board.findUnique({
     where: { id: boardId },

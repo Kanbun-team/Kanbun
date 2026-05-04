@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
+import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db-local";
 import { z } from "zod";
@@ -13,7 +14,6 @@ declare module "next-auth" {
       displayName: string | null;
       avatarUrl: string | null;
       role: string;
-      accessTasks: boolean;
       themePreference: string;
       locale: string;
     };
@@ -24,7 +24,6 @@ declare module "next-auth" {
     displayName?: string | null;
     avatarUrl?: string | null;
     role?: string;
-    accessTasks?: boolean;
     themePreference?: string;
     locale?: string;
   }
@@ -37,7 +36,6 @@ declare module "next-auth/jwt" {
     displayName?: string | null;
     avatarUrl?: string | null;
     role?: string;
-    accessTasks?: boolean;
     themePreference?: string;
     locale?: string;
   }
@@ -84,7 +82,6 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
           role: user.role,
-          accessTasks: user.accessTasks,
           themePreference: user.themePreference,
           locale: user.locale,
         };
@@ -99,7 +96,6 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         token.displayName = user.displayName ?? null;
         token.avatarUrl = user.avatarUrl ?? null;
         token.role = user.role;
-        token.accessTasks = user.accessTasks;
         token.themePreference = user.themePreference;
         token.locale = user.locale;
       }
@@ -110,7 +106,6 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
           token.displayName = fresh.displayName;
           token.avatarUrl = fresh.avatarUrl;
           token.role = fresh.role;
-          token.accessTasks = fresh.accessTasks;
           token.themePreference = fresh.themePreference;
           token.locale = fresh.locale;
         }
@@ -123,8 +118,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         session.user.username = token.username ?? "";
         session.user.displayName = token.displayName ?? null;
         session.user.avatarUrl = token.avatarUrl ?? null;
-        session.user.role = token.role ?? "support";
-        session.user.accessTasks = token.accessTasks ?? false;
+        session.user.role = token.role ?? "member";
         session.user.themePreference = token.themePreference ?? "system";
         session.user.locale = token.locale ?? "en";
       }
@@ -132,8 +126,6 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
     },
   },
 });
-
-import type { Session } from "next-auth";
 
 export type SafeAuthResult =
   | { status: "ok"; session: Session }
@@ -161,13 +153,5 @@ export async function requireUser(): Promise<Session["user"]> {
 export async function requireRole(role: "admin"): Promise<Session["user"]> {
   const user = await requireUser();
   if (user.role !== role) throw new Error("Forbidden");
-  return user;
-}
-
-export async function requireAccessTasks(): Promise<Session["user"]> {
-  const user = await requireUser();
-  if (!user.accessTasks && user.role !== "admin") {
-    throw new Error("Forbidden");
-  }
   return user;
 }

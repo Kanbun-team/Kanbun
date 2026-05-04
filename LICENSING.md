@@ -22,7 +22,7 @@ If the AGPL terms do not fit your situation, a commercial license is available. 
 - You want to offer a hosted service that includes Kanbun without the AGPL source-disclosure obligation toward your users.
 - You want OEM rights, an indemnification clause, or a support contract.
 
-To request a commercial license, contact: **me@mrellwart.com**.
+To request a commercial license, contact: **mrsanten@tuta.com**.
 
 ## 3. Pro modules and hosted edition
 

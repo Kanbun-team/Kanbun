@@ -1,9 +1,10 @@
-import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
-import { createBoardAction } from "@/server/tasks-actions";
+import BoardCard, { type BoardCardData } from "@/components/BoardCard";
+import CreateBoardModal from "@/components/CreateBoardModal";
+import CreateCategoryModal from "@/components/CreateCategoryModal";
 
 export const dynamic = "force-dynamic";
 
@@ -13,76 +14,109 @@ export default async function TasksIndexPage() {
   const locale = await getLocale();
   const isAdmin = user.role === "admin";
 
-  const boards = await prisma.board.findMany({
-    where: isAdmin
-      ? {}
-      : { members: { some: { userId: user.id } } },
-    orderBy: [{ archived: "asc" }, { updatedAt: "desc" }],
-    include: {
-      _count: { select: { columns: true, members: true } },
-      members: {
-        take: 6,
-        include: { user: { select: { displayName: true, username: true, avatarUrl: true } } },
+  const [boardsRaw, otherUsers, categories] = await Promise.all([
+    prisma.board.findMany({
+      where: isAdmin
+        ? {}
+        : { members: { some: { userId: user.id } } },
+      orderBy: [{ archived: "asc" }, { updatedAt: "desc" }],
+      include: {
+        _count: { select: { columns: true, members: true } },
       },
-    },
-  });
+    }),
+    prisma.user.findMany({
+      where: { id: { not: user.id } },
+      orderBy: [{ displayName: "asc" }, { username: "asc" }],
+      select: { id: true, username: true, displayName: true, avatarUrl: true },
+    }),
+    prisma.boardCategory.findMany({
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, color: true },
+    }),
+  ]);
+
+  type Board = BoardCardData & { categoryId: string | null };
+  const boards: Board[] = boardsRaw.map((b) => ({
+    id: b.id,
+    name: b.name,
+    description: b.description,
+    color: b.color,
+    archived: b.archived,
+    columnsCount: b._count.columns,
+    membersCount: b._count.members,
+    categoryId: b.categoryId,
+  }));
+
+  const general = boards.filter((b) => !b.categoryId);
+  const byCategory = new Map<string, Board[]>();
+  for (const cat of categories) byCategory.set(cat.id, []);
+  for (const b of boards) {
+    if (b.categoryId && byCategory.has(b.categoryId)) {
+      byCategory.get(b.categoryId)!.push(b);
+    }
+  }
+
+  const gridClass = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("boardsTitle", locale)}</h1>
+    <div className="space-y-8">
+      <h1 className="text-2xl font-semibold">{t("boardsTitle", locale)}</h1>
+
+      <ul className={gridClass}>
+        {general.map((b) => (
+          <li key={b.id} className="h-full">
+            <BoardCard board={b} locale={locale} />
+          </li>
+        ))}
+        <li className="h-full">
+          <CreateBoardModal
+            users={otherUsers}
+            categories={categories}
+            defaultCategoryId={null}
+            locale={locale}
+            variant="card"
+          />
+        </li>
+      </ul>
+
+      {categories.map((cat) => {
+        const list = byCategory.get(cat.id) ?? [];
+        return (
+          <section key={cat.id} className="space-y-3">
+            <header className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ background: cat.color }}
+              />
+              <h2 className="text-sm font-semibold uppercase tracking-wide opacity-80">
+                {cat.name}
+              </h2>
+              <span className="text-xs opacity-50">{list.length}</span>
+            </header>
+            <ul className={gridClass}>
+              {list.map((b) => (
+                <li key={b.id} className="h-full">
+                  <BoardCard board={b} locale={locale} />
+                </li>
+              ))}
+              <li className="h-full">
+                <CreateBoardModal
+                  users={otherUsers}
+                  categories={categories}
+                  defaultCategoryId={cat.id}
+                  locale={locale}
+                  variant="card"
+                />
+              </li>
+            </ul>
+          </section>
+        );
+      })}
+
+      <div className="pt-2">
+        <CreateCategoryModal locale={locale} />
       </div>
-
-      <form
-        action={createBoardAction}
-        className="surface border rounded-xl p-4 flex flex-col sm:flex-row gap-2 sm:items-end"
-      >
-        <label className="flex-1">
-          <span className="text-sm opacity-80">{t("boardName", locale)}</span>
-          <input name="name" required maxLength={120} className="mt-1" />
-        </label>
-        <label className="flex-1">
-          <span className="text-sm opacity-80">{t("boardDescription", locale)}</span>
-          <input name="description" maxLength={2000} className="mt-1" />
-        </label>
-        <button
-          type="submit"
-          className="rounded-lg bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 font-medium transition shrink-0"
-        >
-          {t("boardCreate", locale)}
-        </button>
-      </form>
-
-      {boards.length === 0 ? (
-        <p className="opacity-70 text-sm">{t("boardsEmpty", locale)}</p>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
-          {boards.map((b) => (
-            <li key={b.id} className="h-full">
-              <Link
-                href={`/tasks/${b.id}`}
-                className="flex flex-col h-full min-h-[150px] surface border rounded-xl p-4 hover:border-brand-500 transition"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold truncate">{b.name}</div>
-                  {b.archived && (
-                    <span className="text-xs opacity-60 shrink-0">{t("boardArchived", locale)}</span>
-                  )}
-                </div>
-                <p className="text-sm opacity-70 mt-1 line-clamp-2 min-h-[2.5em]">
-                  {b.description ?? ""}
-                </p>
-                <div className="flex-grow" />
-                <div className="flex items-center justify-between mt-3 text-xs opacity-60">
-                  <span>
-                    {b._count.columns} cols / {b._count.members} {t("boardMembers", locale).toLowerCase()}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

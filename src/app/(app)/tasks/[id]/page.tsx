@@ -79,7 +79,14 @@ export default async function BoardPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold">{board.name}</h1>
+          <h1 className="text-xl font-semibold flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="w-3 h-3 rounded-full shrink-0"
+              style={{ background: board.color }}
+            />
+            {board.name}
+          </h1>
           {board.description && (
             <p className="text-sm opacity-70">{board.description}</p>
           )}

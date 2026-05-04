@@ -11,23 +11,49 @@ import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 // Boards
 // -----------------------------
 
+const colorSchema = z
+  .string()
+  .trim()
+  .regex(/^#?[0-9a-fA-F]{6}$/, "Invalid color")
+  .transform((v) => (v.startsWith("#") ? v : `#${v}`));
+
 const createBoardSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).optional().nullable(),
+  color: colorSchema.optional().default("#2563eb"),
+  categoryId: z.string().min(1).optional().nullable(),
+  memberIds: z.array(z.string().min(1)).default([]),
 });
 
 export async function createBoardAction(formData: FormData) {
   const user = await requireUser();
+  const memberIdsRaw = formData.getAll("memberIds").map(String).filter(Boolean);
+  const categoryId = (formData.get("categoryId") as string) || null;
   const data = createBoardSchema.parse({
     name: formData.get("name"),
     description: formData.get("description") || null,
+    color: formData.get("color") || "#2563eb",
+    categoryId,
+    memberIds: memberIdsRaw,
   });
+
+  const uniqueMemberIds = Array.from(
+    new Set(data.memberIds.filter((id) => id !== user.id))
+  );
+
+  const memberCreates = [
+    { userId: user.id, role: "owner" },
+    ...uniqueMemberIds.map((id) => ({ userId: id, role: "member" })),
+  ];
+
   const board = await prisma.board.create({
     data: {
       name: data.name,
       description: data.description,
+      color: data.color,
+      categoryId: data.categoryId ?? null,
       createdById: user.id,
-      members: { create: { userId: user.id, role: "owner" } },
+      members: { create: memberCreates },
       columns: {
         create: [
           { name: "To do", position: 0 },
@@ -41,10 +67,70 @@ export async function createBoardAction(formData: FormData) {
   redirect(`/tasks/${board.id}`);
 }
 
+// -----------------------------
+// Board categories
+// -----------------------------
+
+const createCategorySchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  color: colorSchema.optional().default("#64748b"),
+});
+
+export async function createBoardCategoryAction(formData: FormData) {
+  await requireUser();
+  const data = createCategorySchema.parse({
+    name: formData.get("name"),
+    color: formData.get("color") || "#64748b",
+  });
+  const last = await prisma.boardCategory.findFirst({
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+  await prisma.boardCategory.create({
+    data: {
+      name: data.name,
+      color: data.color,
+      position: (last?.position ?? -1) + 1,
+    },
+  });
+  revalidatePath("/tasks");
+}
+
+export async function deleteBoardCategoryAction(formData: FormData) {
+  const me = await requireUser();
+  if (me.role !== "admin") throw new Error("Forbidden");
+  const id = String(formData.get("categoryId") ?? "");
+  if (!id) throw new Error("Invalid input");
+  await prisma.boardCategory.delete({ where: { id } });
+  revalidatePath("/tasks");
+}
+
+const renameCategorySchema = z.object({
+  categoryId: z.string().min(1),
+  name: z.string().trim().min(1).max(80),
+  color: colorSchema.optional(),
+});
+
+export async function updateBoardCategoryAction(formData: FormData) {
+  const me = await requireUser();
+  if (me.role !== "admin") throw new Error("Forbidden");
+  const data = renameCategorySchema.parse({
+    categoryId: formData.get("categoryId"),
+    name: formData.get("name"),
+    color: formData.get("color") || undefined,
+  });
+  await prisma.boardCategory.update({
+    where: { id: data.categoryId },
+    data: { name: data.name, color: data.color },
+  });
+  revalidatePath("/tasks");
+}
+
 const renameBoardSchema = z.object({
   boardId: z.string().min(1),
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).optional().nullable(),
+  color: colorSchema.optional(),
 });
 
 export async function updateBoardAction(formData: FormData) {
@@ -52,13 +138,19 @@ export async function updateBoardAction(formData: FormData) {
     boardId: formData.get("boardId"),
     name: formData.get("name"),
     description: formData.get("description") || null,
+    color: formData.get("color") || undefined,
   });
   const access = await loadBoardAccess(data.boardId);
   if (!canManageBoard(access)) throw new Error("Forbidden");
   await prisma.board.update({
     where: { id: data.boardId },
-    data: { name: data.name, description: data.description },
+    data: {
+      name: data.name,
+      description: data.description,
+      color: data.color,
+    },
   });
+  revalidatePath("/tasks");
   revalidatePath(`/tasks/${data.boardId}`);
   revalidatePath(`/tasks/${data.boardId}/settings`);
 }

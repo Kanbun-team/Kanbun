@@ -13,20 +13,17 @@ export default async function AppNav({ locale }: { locale: Locale }) {
   const user = session?.user;
   if (!user) return null;
 
-  const boards = user.accessTasks
-    ? await prisma.board.findMany({
-        where: {
-          archived: false,
-          OR: [
-            { members: { some: { userId: user.id } } },
-            ...(user.role === "admin" ? [{}] : []),
-          ],
-        },
-        select: { id: true, name: true },
-        orderBy: { name: "asc" },
-        take: 50,
-      })
-    : [];
+  const boards = await prisma.board.findMany({
+    where: {
+      archived: false,
+      ...(user.role === "admin"
+        ? {}
+        : { members: { some: { userId: user.id } } }),
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: 50,
+  });
 
   const isAdmin = can.isAdmin(user.role);
 

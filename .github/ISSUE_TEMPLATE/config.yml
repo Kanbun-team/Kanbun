@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Commercial license / hosted version
-    url: mailto:me@mrellwart.com
+    url: mailto:mrsanten@tuta.com
     about: Reach out for a commercial license, OEM rights, or Kanbun Cloud.
   - name: Security disclosure
-    url: mailto:me@mrellwart.com
+    url: mailto:mrsanten@tuta.com
     about: Please email instead of opening a public issue for vulnerabilities.

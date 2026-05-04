@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db-local";
 import Avatar from "@/components/Avatar";
+import ColorPicker from "@/components/ColorPicker";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { boardRoleLabel } from "@/lib/labels";
@@ -63,6 +64,10 @@ export default async function BoardSettingsPage({
           <span className="text-sm opacity-80">{t("boardDescription", locale)}</span>
           <textarea name="description" defaultValue={board.description ?? ""} rows={3} maxLength={2000} />
         </label>
+        <div>
+          <span className="text-sm opacity-80 block mb-1.5">{t("boardColor", locale)}</span>
+          <ColorPicker name="color" defaultValue={board.color} />
+        </div>
         <button className="rounded bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 text-sm">
           {t("save", locale)}
         </button>
@@ -143,22 +148,16 @@ export default async function BoardSettingsPage({
           ))}
           {board.tags.length === 0 && <li className="text-sm opacity-60">{t("none", locale)}</li>}
         </ul>
-        <form action={createBoardTagAction} className="flex flex-wrap gap-2 items-end">
+        <form action={createBoardTagAction} className="space-y-3 pt-2">
           <input type="hidden" name="boardId" value={board.id} />
-          <label className="flex-1 min-w-[160px]">
+          <label className="block">
             <span className="text-xs opacity-70">{t("cardTags", locale)}</span>
             <input name="name" required maxLength={40} placeholder="bug" />
           </label>
-          <label>
-            <span className="text-xs opacity-70">color</span>
-            <input
-              name="color"
-              required
-              defaultValue="#2563eb"
-              pattern="#?[0-9a-fA-F]{6}"
-              className="w-32"
-            />
-          </label>
+          <div>
+            <span className="text-xs opacity-70 block mb-1.5">{t("boardColor", locale)}</span>
+            <ColorPicker name="color" />
+          </div>
           <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1.5">
             {t("add", locale)}
           </button>
