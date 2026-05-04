@@ -2,6 +2,7 @@ import Link from "next/link";
 import Logo from "./Logo";
 import UserMenu from "./UserMenu";
 import MobileNav from "./MobileNav";
+import BoardSwitcher from "./BoardSwitcher";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { t, type Locale } from "@/lib/i18n";
@@ -58,9 +59,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
                 {t("navAdmin", locale)}
               </Link>
             )}
-            {boards.length > 0 && (
-              <BoardSwitcher boards={boards} locale={locale} />
-            )}
+            {boards.length > 0 && <BoardSwitcher boards={boards} locale={locale} />}
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <UserMenu
@@ -84,29 +83,3 @@ export default async function AppNav({ locale }: { locale: Locale }) {
   );
 }
 
-function BoardSwitcher({
-  boards,
-  locale,
-}: {
-  boards: { id: string; name: string }[];
-  locale: Locale;
-}) {
-  return (
-    <details className="relative ml-2 group">
-      <summary className="list-none cursor-pointer px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
-        {t("boardsTitle", locale)}
-      </summary>
-      <div className="absolute mt-2 w-64 rounded-xl surface border shadow-lg z-50 max-h-80 overflow-auto">
-        {boards.map((b) => (
-          <Link
-            key={b.id}
-            href={`/tasks/${b.id}`}
-            className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 truncate"
-          >
-            {b.name}
-          </Link>
-        ))}
-      </div>
-    </details>
-  );
-}
