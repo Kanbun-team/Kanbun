@@ -38,6 +38,23 @@ While we are pre-1.0, treat MINOR as potentially breaking and call it out in `CH
 
 Migrations are part of the release. The Docker `CMD` runs `prisma migrate deploy` on every start, so users get the new schema automatically. **Never** include irreversible destructive migrations in a PATCH release. If a column drop is needed, MINOR at minimum, with a clear note in the changelog telling users to back up `kanbun.db` first.
 
+## Nightly builds
+
+A scheduled workflow ([.github/workflows/nightly.yml](.github/workflows/nightly.yml)) runs at 03:00 UTC every day. It is also triggerable manually from the Actions tab via `workflow_dispatch`.
+
+What it does, only when there are new commits on `main` since the previous nightly:
+
+1. Builds a multi-arch Docker image (amd64 + arm64) and pushes three tags:
+   - `ghcr.io/<owner>/kanbun:nightly` (rolling, rewritten on every nightly)
+   - `ghcr.io/<owner>/kanbun:nightly-YYYYMMDD` (immutable, pinnable)
+   - `ghcr.io/<owner>/kanbun:sha-<short>` (immutable, traceable to a commit)
+2. Force-moves the `nightly` git tag to the new commit.
+3. Creates or updates the `nightly` GitHub release (always marked as prerelease) with pull commands and the build digest.
+
+If `main` has not moved since the last nightly, the workflow exits early without pushing a new image. CI minutes are not wasted.
+
+The `nightly` Docker tag is intentionally mutable. Self-hosters who want a stable target should pin to a `nightly-YYYYMMDD` or, better, a real `vX.Y.Z` release.
+
 ## Pre-releases
 
 For RC builds, tag with a hyphen suffix:

@@ -1,0 +1,48 @@
+name: Translation
+description: Add a new language or improve an existing translation
+title: "i18n: <language>"
+labels: ["i18n", "good first issue", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping translate Kanbun. Full guide for translators lives in [src/locales/README.md](../blob/main/src/locales/README.md).
+
+        - English (`en.json`) is the source of truth. Other locales may be partial; missing keys fall back to English at runtime, so you can submit incrementally.
+        - You do not need to know TypeScript to contribute a translation. Editing a single JSON file is enough.
+
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: ISO 639-1 code + native name
+      placeholder: "de - Deutsch"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of contribution
+      options:
+        - Add a new language
+        - Update / extend an existing translation
+        - Fix a typo or mistranslation
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Anything specific to call out (regional variant, ambiguous keys, etc.)
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Before submitting
+      options:
+        - label: I read [src/locales/README.md](../blob/main/src/locales/README.md).
+          required: true
+        - label: I understand contributions are licensed under AGPL-3.0 and I will sign the [CLA](../blob/main/CLA.md) on my first PR.
+          required: true
