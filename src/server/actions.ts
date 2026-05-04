@@ -18,7 +18,7 @@ async function tryRefreshSession(patch: Record<string, unknown>): Promise<void> 
 }
 
 const themeSchema = z.enum(["light", "dark", "system"]);
-const localeSchema = z.enum(["en", "pl"]);
+const localeSchema = z.enum(["en", "it", "pl"]);
 
 export async function setThemeAction(theme: string) {
   const parsed = themeSchema.parse(theme);
