@@ -5,9 +5,17 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db-local";
-import { auth, requireRole, requireUser } from "@/auth";
+import { auth, refreshSession, requireRole, requireUser } from "@/auth";
 import { isLocale } from "@/lib/i18n";
 import { LOCALE_COOKIE } from "@/lib/get-locale";
+
+async function tryRefreshSession(patch: Record<string, unknown>): Promise<void> {
+  try {
+    await refreshSession({ user: patch } as never);
+  } catch (err) {
+    console.warn("[auth] refreshSession failed, session will sync on next login:", err);
+  }
+}
 
 const themeSchema = z.enum(["light", "dark", "system"]);
 const localeSchema = z.enum(["en", "pl"]);
@@ -25,6 +33,7 @@ export async function setThemeAction(theme: string) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
+  await tryRefreshSession({ themePreference: parsed });
   revalidatePath("/");
 }
 
@@ -41,6 +50,7 @@ export async function setLocaleAction(locale: string) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
+  await tryRefreshSession({ locale: parsed });
   revalidatePath("/");
 }
 
@@ -63,6 +73,10 @@ export async function updateProfileAction(formData: FormData) {
   await prisma.user.update({
     where: { id: user.id },
     data: { displayName: data.displayName, avatarUrl: data.avatarUrl },
+  });
+  await tryRefreshSession({
+    displayName: data.displayName,
+    avatarUrl: data.avatarUrl,
   });
   revalidatePath("/settings");
   revalidatePath("/");

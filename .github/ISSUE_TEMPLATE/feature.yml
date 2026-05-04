@@ -1,0 +1,60 @@
+name: Feature request
+description: Suggest a new capability or improvement
+title: "feat: <short description>"
+labels: ["feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for thinking about how Kanbun could be better. The most actionable feature requests start with a real user problem, not a proposed solution.
+
+        Before opening, consider whether this fits the **community edition** (open source, AGPL) or belongs to a **Pro module**. The maintainer reserves the right to move requests between the two; see [LICENSING.md](../blob/main/LICENSING.md) for the model.
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched [existing issues and discussions](../issues?q=is%3Aissue) and did not find a duplicate.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to accomplish? What is in your way today?
+      placeholder: |
+        Today, when I want to <X>, I have to <workaround>, which is annoying because <reason>.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How do you imagine Kanbun would solve this? UI sketch, API shape, schema change, anything concrete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you weighed and why they fall short.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Where do you think this fits
+      options:
+        - Community (core, open source)
+        - Pro module (proprietary)
+        - Either, no preference
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Mockups, links to similar features in other tools, prior art.

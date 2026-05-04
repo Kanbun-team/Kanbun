@@ -1,0 +1,85 @@
+name: Bug report
+description: Something is broken or not working as expected
+title: "bug: <short description>"
+labels: ["fix"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. The more concrete the report, the faster it can be fixed.
+
+        - For security vulnerabilities, please email **me@mrellwart.com** instead of opening a public issue.
+        - For commercial / hosted-version questions, see [LICENSING.md](../blob/main/LICENSING.md).
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched [existing issues](../issues?q=is%3Aissue) and did not find a duplicate.
+          required: true
+        - label: I am running a Kanbun version released within the last 90 days (or `nightly`).
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Kanbun version
+      description: Output of the footer badge, the Docker tag you pulled, or the git commit SHA.
+      placeholder: "v0.1.0 / nightly-20260504 / sha-abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running Kanbun
+      options:
+        - Docker (image from GHCR)
+        - Docker (built locally)
+        - Local dev (npm run dev)
+        - Local prod (npm run start)
+        - Other (describe in details)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the actual behavior. Include any error messages from the UI or server console.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps. The smaller the repro, the faster the fix.
+      placeholder: |
+        1. Log in as admin
+        2. Go to /tasks/<board>
+        3. Drag a card from "To do" to "Doing"
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser + OS (for UI bugs)
+      placeholder: "Firefox 132 on macOS 15.1, or N/A for server-side bugs"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots / network panel
+      description: Drop in any relevant server logs, screenshots, or network console output. Wrap logs in triple backticks.
+      render: shell

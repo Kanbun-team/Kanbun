@@ -24,5 +24,5 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/mrellwart/kanbun/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/mrellwart/kanbun/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Kanbun-team/Kanbun/releases/tag/v0.1.0

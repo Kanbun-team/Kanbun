@@ -1,6 +1,21 @@
+<div align="center">
+
+<img src="public/icons/kanbun-512.png" alt="Kanbun" width="128" height="128" />
+
 # Kanbun
 
-Self-hosted task board for teams. Single binary mindset, no external services.
+**Self-hosted task board for teams. Single binary mindset, no external services.**
+
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL_v3-blue.svg)](LICENSE)
+[![Commercial license](https://img.shields.io/badge/commercial-available-brightgreen.svg)](LICENSING.md)
+[![CI](https://github.com/Kanbun-team/Kanbun/actions/workflows/ci.yml/badge.svg)](https://github.com/Kanbun-team/Kanbun/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/Kanbun-team/Kanbun?include_prereleases&sort=semver)](https://github.com/Kanbun-team/Kanbun/releases)
+[![GHCR](https://img.shields.io/badge/ghcr.io-kanbun-2496ED?logo=docker&logoColor=white)](https://github.com/Kanbun-team/Kanbun/pkgs/container/kanbun)
+[![Stars](https://img.shields.io/github/stars/Kanbun-team/Kanbun?style=flat)](https://github.com/Kanbun-team/Kanbun/stargazers)
+
+</div>
+
+<!-- Add a screenshot or GIF of the board view here. Recommended: docs/screenshot.png at ~1200px wide. -->
 
 ## Features
 
