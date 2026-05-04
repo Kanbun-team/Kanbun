@@ -20,7 +20,8 @@ export default function BoardCard({ board, locale }: { board: BoardCardData; loc
   return (
     <Link
       href={`/tasks/${board.id}`}
-      className="group flex flex-col h-full min-h-[160px] surface border rounded-xl p-4 transition hover:-translate-y-0.5 hover:shadow-lg hover:border-[color:var(--board-color)]"
+      draggable={false}
+      className="group flex flex-col h-full min-h-[160px] surface border rounded-xl p-4 transition hover:-translate-y-0.5 hover:shadow-lg hover:border-[color:var(--board-color)] [&_*]:select-none"
       style={{ ["--board-color" as string]: board.color }}
     >
       <div className="flex items-start gap-3">

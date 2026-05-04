@@ -35,6 +35,7 @@ model Board {
   name         String
   description  String?
   color        String   @default("#2563eb")
+  position     Int      @default(0)
   archived     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -49,7 +50,7 @@ model Board {
   tags    BoardTag[]
 
   @@index([createdById])
-  @@index([categoryId])
+  @@index([categoryId, position])
 }
 
 model BoardCategory {

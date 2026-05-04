@@ -46,12 +46,20 @@ export async function createBoardAction(formData: FormData) {
     ...uniqueMemberIds.map((id) => ({ userId: id, role: "member" })),
   ];
 
+  const lastInTarget = await prisma.board.findFirst({
+    where: { categoryId: data.categoryId ?? null },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+  const nextPosition = (lastInTarget?.position ?? -1) + 1;
+
   const board = await prisma.board.create({
     data: {
       name: data.name,
       description: data.description,
       color: data.color,
       categoryId: data.categoryId ?? null,
+      position: nextPosition,
       createdById: user.id,
       members: { create: memberCreates },
       columns: {
@@ -65,6 +73,67 @@ export async function createBoardAction(formData: FormData) {
   });
   revalidatePath("/tasks");
   redirect(`/tasks/${board.id}`);
+}
+
+const moveBoardSchema = z.object({
+  boardId: z.string().min(1),
+  toCategoryId: z.string().min(1).nullable(),
+  position: z.coerce.number().int().min(0),
+});
+
+export async function moveBoardAction(input: {
+  boardId: string;
+  toCategoryId: string | null;
+  position: number;
+}) {
+  const user = await requireUser();
+  const data = moveBoardSchema.parse(input);
+
+  const board = await prisma.board.findUnique({
+    where: { id: data.boardId },
+    select: {
+      categoryId: true,
+      members: { where: { userId: user.id }, select: { userId: true } },
+    },
+  });
+  if (!board) throw new Error("Not found");
+  if (user.role !== "admin" && board.members.length === 0) {
+    throw new Error("Forbidden");
+  }
+
+  if (data.toCategoryId) {
+    const cat = await prisma.boardCategory.findUnique({
+      where: { id: data.toCategoryId },
+      select: { id: true },
+    });
+    if (!cat) throw new Error("Invalid category");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const sameCat = await tx.board.findMany({
+      where: { categoryId: data.toCategoryId },
+      orderBy: { position: "asc" },
+      select: { id: true },
+    });
+    const ids = sameCat.map((b) => b.id).filter((id) => id !== data.boardId);
+    const bounded = Math.max(0, Math.min(data.position, ids.length));
+    const newOrder = [...ids.slice(0, bounded), data.boardId, ...ids.slice(bounded)];
+
+    if (board.categoryId !== data.toCategoryId) {
+      await tx.board.update({
+        where: { id: data.boardId },
+        data: { categoryId: data.toCategoryId },
+      });
+    }
+
+    await Promise.all(
+      newOrder.map((id, idx) =>
+        tx.board.update({ where: { id }, data: { position: idx } })
+      )
+    );
+  });
+
+  revalidatePath("/tasks");
 }
 
 // -----------------------------
