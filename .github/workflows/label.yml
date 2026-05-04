@@ -1,0 +1,46 @@
+name: Label PR
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const title = (context.payload.pull_request.title || "").toLowerCase();
+            const body = context.payload.pull_request.body || "";
+            const labelMap = {
+              feat: "feat",
+              fix: "fix",
+              docs: "docs",
+              style: "chore",
+              refactor: "refactor",
+              perf: "perf",
+              test: "test",
+              build: "chore",
+              ci: "ci",
+              chore: "chore",
+              revert: "fix",
+            };
+            const match = title.match(/^(\w+)(\(.+?\))?(!)?:/);
+            const labels = new Set();
+            if (match) {
+              const type = match[1];
+              if (labelMap[type]) labels.add(labelMap[type]);
+              if (match[3]) labels.add("breaking-change");
+            }
+            if (/BREAKING CHANGE/.test(body)) labels.add("breaking-change");
+            if (labels.size === 0) return;
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [...labels],
+            });

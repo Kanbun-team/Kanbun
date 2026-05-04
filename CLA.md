@@ -1,6 +1,6 @@
 # Contributor License Agreement (CLA)
 
-Thank you for your interest in contributing to Kanbun ("the Project"), maintained by CatDev Szymon Ellwart ("the Maintainer").
+Thank you for your interest in contributing to Kanbun ("the Project"), maintained by MrSanten ("the Maintainer").
 
 This Contributor License Agreement ("Agreement") clarifies the intellectual property rights granted with any contribution from any person or entity. It protects both you, the contributor, and the Project, and does not change your rights to use your own contributions for any other purpose.
 

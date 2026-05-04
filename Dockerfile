@@ -27,4 +27,4 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/scripts ./scripts
 EXPOSE 3000
 VOLUME ["/data"]
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+CMD ["npm", "run", "start"]
