@@ -1,10 +1,11 @@
 import enDict from "@/locales/en.json";
 import plDict from "@/locales/pl.json";
 import itDict from "@/locales/it.json";
+import deDict from "@/locales/de.json"
 
-export type Locale = "en" | "it" | "pl";
+export type Locale = "en" | "it" | "pl" | "de";
 
-export const LOCALES: Locale[] = ["en", "it", "pl"];
+export const LOCALES: Locale[] = ["en", "it", "pl", "de"];
 export const DEFAULT_LOCALE: Locale = "en";
 
 export type DictKey = keyof typeof enDict;
@@ -13,6 +14,7 @@ const DICTS: Record<Locale, Partial<Record<DictKey, string>>> = {
   en: enDict,
   it: itDict as Partial<Record<DictKey, string>>,
   pl: plDict as Partial<Record<DictKey, string>>,
+  de: deDict as Partial<Record<DictKey, string>>,
 };
 
 const warnedKeys = new Set<string>();
@@ -33,12 +35,13 @@ export function t(key: DictKey, locale: Locale = DEFAULT_LOCALE): string {
 }
 
 export function isLocale(value: unknown): value is Locale {
-  return value === "en" || value === "it" || value === "pl";
+  return value === "en" || value === "it" || value === "pl" || value === "de";
 }
 
 export function intlLocale(locale: Locale): string {
   return locale === "pl" ? "pl-PL"
     : locale === "it" ? "it-IT"
+    : locale === "de" ? "de-DE"
       : "en-GB";
 }
 
