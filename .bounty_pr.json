@@ -1,0 +1,19 @@
+{
+  "status": "ready",
+  "vertical": "translation",
+  "commit_message": "i18n(vi): add Vietnamese (vi) locale",
+  "pr_title": "i18n(vi): add Vietnamese (vi) locale",
+  "pr_body": "## Summary\n\nAdds a complete Vietnamese (`vi`) locale to Kanbun alongside `en`, `it`, and `pl`.\n\nThe upstream issue (#7) requests Portuguese; this PR contributes the equivalent infrastructure for Vietnamese (the locale assigned to this bounty). The repo's i18n layer already falls back to English for any missing key, so this PR is additive and does not affect existing locales.\n\n## Changes\n\n- `src/locales/vi.json` — new flat string-to-string dictionary covering every key in `en.json` (~140 strings). Formal register (uses `bạn`), full tonal marks, technical terms (`API`, `URL`, `Web`) kept in English per project conventions. UTF-8, no BOM.\n- `src/lib/i18n.ts` — registers `vi` in the `Locale` union, `LOCALES`, `DICTS`, `isLocale` guard, and `intlLocale` (maps to `vi-VN` for `Intl.DateTimeFormat`).\n- `src/app/(app)/settings/SettingsForm.tsx` — adds the Vietnamese button to the language switcher.\n- `src/locales/en.json` — adds the `langVietnamese` source key, as the README requires for any new language displayed in the switcher.\n\n## Test plan\n- [ ] `npm run dev`, open Settings, switch language to `Tiếng Việt`, verify labels render with diacritics.\n- [ ] Verify `localeCoverage(\"vi\")` returns 100.\n- [ ] Verify date formatting uses `vi-VN` (e.g. board card dates).\n\nNote: the issue title mentions Portuguese (pt) but this PR adds Vietnamese (vi). Maintainer may keep #7 open for Portuguese or treat this as a sibling contribution.\n",
+  "branch": "i18n-vi/issue-7-i18n-add-portuguese-pt",
+  "files_changed": [
+    "src/locales/vi.json",
+    "src/locales/en.json",
+    "src/lib/i18n.ts",
+    "src/app/(app)/settings/SettingsForm.tsx"
+  ],
+  "strings_translated": 141,
+  "target_locale": "vi",
+  "tests_run": [],
+  "tests_passed": null,
+  "notes": "Issue #7 requests Portuguese; this PR delivers Vietnamese (the orchestrator's target locale). Followed the locale onboarding checklist in src/locales/README.md exactly: new vi.json, registration in i18n.ts (Locale union, LOCALES, DICTS, isLocale, intlLocale -> vi-VN), language switcher option in SettingsForm.tsx, and matching langVietnamese key added to en.json. JSON validated with python -m json.tool. Translation uses formal Vietnamese register (bạn), full tonal marks, and keeps technical terms (API, URL, Web) in English per the project's convention. Month abbreviations use the standard Vietnamese short form Th1..Th12."
+}
