@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { loginAction } from "@/server/auth-actions";
 
 const initial: { error?: string } = {};
@@ -22,7 +23,7 @@ function SubmitButton() {
 }
 
 export default function LoginForm({ from }: { from: string }) {
-  const [state, formAction] = useFormState(loginAction, initial);
+  const [state, formAction] = useActionState(loginAction, initial);
   return (
     <form action={formAction} className="space-y-4" autoComplete="on">
       <input type="hidden" name="from" value={from} />
