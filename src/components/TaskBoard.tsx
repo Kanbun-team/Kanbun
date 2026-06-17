@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import { cn } from "@/lib/utils";
-import { PRIORITIES, priorityClass, priorityLabel, type Priority } from "@/lib/labels";
+import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale, formatDate } from "@/lib/i18n";
 import {
   addCardAction,
@@ -14,8 +14,35 @@ import {
   deleteColumnAction,
   moveCardAction,
   renameColumnAction,
+  toggleAssigneeAction,
+  toggleCardTagAction,
   updateCardAction,
 } from "@/server/tasks-actions";
+
+export interface MemberOption {
+  id: string;
+  displayName: string | null;
+  username: string;
+  avatarUrl: string | null;
+}
+
+export interface TagOption {
+  id: string;
+  name: string;
+  color: string;
+}
+
+const COVER_COLORS = [
+  "#2563eb",
+  "#7c3aed",
+  "#16a34a",
+  "#dc2626",
+  "#ea580c",
+  "#0891b2",
+  "#db2777",
+  "#65a30d",
+  "#475569",
+];
 
 export interface CardDTO {
   id: string;
@@ -46,6 +73,8 @@ export interface TaskBoardProps {
   locale: Locale;
   canManage: boolean;
   currentUserId: string;
+  members: MemberOption[];
+  boardTags: TagOption[];
 }
 
 interface Filters {
@@ -72,6 +101,8 @@ export default function TaskBoard({
   locale,
   canManage,
   currentUserId,
+  members,
+  boardTags,
 }: TaskBoardProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [dragCardId, setDragCardId] = useState<string | null>(null);
@@ -295,6 +326,8 @@ export default function TaskBoard({
         <CardContextMenu
           locale={locale}
           card={allCards.find((c) => c.id === contextMenu.cardId)!}
+          members={members}
+          boardTags={boardTags}
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
@@ -761,61 +794,182 @@ function CardItem({
   );
 }
 
+function ContextSubmenu({
+  label,
+  value,
+  flip,
+  children,
+}: {
+  label: string;
+  value?: string | null;
+  flip: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="group relative">
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-default">
+        <span>{label}</span>
+        <span className="flex items-center gap-1 opacity-60">
+          {value && <span className="text-xs">{value}</span>}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </span>
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 z-50 hidden group-hover:block",
+          flip ? "right-full pr-1" : "left-full pl-1"
+        )}
+      >
+        <div className="w-56 surface border rounded-lg shadow-xl py-1 max-h-72 overflow-auto">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CardContextMenu({
   card,
+  members,
+  boardTags,
   x,
   y,
   locale,
   onClose,
 }: {
   card: CardDTO;
+  members: MemberOption[];
+  boardTags: TagOption[];
   x: number;
   y: number;
   locale: Locale;
   onClose: () => void;
 }) {
-  const priorities: Priority[] = ["low", "normal", "high", "critical"];
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const assignedIds = new Set(card.assignees.map((a) => a.id));
+  const tagIds = new Set(card.tags.map((tg) => tg.id));
+  const flip = typeof window !== "undefined" && x > window.innerWidth - 460;
+
+  function run(action: (fd: FormData) => Promise<unknown>, fields: Record<string, string>) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", card.id);
+      for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+      await action(fd);
+      router.refresh();
+    });
+  }
+
+  const itemClass =
+    "flex items-center gap-2 w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800";
+
   return (
     <div
-      className="fixed z-50 w-56 surface border rounded-lg shadow-xl text-sm"
+      className="fixed z-50 w-52 surface border rounded-lg shadow-xl text-sm py-1"
       style={{ top: y, left: x }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-3 py-2 text-xs uppercase tracking-wide opacity-60 border-b border-[var(--border)]">
-        {t("cardPriority", locale)}
-      </div>
-      {priorities.map((p) => (
-        <form
-          key={p}
-          action={async (fd) => {
-            await updateCardAction(fd);
-            onClose();
-          }}
-        >
-          <input type="hidden" name="cardId" value={card.id} />
-          <input type="hidden" name="priority" value={p} />
+      <ContextSubmenu label={t("cardAssignees", locale)} flip={flip}>
+        {members.length === 0 && (
+          <div className="px-3 py-1.5 opacity-60">{t("noResults", locale)}</div>
+        )}
+        {members.map((u) => (
           <button
-            type="submit"
+            key={u.id}
+            type="button"
+            onClick={() => run(toggleAssigneeAction, { userId: u.id })}
+            className={itemClass}
+          >
+            <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={20} />
+            <span className="flex-1 truncate">{u.displayName ?? u.username}</span>
+            {assignedIds.has(u.id) && <span className="text-brand-600">&#10003;</span>}
+          </button>
+        ))}
+      </ContextSubmenu>
+
+      <ContextSubmenu label={t("cardTags", locale)} flip={flip}>
+        {boardTags.length === 0 && (
+          <div className="px-3 py-1.5 opacity-60">{t("noResults", locale)}</div>
+        )}
+        {boardTags.map((tg) => (
+          <button
+            key={tg.id}
+            type="button"
+            onClick={() => run(toggleCardTagAction, { tagId: tg.id })}
+            className={itemClass}
+          >
+            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: tg.color }} />
+            <span className="flex-1 truncate">{tg.name}</span>
+            {tagIds.has(tg.id) && <span className="text-brand-600">&#10003;</span>}
+          </button>
+        ))}
+      </ContextSubmenu>
+
+      <ContextSubmenu
+        label={t("cardPriority", locale)}
+        value={priorityLabel(card.priority, locale)}
+        flip={flip}
+      >
+        {PRIORITIES.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => run(updateCardAction, { priority: p })}
+            className={cn(itemClass, card.priority === p && "font-semibold")}
+          >
+            <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", priorityClass(p))} />
+            <span className="flex-1">{priorityLabel(p, locale)}</span>
+            {card.priority === p && <span className="text-brand-600">&#10003;</span>}
+          </button>
+        ))}
+      </ContextSubmenu>
+
+      <ContextSubmenu label={t("cardCover", locale)} flip={flip}>
+        <div className="flex flex-wrap gap-1.5 p-2">
+          {COVER_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => run(updateCardAction, { coverColor: c })}
+              aria-label={c}
+              className={cn(
+                "w-6 h-6 rounded-full transition",
+                card.coverColor?.toLowerCase() === c
+                  ? "ring-2 ring-offset-1 ring-offset-[var(--bg)] ring-brand-500"
+                  : "ring-1 ring-[var(--border)] hover:scale-110"
+              )}
+              style={{ background: c }}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => run(updateCardAction, { coverColor: "" })}
+            aria-label={t("none", locale)}
+            title={t("none", locale)}
             className={cn(
-              "block w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800",
-              card.priority === p && "font-semibold"
+              "w-6 h-6 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-xs leading-none",
+              !card.coverColor ? "ring-2 ring-brand-500" : "opacity-70 hover:opacity-100"
             )}
           >
-            {priorityLabel(p, locale)}
+            &times;
           </button>
-        </form>
-      ))}
+        </div>
+      </ContextSubmenu>
+
+      <div className="my-1 border-t border-[var(--border)]" />
       <form
         action={async (fd) => {
           await deleteCardAction(fd);
           onClose();
         }}
-        className="border-t border-[var(--border)]"
       >
         <input type="hidden" name="cardId" value={card.id} />
         <button
           type="submit"
-          className="block w-full text-left px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+          className="block w-full text-left px-3 py-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
         >
           {t("cardDelete", locale)}
         </button>

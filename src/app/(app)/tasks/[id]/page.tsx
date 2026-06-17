@@ -25,6 +25,10 @@ export default async function BoardPage({
   const board = await prisma.board.findUnique({
     where: { id },
     include: {
+      members: {
+        include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
+      },
+      tags: { orderBy: { position: "asc" }, select: { id: true, name: true, color: true } },
       columns: {
         orderBy: { position: "asc" },
         include: {
@@ -115,6 +119,13 @@ export default async function BoardPage({
         locale={locale}
         canManage={canManageBoard(access)}
         currentUserId={access.userId}
+        members={board.members.map((m) => ({
+          id: m.user.id,
+          displayName: m.user.displayName,
+          username: m.user.username,
+          avatarUrl: m.user.avatarUrl,
+        }))}
+        boardTags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
       />
     </div>
   );
