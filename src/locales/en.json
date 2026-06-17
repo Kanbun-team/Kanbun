@@ -93,6 +93,7 @@
   "filterDeadline": "Deadline",
   "filterAssignedToMe": "Assigned to me",
   "filterHasDeadline": "Has deadline",
+  "filter": "Filter",
   "filterClear": "Clear",
   "filterNoMatch": "No cards match your filters.",
   "cardCover": "Cover",

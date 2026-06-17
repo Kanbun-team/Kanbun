@@ -88,6 +88,7 @@
   "filterDeadline": "Scadenza",
   "filterAssignedToMe": "Assegnate a me",
   "filterHasDeadline": "Con scadenza",
+  "filter": "Filtra",
   "filterClear": "Cancella",
   "filterNoMatch": "Nessuna card corrisponde ai filtri.",
   "cardCover": "Copertina",

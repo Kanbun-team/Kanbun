@@ -321,85 +321,143 @@ function FilterBar({
   visibleCount: number;
   locale: Locale;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const activeCount =
+    (filters.query.trim() ? 1 : 0) +
+    (filters.assigneeId ? 1 : 0) +
+    (filters.tagId ? 1 : 0) +
+    (filters.priority ? 1 : 0) +
+    (filters.deadline ? 1 : 0) +
+    (filters.mine ? 1 : 0);
+
   const selectClass =
-    "!py-1 !text-sm rounded-md border border-[var(--border)] bg-transparent";
+    "!py-1 !text-sm w-full rounded-md border border-[var(--border)] bg-transparent";
+  const fieldLabel = "block text-xs uppercase tracking-wide opacity-50 mb-1";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <input
-        type="search"
-        value={filters.query}
-        onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-        placeholder={t("filterSearchPlaceholder", locale)}
-        className="!py-1 !text-sm w-48"
-      />
-      <select
-        value={filters.assigneeId}
-        onChange={(e) => setFilters({ ...filters, assigneeId: e.target.value, mine: false })}
-        className={selectClass}
-        aria-label={t("filterAssignee", locale)}
-      >
-        <option value="">{t("filterAssignee", locale)}: {t("filterAll", locale)}</option>
-        {assigneeOptions.map((u) => (
-          <option key={u.id} value={u.id}>{u.name}</option>
-        ))}
-      </select>
-      <select
-        value={filters.tagId}
-        onChange={(e) => setFilters({ ...filters, tagId: e.target.value })}
-        className={selectClass}
-        aria-label={t("filterTag", locale)}
-      >
-        <option value="">{t("filterTag", locale)}: {t("filterAll", locale)}</option>
-        {tagOptions.map((tg) => (
-          <option key={tg.id} value={tg.id}>{tg.name}</option>
-        ))}
-      </select>
-      <select
-        value={filters.priority}
-        onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-        className={selectClass}
-        aria-label={t("filterPriority", locale)}
-      >
-        <option value="">{t("filterPriority", locale)}: {t("filterAll", locale)}</option>
-        {PRIORITIES.map((p) => (
-          <option key={p} value={p}>{priorityLabel(p, locale)}</option>
-        ))}
-      </select>
-      <select
-        value={filters.deadline}
-        onChange={(e) => setFilters({ ...filters, deadline: e.target.value as Filters["deadline"] })}
-        className={selectClass}
-        aria-label={t("filterDeadline", locale)}
-      >
-        <option value="">{t("filterDeadline", locale)}: {t("filterAll", locale)}</option>
-        <option value="overdue">{t("cardOverdue", locale)}</option>
-        <option value="has">{t("filterHasDeadline", locale)}</option>
-        <option value="none">{t("cardNoDeadline", locale)}</option>
-      </select>
+    <div className="relative inline-block" ref={ref}>
       <button
         type="button"
-        onClick={() => setFilters({ ...filters, mine: !filters.mine, assigneeId: "" })}
-        aria-pressed={filters.mine}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
         className={cn(
-          "rounded-md text-sm px-2.5 py-1 border transition",
-          filters.mine
-            ? "bg-brand-600 text-white border-transparent"
+          "inline-flex items-center gap-2 rounded-md text-sm px-3 py-1.5 border transition",
+          filtering
+            ? "border-brand-500 text-brand-600"
             : "border-[var(--border)] opacity-80 hover:opacity-100"
         )}
       >
-        {t("filterAssignedToMe", locale)}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+        {t("filter", locale)}
+        {activeCount > 0 && (
+          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-600 text-white text-[11px] font-semibold flex items-center justify-center">
+            {activeCount}
+          </span>
+        )}
       </button>
-      {filtering && (
-        <>
-          <span className="text-xs opacity-60">{visibleCount}</span>
+      {open && (
+        <div className="absolute left-0 z-50 mt-2 w-72 surface border rounded-xl shadow-xl p-3 space-y-3">
+          <div>
+            <input
+              type="search"
+              value={filters.query}
+              onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+              placeholder={t("filterSearchPlaceholder", locale)}
+              autoFocus
+              className="!py-1 !text-sm w-full"
+            />
+          </div>
+          <div>
+            <label className={fieldLabel}>{t("filterAssignee", locale)}</label>
+            <select
+              value={filters.assigneeId}
+              onChange={(e) => setFilters({ ...filters, assigneeId: e.target.value, mine: false })}
+              className={selectClass}
+            >
+              <option value="">{t("filterAll", locale)}</option>
+              {assigneeOptions.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={fieldLabel}>{t("filterTag", locale)}</label>
+            <select
+              value={filters.tagId}
+              onChange={(e) => setFilters({ ...filters, tagId: e.target.value })}
+              className={selectClass}
+            >
+              <option value="">{t("filterAll", locale)}</option>
+              {tagOptions.map((tg) => (
+                <option key={tg.id} value={tg.id}>{tg.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={fieldLabel}>{t("filterPriority", locale)}</label>
+            <select
+              value={filters.priority}
+              onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+              className={selectClass}
+            >
+              <option value="">{t("filterAll", locale)}</option>
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>{priorityLabel(p, locale)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={fieldLabel}>{t("filterDeadline", locale)}</label>
+            <select
+              value={filters.deadline}
+              onChange={(e) => setFilters({ ...filters, deadline: e.target.value as Filters["deadline"] })}
+              className={selectClass}
+            >
+              <option value="">{t("filterAll", locale)}</option>
+              <option value="overdue">{t("cardOverdue", locale)}</option>
+              <option value="has">{t("filterHasDeadline", locale)}</option>
+              <option value="none">{t("cardNoDeadline", locale)}</option>
+            </select>
+          </div>
           <button
             type="button"
-            onClick={() => setFilters(EMPTY_FILTERS)}
-            className="rounded-md text-sm px-2.5 py-1 border border-[var(--border)] opacity-80 hover:opacity-100"
+            onClick={() => setFilters({ ...filters, mine: !filters.mine, assigneeId: "" })}
+            aria-pressed={filters.mine}
+            className={cn(
+              "w-full rounded-md text-sm px-2.5 py-1.5 border transition",
+              filters.mine
+                ? "bg-brand-600 text-white border-transparent"
+                : "border-[var(--border)] opacity-80 hover:opacity-100"
+            )}
           >
-            {t("filterClear", locale)}
+            {t("filterAssignedToMe", locale)}
           </button>
-        </>
+          {filtering && (
+            <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
+              <span className="text-xs opacity-60">{visibleCount}</span>
+              <button
+                type="button"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="text-sm opacity-70 hover:opacity-100"
+              >
+                {t("filterClear", locale)}
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

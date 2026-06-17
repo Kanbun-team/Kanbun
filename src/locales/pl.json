@@ -87,6 +87,7 @@
   "filterDeadline": "Termin",
   "filterAssignedToMe": "Przypisane do mnie",
   "filterHasDeadline": "Z terminem",
+  "filter": "Filtruj",
   "filterClear": "Wyczysc",
   "filterNoMatch": "Brak kart pasujacych do filtrow.",
   "cardCover": "Okladka",
