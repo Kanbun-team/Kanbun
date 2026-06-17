@@ -231,7 +231,7 @@ export default function TaskBoard({
         visibleCount={visibleCount}
         locale={locale}
       />
-      <div className="flex gap-4 overflow-x-auto pb-2 scroll-shadow snap-x">
+      <div className="flex items-start gap-4 overflow-x-auto pb-2 scroll-shadow snap-x">
         {visibleColumns.map((col) => (
           <div
             key={col.id}
@@ -282,8 +282,8 @@ export default function TaskBoard({
               {!filtering && dragOver?.columnId === col.id && dragOver.index >= col.cards.length && (
                 <div className="h-1.5 rounded bg-brand-500/60 my-1" />
               )}
+              {!filtering && <AddCardForm columnId={col.id} locale={locale} />}
             </div>
-            {!filtering && <AddCardForm columnId={col.id} locale={locale} />}
           </div>
         ))}
         {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
@@ -557,10 +557,13 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
     return (
       <button
         type="button"
-        className="m-2 text-sm text-left px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 opacity-80"
+        className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] py-2 text-sm font-medium opacity-60 hover:opacity-100 hover:border-brand-500 hover:bg-slate-50 dark:hover:bg-slate-900/40 transition"
         onClick={() => setOpen(true)}
       >
-        + {t("cardAdd", locale)}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        {t("cardAdd", locale)}
       </button>
     );
   }
@@ -573,7 +576,7 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
         // Keep the form open and focused so the next task can be typed right away.
         titleRef.current?.focus();
       }}
-      className="m-2 space-y-2"
+      className="space-y-2"
     >
       <input type="hidden" name="columnId" value={columnId} />
       <textarea
