@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db-local";
 import { auth, requireUser } from "@/auth";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
+import { publishBoard, publishBoardList } from "@/lib/realtime";
 
 // -----------------------------
 // Boards
@@ -72,6 +73,7 @@ export async function createBoardAction(formData: FormData) {
     },
   });
   revalidatePath("/tasks");
+  publishBoardList();
   redirect(`/tasks/${board.id}`);
 }
 
@@ -134,6 +136,7 @@ export async function moveBoardAction(input: {
   });
 
   revalidatePath("/tasks");
+  publishBoardList();
 }
 
 // -----------------------------
@@ -163,6 +166,7 @@ export async function createBoardCategoryAction(formData: FormData) {
     },
   });
   revalidatePath("/tasks");
+  publishBoardList();
 }
 
 export async function deleteBoardCategoryAction(formData: FormData) {
@@ -172,6 +176,7 @@ export async function deleteBoardCategoryAction(formData: FormData) {
   if (!id) throw new Error("Invalid input");
   await prisma.boardCategory.delete({ where: { id } });
   revalidatePath("/tasks");
+  publishBoardList();
 }
 
 const renameCategorySchema = z.object({
@@ -193,6 +198,7 @@ export async function updateBoardCategoryAction(formData: FormData) {
     data: { name: data.name, color: data.color },
   });
   revalidatePath("/tasks");
+  publishBoardList();
 }
 
 const renameBoardSchema = z.object({
@@ -222,6 +228,8 @@ export async function updateBoardAction(formData: FormData) {
   revalidatePath("/tasks");
   revalidatePath(`/tasks/${data.boardId}`);
   revalidatePath(`/tasks/${data.boardId}/settings`);
+  publishBoard(data.boardId);
+  publishBoardList();
 }
 
 export async function archiveBoardAction(formData: FormData) {
@@ -232,6 +240,8 @@ export async function archiveBoardAction(formData: FormData) {
   await prisma.board.update({ where: { id: boardId }, data: { archived } });
   revalidatePath("/tasks");
   revalidatePath(`/tasks/${boardId}`);
+  publishBoard(boardId);
+  publishBoardList();
 }
 
 export async function deleteBoardAction(formData: FormData) {
@@ -240,6 +250,7 @@ export async function deleteBoardAction(formData: FormData) {
   if (!canManageBoard(access)) throw new Error("Forbidden");
   await prisma.board.delete({ where: { id: boardId } });
   revalidatePath("/tasks");
+  publishBoardList();
   redirect("/tasks");
 }
 
@@ -269,6 +280,7 @@ export async function addBoardMemberAction(formData: FormData) {
     create: { boardId: data.boardId, userId: target.id, role: "member" },
   });
   revalidatePath(`/tasks/${data.boardId}/settings`);
+  publishBoardList();
 }
 
 const memberUpdateSchema = z.object({
@@ -301,6 +313,7 @@ export async function removeBoardMemberAction(formData: FormData) {
     where: { boardId_userId: { boardId, userId } },
   });
   revalidatePath(`/tasks/${boardId}/settings`);
+  publishBoardList();
 }
 
 // -----------------------------
@@ -331,6 +344,7 @@ export async function addColumnAction(formData: FormData) {
     },
   });
   revalidatePath(`/tasks/${data.boardId}`);
+  publishBoard(data.boardId);
 }
 
 const columnRenameSchema = z.object({
@@ -354,6 +368,7 @@ export async function renameColumnAction(formData: FormData) {
     data: { name: data.name },
   });
   revalidatePath(`/tasks/${col.boardId}`);
+  publishBoard(col.boardId);
 }
 
 export async function deleteColumnAction(formData: FormData) {
@@ -367,6 +382,7 @@ export async function deleteColumnAction(formData: FormData) {
   if (!canManageBoard(access)) throw new Error("Forbidden");
   await prisma.boardColumn.delete({ where: { id: columnId } });
   revalidatePath(`/tasks/${col.boardId}`);
+  publishBoard(col.boardId);
 }
 
 // -----------------------------
@@ -413,6 +429,7 @@ export async function addCardAction(formData: FormData) {
     },
   });
   revalidatePath(`/tasks/${col.boardId}`);
+  publishBoard(col.boardId);
 }
 
 const cardUpdateSchema = z.object({
@@ -456,6 +473,7 @@ export async function updateCardAction(formData: FormData) {
   });
   revalidatePath(`/tasks/${card.column.boardId}`);
   revalidatePath(`/tasks/${card.column.boardId}/cards/${data.cardId}`);
+  publishBoard(card.column.boardId);
 }
 
 export async function deleteCardAction(formData: FormData) {
@@ -468,6 +486,7 @@ export async function deleteCardAction(formData: FormData) {
   await loadBoardAccess(card.column.boardId);
   await prisma.taskCard.delete({ where: { id: cardId } });
   revalidatePath(`/tasks/${card.column.boardId}`);
+  publishBoard(card.column.boardId);
   redirect(`/tasks/${card.column.boardId}`);
 }
 
@@ -550,6 +569,7 @@ export async function moveCardAction(input: {
   });
 
   revalidatePath(`/tasks/${card.column.boardId}`);
+  publishBoard(card.column.boardId);
 }
 
 // -----------------------------
@@ -586,6 +606,7 @@ export async function toggleAssigneeAction(formData: FormData) {
   }
   revalidatePath(`/tasks/${card.column.boardId}`);
   revalidatePath(`/tasks/${card.column.boardId}/cards/${data.cardId}`);
+  publishBoard(card.column.boardId);
 }
 
 // -----------------------------
@@ -698,6 +719,7 @@ export async function createBoardTagAction(formData: FormData) {
   });
   revalidatePath(`/tasks/${data.boardId}/settings`);
   revalidatePath(`/tasks/${data.boardId}`);
+  publishBoard(data.boardId);
 }
 
 export async function deleteBoardTagAction(formData: FormData) {
@@ -712,6 +734,7 @@ export async function deleteBoardTagAction(formData: FormData) {
   await prisma.boardTag.delete({ where: { id: tagId } });
   revalidatePath(`/tasks/${tag.boardId}/settings`);
   revalidatePath(`/tasks/${tag.boardId}`);
+  publishBoard(tag.boardId);
 }
 
 export async function toggleCardTagAction(formData: FormData) {
@@ -737,6 +760,7 @@ export async function toggleCardTagAction(formData: FormData) {
   }
   revalidatePath(`/tasks/${card.column.boardId}`);
   revalidatePath(`/tasks/${card.column.boardId}/cards/${cardId}`);
+  publishBoard(card.column.boardId);
 }
 
 // -----------------------------

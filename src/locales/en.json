@@ -83,6 +83,8 @@
   "cardNoDeadline": "No deadline",
   "cardNoAssignees": "No assignees",
   "cardNoTags": "No tags",
+  "cardOverdue": "Overdue",
+  "remove": "Remove",
   "cardNoComments": "No comments yet.",
   "cardNoSubtasks": "No subtasks.",
   "cardWriteComment": "Write a comment",

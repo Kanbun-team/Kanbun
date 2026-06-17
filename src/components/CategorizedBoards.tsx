@@ -79,6 +79,22 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
     setBoards(initial);
   }, [initial]);
 
+  // Live updates for the boards grid: reordering, creating, archiving, or
+  // renaming a board on one client pushes an SSE event to the others.
+  useEffect(() => {
+    const source = new EventSource("/api/boards/events");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), 250);
+    };
+    source.addEventListener("board", refresh);
+    return () => {
+      if (timer) clearTimeout(timer);
+      source.close();
+    };
+  }, [router]);
+
   const draggedBoard = useMemo(
     () => (dragId ? boards.find((b) => b.id === dragId) ?? null : null),
     [boards, dragId]

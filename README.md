@@ -20,6 +20,7 @@
 ## Features
 
 - Boards, columns, cards with native HTML5 drag-and-drop.
+- Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh.
 - Subtasks, tags, comments, blocking dependencies, priorities, deadlines.
 - Per-board membership with owner/member roles. Admin override.
 - User profiles with year-long activity heatmap, latest moves, latest comments.
@@ -105,6 +106,7 @@ scripts/
 - The session heartbeat creates a `panelSessionId` cookie scoped per browser.
 - Card moves are logged to `TaskCardMoveEvent` only when the column actually changes.
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
+- Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). This is single-process by design; running multiple instances would need an external broker.
 
 ## Pro modules (optional)
 

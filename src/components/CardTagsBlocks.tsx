@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { t, type Locale } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { addBlockAction, removeBlockAction, toggleCardTagAction } from "@/server/tasks-actions";
 
 export interface CardTagsProps {
@@ -16,59 +17,82 @@ export interface CardTagsProps {
 export function CardTags({ cardId, boardTags, selectedTagIds, locale }: CardTagsProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const wrapRef = useRef<HTMLDivElement>(null);
   const set = new Set(selectedTagIds);
-  const selected = boardTags.filter((t) => set.has(t.id));
+  const selected = boardTags.filter((tag) => set.has(tag.id));
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  function toggle(tagId: string) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("tagId", tagId);
+      await toggleCardTagAction(fd);
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        {selected.length === 0 && (
-          <span className="text-sm opacity-60">{t("cardNoTags", locale)}</span>
-        )}
+    <div className="relative" ref={wrapRef}>
+      <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
         {selected.map((tag) => (
-          <span
+          <button
             key={tag.id}
-            className="text-xs px-2 py-0.5 rounded font-semibold"
+            type="button"
+            onClick={() => toggle(tag.id)}
+            title={`${tag.name} — ${t("remove", locale)}`}
+            className="group inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
             style={{ background: tag.color + "33", color: tag.color }}
           >
             {tag.name}
-          </span>
+            <span className="opacity-50 group-hover:opacity-100">&times;</span>
+          </button>
         ))}
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-md text-xs px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 border border-[var(--border)]"
+          aria-label={t("add", locale)}
+          aria-expanded={open}
+          className="w-6 h-6 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-sm leading-none opacity-70 hover:opacity-100 hover:border-brand-500"
         >
-          {t("edit", locale)}
+          +
         </button>
+        {selected.length === 0 && (
+          <span className="text-sm opacity-50">{t("cardNoTags", locale)}</span>
+        )}
       </div>
       {open && (
-        <div className="surface border rounded-lg p-2 max-h-64 overflow-auto">
+        <div className="absolute mt-2 z-50 w-60 surface border rounded-lg shadow-lg p-1 max-h-64 overflow-auto">
           {boardTags.length === 0 && (
             <p className="text-sm opacity-60 px-2 py-1">{t("noResults", locale)}</p>
           )}
-          {boardTags.map((tag) => (
-            <form
-              key={tag.id}
-              action={async (fd) => {
-                await toggleCardTagAction(fd);
-                router.refresh();
-              }}
-            >
-              <input type="hidden" name="cardId" value={cardId} />
-              <input type="hidden" name="tagId" value={tag.id} />
+          {boardTags.map((tag) => {
+            const on = set.has(tag.id);
+            return (
               <button
-                type="submit"
-                className="flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                key={tag.id}
+                type="button"
+                onClick={() => toggle(tag.id)}
+                className={cn(
+                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
+                  on && "bg-slate-50 dark:bg-slate-800/50"
+                )}
               >
-                <span
-                  className="w-3 h-3 rounded-full"
-                  style={{ background: tag.color }}
-                />
-                <span className="text-sm flex-1">{tag.name}</span>
-                {set.has(tag.id) && <span className="text-brand-600">&#10003;</span>}
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: tag.color }} />
+                <span className="text-sm flex-1 truncate">{tag.name}</span>
+                {on && <span className="text-brand-600">&#10003;</span>}
               </button>
-            </form>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

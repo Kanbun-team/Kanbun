@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import { cn } from "@/lib/utils";
-import { priorityClass, priorityLabel, type Priority } from "@/lib/labels";
-import { t, type Locale, formatDate } from "@/lib/i18n";
+import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
+import { t, type Locale } from "@/lib/i18n";
 import { toggleAssigneeAction, updateCardAction } from "@/server/tasks-actions";
 
 interface CardEditorProps {
@@ -134,45 +134,44 @@ export function CardPriorityEditor({
   initialPriority: string;
   locale: Locale;
 }) {
-  const [open, setOpen] = useState(false);
   const router = useRouter();
-  const priorities: Priority[] = ["low", "normal", "high", "critical"];
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
+  const [value, setValue] = useState(initialPriority);
+  useEffect(() => setValue(initialPriority), [initialPriority]);
+
+  function pick(p: string) {
+    if (p === value) return;
+    setValue(p); // optimistic
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("priority", p);
+      await updateCardAction(fd);
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn("rounded px-2 py-1 text-sm", priorityClass(initialPriority))}
-      >
-        {priorityLabel(initialPriority, locale)}
-      </button>
-      {open && (
-        <div className="absolute mt-2 z-50 w-40 surface border rounded-lg shadow-lg">
-          {priorities.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() =>
-                startTransition(async () => {
-                  const fd = new FormData();
-                  fd.set("cardId", cardId);
-                  fd.set("priority", p);
-                  await updateCardAction(fd);
-                  setOpen(false);
-                  router.refresh();
-                })
-              }
-              className={cn(
-                "block w-full text-left px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800",
-                initialPriority === p && "font-semibold"
-              )}
-            >
-              {priorityLabel(p, locale)}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className={cn("flex flex-wrap gap-1.5", pending && "opacity-60")}>
+      {PRIORITIES.map((p) => {
+        const active = value === p;
+        return (
+          <button
+            key={p}
+            type="button"
+            onClick={() => pick(p)}
+            aria-pressed={active}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-xs font-medium border transition",
+              active
+                ? cn(priorityClass(p), "border-transparent shadow-sm")
+                : "border-[var(--border)] opacity-55 hover:opacity-100 hover:border-brand-500"
+            )}
+          >
+            {priorityLabel(p, locale)}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -186,43 +185,51 @@ export function CardDeadlineEditor({
   initialDeadline: string | null;
   locale: Locale;
 }) {
-  const [editing, setEditing] = useState(false);
   const router = useRouter();
-  if (editing) {
-    return (
-      <form
-        action={async (fd) => {
-          await updateCardAction(fd);
-          setEditing(false);
-          router.refresh();
-        }}
-        className="flex gap-2 items-center"
-      >
-        <input type="hidden" name="cardId" value={cardId} />
-        <input
-          type="date"
-          name="deadline"
-          defaultValue={initialDeadline ? initialDeadline.slice(0, 10) : ""}
-          className="!py-1"
-          autoFocus
-        />
-        <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1">
-          {t("save", locale)}
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing(false)}
-          className="text-sm opacity-70"
-        >
-          {t("cancel", locale)}
-        </button>
-      </form>
-    );
+  const [pending, startTransition] = useTransition();
+  const [value, setValue] = useState(initialDeadline ? initialDeadline.slice(0, 10) : "");
+  useEffect(() => setValue(initialDeadline ? initialDeadline.slice(0, 10) : ""), [initialDeadline]);
+
+  function save(next: string) {
+    setValue(next); // optimistic
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("deadline", next);
+      await updateCardAction(fd);
+      router.refresh();
+    });
   }
+
+  const overdue = value !== "" && new Date(value).getTime() < Date.now();
+
   return (
-    <button type="button" className="text-sm underline-offset-2 hover:underline" onClick={() => setEditing(true)}>
-      {initialDeadline ? formatDate(new Date(initialDeadline), locale) : t("cardNoDeadline", locale)}
-    </button>
+    <div className={cn("flex items-center gap-2 flex-wrap", pending && "opacity-60")}>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => save(e.target.value)}
+        className={cn("!py-1 !text-sm w-auto", overdue && "text-red-500 border-red-400")}
+      />
+      {value === "" ? (
+        <span className="text-xs opacity-50">{t("cardNoDeadline", locale)}</span>
+      ) : (
+        <>
+          {overdue && (
+            <span className="text-xs font-medium text-red-500">{t("cardOverdue", locale)}</span>
+          )}
+          <button
+            type="button"
+            onClick={() => save("")}
+            aria-label={t("remove", locale)}
+            title={t("remove", locale)}
+            className="text-sm opacity-50 hover:opacity-100 hover:text-red-500"
+          >
+            &times;
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -234,52 +241,82 @@ export function CardAssignees({
 }: Pick<CardEditorProps, "cardId" | "assignees" | "members" | "locale">) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const wrapRef = useRef<HTMLDivElement>(null);
   const assignedIds = new Set(assignees.map((a) => a.id));
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  function toggle(userId: string) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("userId", userId);
+      await toggleAssigneeAction(fd);
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="relative">
-      <div className="flex items-center gap-2 flex-wrap">
-        {assignees.length === 0 && (
-          <span className="text-sm opacity-60">{t("cardNoAssignees", locale)}</span>
-        )}
+    <div className="relative" ref={wrapRef}>
+      <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
         {assignees.map((u) => (
-          <div key={u.id} className="flex items-center gap-1 text-xs">
-            <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={20} />
-            <span>{u.displayName ?? u.username}</span>
-          </div>
+          <button
+            key={u.id}
+            type="button"
+            onClick={() => toggle(u.id)}
+            title={`${u.displayName ?? u.username} — ${t("remove", locale)}`}
+            className="group relative rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={28} />
+            <span className="absolute inset-0 rounded-full bg-black/55 text-white text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+              &times;
+            </span>
+          </button>
         ))}
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-md text-xs px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-800 border border-[var(--border)]"
+          aria-label={t("add", locale)}
+          aria-expanded={open}
+          className="w-7 h-7 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-base leading-none opacity-70 hover:opacity-100 hover:border-brand-500"
         >
-          {t("edit", locale)}
+          +
         </button>
+        {assignees.length === 0 && (
+          <span className="text-sm opacity-50">{t("cardNoAssignees", locale)}</span>
+        )}
       </div>
       {open && (
-        <div className="absolute mt-2 z-50 w-64 surface border rounded-lg shadow-lg max-h-72 overflow-auto">
+        <div className="absolute mt-2 z-50 w-64 surface border rounded-lg shadow-lg max-h-72 overflow-auto p-1">
           {members.length === 0 && (
             <div className="px-3 py-2 text-sm opacity-60">{t("noResults", locale)}</div>
           )}
-          {members.map((u) => (
-            <form
-              key={u.id}
-              action={async (fd) => {
-                await toggleAssigneeAction(fd);
-                router.refresh();
-              }}
-            >
-              <input type="hidden" name="cardId" value={cardId} />
-              <input type="hidden" name="userId" value={u.id} />
+          {members.map((u) => {
+            const on = assignedIds.has(u.id);
+            return (
               <button
-                type="submit"
-                className="flex items-center gap-2 w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                key={u.id}
+                type="button"
+                onClick={() => toggle(u.id)}
+                className={cn(
+                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
+                  on && "bg-slate-50 dark:bg-slate-800/50"
+                )}
               >
-                <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={20} />
+                <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={22} />
                 <span className="text-sm flex-1 truncate">{u.displayName ?? u.username}</span>
-                {assignedIds.has(u.id) && <span className="text-brand-600">&#10003;</span>}
+                {on && <span className="text-brand-600">&#10003;</span>}
               </button>
-            </form>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -77,6 +77,8 @@
   "cardNoDeadline": "Brak terminu",
   "cardNoAssignees": "Brak przypisanych",
   "cardNoTags": "Brak tagow",
+  "cardOverdue": "Po terminie",
+  "remove": "Usun",
   "cardNoComments": "Brak komentarzy.",
   "cardNoSubtasks": "Brak podzadan.",
   "cardWriteComment": "Napisz komentarz",

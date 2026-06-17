@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- Reworked the card detail sidebar into a single cohesive panel with direct, inline controls. Priority is a one-click segmented selector, the deadline saves inline with an overdue marker and quick-clear, and assignees and tags are removable chips with a `+` button to add. No more "Edit" buttons or save round-trips.
+
+### Added
+
+- Live updates over Server-Sent Events. Card and column changes propagate to everyone viewing the same board, and board/category changes (reorder, create, rename, archive) propagate to everyone on the boards list, all without a manual refresh. Backed by an in-process event bus, so it works in a single Node process without an external broker.
+
 ## [0.1.0] - 2026-05-04
 
 ### Added

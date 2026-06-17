@@ -78,6 +78,8 @@
   "cardNoDeadline": "Nessuna scadenza",
   "cardNoAssignees": "Nessun assegnatario",
   "cardNoTags": "Nessun tag",
+  "cardOverdue": "Scaduto",
+  "remove": "Rimuovi",
   "cardNoComments": "Ancora nessun commento.",
   "cardNoSubtasks": "Nessuna sottoattività.",
   "cardWriteComment": "Scrivi un commento",

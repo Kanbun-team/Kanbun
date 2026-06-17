@@ -55,6 +55,23 @@ export default function TaskBoard({ boardId, columns: initialColumns, locale, ca
 
   useEffect(() => setColumns(initialColumns), [initialColumns]);
 
+  // Live updates: when anyone mutates this board, the server pushes an SSE
+  // event and we re-fetch. Refreshes are debounced so a burst of changes
+  // (e.g. someone reordering several cards) collapses into one round-trip.
+  useEffect(() => {
+    const source = new EventSource(`/api/boards/${boardId}/events`);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), 250);
+    };
+    source.addEventListener("board", refresh);
+    return () => {
+      if (timer) clearTimeout(timer);
+      source.close();
+    };
+  }, [boardId, router]);
+
   useEffect(() => {
     if (!contextMenu) return;
     const close = () => setContextMenu(null);
@@ -244,6 +261,7 @@ function ColumnHeader({
 function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   if (!open) {
     return (
       <button
@@ -261,11 +279,14 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
       action={async (fd) => {
         await addCardAction(fd);
         ref.current?.reset();
+        // Keep the form open and focused so the next task can be typed right away.
+        titleRef.current?.focus();
       }}
       className="m-2 space-y-2"
     >
       <input type="hidden" name="columnId" value={columnId} />
       <textarea
+        ref={titleRef}
         name="title"
         required
         maxLength={200}
@@ -273,6 +294,13 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
         autoFocus
         placeholder={t("cardTitle", locale)}
         className="w-full"
+        onKeyDown={(e) => {
+          // Enter saves and starts a new task; Shift+Enter inserts a newline.
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
       />
       <div className="flex gap-2">
         <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1">

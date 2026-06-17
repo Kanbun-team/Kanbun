@@ -142,37 +142,39 @@ export default async function CardDetailPage({
           </section>
         </div>
 
-        <aside className="space-y-6">
-          <section>
-            <h3 className="text-sm uppercase tracking-wide opacity-60 mb-2">{t("cardPriority", locale)}</h3>
-            <CardPriorityEditor cardId={card.id} initialPriority={card.priority} locale={locale} />
-          </section>
-          <section>
-            <h3 className="text-sm uppercase tracking-wide opacity-60 mb-2">{t("cardDeadline", locale)}</h3>
-            <CardDeadlineEditor
-              cardId={card.id}
-              initialDeadline={card.deadline ? card.deadline.toISOString() : null}
-              locale={locale}
-            />
-          </section>
-          <section>
-            <h3 className="text-sm uppercase tracking-wide opacity-60 mb-2">{t("cardAssignees", locale)}</h3>
-            <CardAssignees
-              cardId={card.id}
-              locale={locale}
-              assignees={card.assignees.map((a) => a.user)}
-              members={board.members.map((m) => m.user)}
-            />
-          </section>
-          <section>
-            <h3 className="text-sm uppercase tracking-wide opacity-60 mb-2">{t("cardTags", locale)}</h3>
-            <CardTags
-              cardId={card.id}
-              boardTags={board.tags.map((tt) => ({ id: tt.id, name: tt.name, color: tt.color }))}
-              selectedTagIds={card.tags.map((tt) => tt.tagId)}
-              locale={locale}
-            />
-          </section>
+        <aside className="space-y-4">
+          <div className="surface border rounded-xl divide-y divide-[var(--border)]">
+            <div className="p-4 space-y-2">
+              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardPriority", locale)}</h3>
+              <CardPriorityEditor cardId={card.id} initialPriority={card.priority} locale={locale} />
+            </div>
+            <div className="p-4 space-y-2">
+              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardDeadline", locale)}</h3>
+              <CardDeadlineEditor
+                cardId={card.id}
+                initialDeadline={card.deadline ? card.deadline.toISOString() : null}
+                locale={locale}
+              />
+            </div>
+            <div className="p-4 space-y-2">
+              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardAssignees", locale)}</h3>
+              <CardAssignees
+                cardId={card.id}
+                locale={locale}
+                assignees={card.assignees.map((a) => a.user)}
+                members={board.members.map((m) => m.user)}
+              />
+            </div>
+            <div className="p-4 space-y-2">
+              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardTags", locale)}</h3>
+              <CardTags
+                cardId={card.id}
+                boardTags={board.tags.map((tt) => ({ id: tt.id, name: tt.name, color: tt.color }))}
+                selectedTagIds={card.tags.map((tt) => tt.tagId)}
+                locale={locale}
+              />
+            </div>
+          </div>
           <section>
             <h3 className="text-sm uppercase tracking-wide opacity-60 mb-2">
               {t("cardBlocking", locale)} / {t("cardBlockedBy", locale)}
