@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db-local";
 import { auth, requireUser } from "@/auth";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
-import { publishBoard, publishBoardList } from "@/lib/realtime";
+import { publishBoard, publishBoardList, publishUser } from "@/lib/realtime";
+import { notify, notifyMany, parseMentions } from "@/lib/notifications";
 
 // -----------------------------
 // Boards
@@ -601,13 +602,14 @@ const assigneeSchema = z.object({
 });
 
 export async function toggleAssigneeAction(formData: FormData) {
+  const user = await requireUser();
   const data = assigneeSchema.parse({
     cardId: formData.get("cardId"),
     userId: formData.get("userId"),
   });
   const card = await prisma.taskCard.findUnique({
     where: { id: data.cardId },
-    select: { column: { select: { boardId: true } } },
+    select: { title: true, column: { select: { boardId: true } } },
   });
   if (!card) throw new Error("Not found");
   await loadBoardAccess(card.column.boardId);
@@ -621,6 +623,15 @@ export async function toggleAssigneeAction(formData: FormData) {
   } else {
     await prisma.taskCardAssignee.create({
       data: { cardId: data.cardId, userId: data.userId },
+    });
+    await notify({
+      recipientId: data.userId,
+      type: "assigned",
+      cardId: data.cardId,
+      cardTitle: card.title,
+      boardId: card.column.boardId,
+      actorId: user.id,
+      actorName: user.displayName ?? user.username,
     });
   }
   revalidatePath(`/tasks/${card.column.boardId}`);
@@ -793,10 +804,11 @@ export async function addCommentAction(formData: FormData) {
   if (!cardId || !body) throw new Error("Invalid input");
   const card = await prisma.taskCard.findUnique({
     where: { id: cardId },
-    select: { column: { select: { boardId: true } } },
+    select: { title: true, column: { select: { boardId: true } } },
   });
   if (!card) throw new Error("Not found");
-  await loadBoardAccess(card.column.boardId);
+  const boardId = card.column.boardId;
+  await loadBoardAccess(boardId);
   await prisma.taskCardComment.create({
     data: {
       cardId,
@@ -804,7 +816,28 @@ export async function addCommentAction(formData: FormData) {
       body: body.slice(0, 5000),
     },
   });
-  revalidatePath(`/tasks/${card.column.boardId}/cards/${cardId}`);
+
+  // @mentions: notify mentioned users who are members of this board.
+  const usernames = parseMentions(body);
+  if (usernames.length > 0) {
+    const mentioned = await prisma.user.findMany({
+      where: { username: { in: usernames }, boards: { some: { boardId } } },
+      select: { id: true },
+    });
+    await notifyMany(
+      mentioned.map((u) => ({
+        recipientId: u.id,
+        type: "mention" as const,
+        cardId,
+        cardTitle: card.title,
+        boardId,
+        actorId: user.id,
+        actorName: user.displayName ?? user.username,
+      }))
+    );
+  }
+
+  revalidatePath(`/tasks/${boardId}/cards/${cardId}`);
 }
 
 export async function deleteCommentAction(formData: FormData) {
@@ -852,6 +885,26 @@ export async function addBlockAction(formData: FormData) {
     update: {},
     create: { blockerId, blockedId, createdById: user.id },
   });
+
+  // Notify the assignees of the card that just became blocked.
+  const blockedCard = await prisma.taskCard.findUnique({
+    where: { id: blockedId },
+    select: { title: true, assignees: { select: { userId: true } } },
+  });
+  if (blockedCard) {
+    await notifyMany(
+      blockedCard.assignees.map((asg) => ({
+        recipientId: asg.userId,
+        type: "blocked" as const,
+        cardId: blockedId,
+        cardTitle: blockedCard.title,
+        boardId: a.column.boardId,
+        actorId: user.id,
+        actorName: user.displayName ?? user.username,
+      }))
+    );
+  }
+
   revalidatePath(`/tasks/${a.column.boardId}/cards/${blockedId}`);
   revalidatePath(`/tasks/${a.column.boardId}/cards/${blockerId}`);
 }
@@ -871,6 +924,30 @@ export async function removeBlockAction(formData: FormData) {
   await prisma.taskBlock.delete({ where: { id: blockId } });
   revalidatePath(`/tasks/${block.blocked.column.boardId}/cards/${block.blockedId}`);
   revalidatePath(`/tasks/${block.blocked.column.boardId}/cards/${block.blockerId}`);
+}
+
+// -----------------------------
+// Notifications
+// -----------------------------
+
+export async function markNotificationReadAction(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("notificationId") ?? "");
+  if (!id) return;
+  await prisma.notification.updateMany({
+    where: { id, userId: user.id },
+    data: { read: true },
+  });
+  publishUser(user.id);
+}
+
+export async function markAllNotificationsReadAction() {
+  const user = await requireUser();
+  await prisma.notification.updateMany({
+    where: { userId: user.id, read: false },
+    data: { read: true },
+  });
+  publishUser(user.id);
 }
 
 export async function whoami() {

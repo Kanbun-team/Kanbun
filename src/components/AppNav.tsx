@@ -3,10 +3,12 @@ import Logo from "./Logo";
 import UserMenu from "./UserMenu";
 import MobileNav from "./MobileNav";
 import BoardSwitcher from "./BoardSwitcher";
+import NotificationBell from "./NotificationBell";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { t, type Locale } from "@/lib/i18n";
 import { can } from "@/lib/permissions";
+import { getNotifications } from "@/lib/notifications";
 
 export default async function AppNav({ locale }: { locale: Locale }) {
   const session = await auth();
@@ -26,6 +28,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
   });
 
   const isAdmin = can.isAdmin(user.role);
+  const notifications = await getNotifications(user.id);
 
   return (
     <header className="border-b border-[var(--border)] surface sticky top-0 z-40">
@@ -59,6 +62,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
             {boards.length > 0 && <BoardSwitcher boards={boards} locale={locale} />}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <NotificationBell initial={notifications} locale={locale} />
             <UserMenu
               user={{
                 username: user.username,

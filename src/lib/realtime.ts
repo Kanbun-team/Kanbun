@@ -45,6 +45,12 @@ export function subscribeBoardList(listener: Listener): () => void {
   return subscribeBoard(LIST_KEY, listener);
 }
 
+// Per-user channel for notifications. Namespaced so it can never collide with
+// a board id key.
+export function subscribeUser(userId: string, listener: Listener): () => void {
+  return subscribeBoard(`user:${userId}`, listener);
+}
+
 function emit(key: string): void {
   const listeners = bus.get(key);
   if (!listeners || listeners.size === 0) return;
@@ -64,4 +70,8 @@ export function publishBoard(boardId: string): void {
 
 export function publishBoardList(): void {
   emit(LIST_KEY);
+}
+
+export function publishUser(userId: string): void {
+  emit(`user:${userId}`);
 }
