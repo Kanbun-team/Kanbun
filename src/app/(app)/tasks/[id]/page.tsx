@@ -51,10 +51,12 @@ export default async function BoardPage({
     id: c.id,
     name: c.name,
     position: c.position,
+    wipLimit: c.wipLimit,
     cards: c.cards.map((card) => ({
       id: card.id,
       title: card.title,
       priority: card.priority,
+      coverColor: card.coverColor,
       deadline: card.deadline ? card.deadline.toISOString() : null,
       position: card.position,
       assignees: card.assignees.map((a) => ({
@@ -112,6 +114,7 @@ export default async function BoardPage({
         columns={dto}
         locale={locale}
         canManage={canManageBoard(access)}
+        currentUserId={access.userId}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import { addCommentAction, deleteCommentAction } from "@/server/tasks-actions";
 import { t, type Locale, formatDateTime } from "@/lib/i18n";
+import { renderMarkdownToHtml } from "@/lib/markdown";
 
 export interface CommentItem {
   id: string;
@@ -42,7 +43,10 @@ export default function Comments({
                 </Link>
                 <span>{formatDateTime(new Date(c.createdAt), locale)}</span>
               </div>
-              <p className="text-sm whitespace-pre-wrap mt-1">{c.body}</p>
+              <div
+                className="text-sm mt-1 [&_a]:break-words [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_p]:my-1 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold"
+                dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(c.body) }}
+              />
               {c.canDelete && (
                 <form
                   action={async (fd) => {

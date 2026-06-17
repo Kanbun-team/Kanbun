@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import { cn } from "@/lib/utils";
-import { priorityClass, priorityLabel, type Priority } from "@/lib/labels";
+import { PRIORITIES, priorityClass, priorityLabel, type Priority } from "@/lib/labels";
 import { t, type Locale, formatDate } from "@/lib/i18n";
 import {
   addCardAction,
@@ -21,6 +21,7 @@ export interface CardDTO {
   id: string;
   title: string;
   priority: string;
+  coverColor: string | null;
   deadline: string | null;
   position: number;
   assignees: { id: string; displayName: string | null; username: string; avatarUrl: string | null }[];
@@ -35,6 +36,7 @@ export interface ColumnDTO {
   id: string;
   name: string;
   position: number;
+  wipLimit: number | null;
   cards: CardDTO[];
 }
 
@@ -43,13 +45,39 @@ export interface TaskBoardProps {
   columns: ColumnDTO[];
   locale: Locale;
   canManage: boolean;
+  currentUserId: string;
 }
 
-export default function TaskBoard({ boardId, columns: initialColumns, locale, canManage }: TaskBoardProps) {
+interface Filters {
+  query: string;
+  assigneeId: string;
+  tagId: string;
+  priority: string;
+  deadline: "" | "overdue" | "has" | "none";
+  mine: boolean;
+}
+
+const EMPTY_FILTERS: Filters = {
+  query: "",
+  assigneeId: "",
+  tagId: "",
+  priority: "",
+  deadline: "",
+  mine: false,
+};
+
+export default function TaskBoard({
+  boardId,
+  columns: initialColumns,
+  locale,
+  canManage,
+  currentUserId,
+}: TaskBoardProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [dragCardId, setDragCardId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<{ columnId: string; index: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; cardId: string } | null>(null);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -84,6 +112,69 @@ export default function TaskBoard({ boardId, columns: initialColumns, locale, ca
   }, [contextMenu]);
 
   const allCards = useMemo(() => columns.flatMap((c) => c.cards), [columns]);
+
+  // Filter options are derived from the cards currently on the board, so the
+  // dropdowns only ever offer values that can actually match something.
+  const assigneeOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const card of allCards) {
+      for (const u of card.assignees) {
+        if (!map.has(u.id)) map.set(u.id, { id: u.id, name: u.displayName ?? u.username });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allCards]);
+
+  const tagOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const card of allCards) {
+      for (const tag of card.tags) {
+        if (!map.has(tag.id)) map.set(tag.id, { id: tag.id, name: tag.name });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [allCards]);
+
+  const filtering =
+    filters.query.trim() !== "" ||
+    filters.assigneeId !== "" ||
+    filters.tagId !== "" ||
+    filters.priority !== "" ||
+    filters.deadline !== "" ||
+    filters.mine;
+
+  const matches = useMemo(() => {
+    const q = filters.query.trim().toLowerCase();
+    return (card: CardDTO): boolean => {
+      if (q && !card.title.toLowerCase().includes(q)) return false;
+      if (filters.assigneeId && !card.assignees.some((u) => u.id === filters.assigneeId)) return false;
+      if (filters.mine && !card.assignees.some((u) => u.id === currentUserId)) return false;
+      if (filters.tagId && !card.tags.some((tg) => tg.id === filters.tagId)) return false;
+      if (filters.priority && card.priority !== filters.priority) return false;
+      if (filters.deadline === "none" && card.deadline) return false;
+      if (filters.deadline === "has" && !card.deadline) return false;
+      if (filters.deadline === "overdue") {
+        if (!card.deadline || new Date(card.deadline).getTime() >= Date.now()) return false;
+      }
+      return true;
+    };
+  }, [filters, currentUserId]);
+
+  const visibleColumns = useMemo(
+    () => (filtering ? columns.map((c) => ({ ...c, cards: c.cards.filter(matches) })) : columns),
+    [columns, filtering, matches]
+  );
+
+  const visibleCount = useMemo(
+    () => visibleColumns.reduce((n, c) => n + c.cards.length, 0),
+    [visibleColumns]
+  );
+
+  // Real per-column counts (unaffected by filtering) drive the WIP indicator.
+  const realCounts = useMemo(
+    () => new Map(columns.map((c) => [c.id, c.cards.length])),
+    [columns]
+  );
 
   function handleDragStart(cardId: string) {
     setDragCardId(cardId);
@@ -130,57 +221,76 @@ export default function TaskBoard({ boardId, columns: initialColumns, locale, ca
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2 scroll-shadow snap-x">
-      {columns.map((col) => (
-        <div
-          key={col.id}
-          className="surface border rounded-xl w-80 shrink-0 snap-start flex flex-col max-h-[80vh]"
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver({ columnId: col.id, index: col.cards.length });
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            const idx = dragOver?.columnId === col.id ? dragOver.index : col.cards.length;
-            handleDrop(col.id, idx);
-          }}
-        >
-          <ColumnHeader
-            column={col}
-            locale={locale}
-            canManage={canManage}
-            boardId={boardId}
-          />
-          <div className="px-2 py-1 flex-1 overflow-y-auto space-y-2">
-            {col.cards.map((card, i) => (
-              <div
-                key={card.id}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver({ columnId: col.id, index: i });
-                }}
-              >
-                {dragOver?.columnId === col.id && dragOver.index === i && (
-                  <div className="h-1.5 rounded bg-brand-500/60 my-1" />
-                )}
-                <CardItem
-                  boardId={boardId}
-                  card={card}
-                  locale={locale}
-                  onDragStart={() => handleDragStart(card.id)}
-                  onDragEnd={handleDragEnd}
-                  onContextMenu={(x, y) => setContextMenu({ x, y, cardId: card.id })}
-                />
-              </div>
-            ))}
-            {dragOver?.columnId === col.id && dragOver.index >= col.cards.length && (
-              <div className="h-1.5 rounded bg-brand-500/60 my-1" />
-            )}
+    <div className="space-y-3">
+      <FilterBar
+        filters={filters}
+        setFilters={setFilters}
+        assigneeOptions={assigneeOptions}
+        tagOptions={tagOptions}
+        filtering={filtering}
+        visibleCount={visibleCount}
+        locale={locale}
+      />
+      <div className="flex gap-4 overflow-x-auto pb-2 scroll-shadow snap-x">
+        {visibleColumns.map((col) => (
+          <div
+            key={col.id}
+            className="surface border rounded-xl w-80 shrink-0 snap-start flex flex-col max-h-[80vh]"
+            onDragOver={(e) => {
+              if (filtering) return;
+              e.preventDefault();
+              setDragOver({ columnId: col.id, index: col.cards.length });
+            }}
+            onDrop={(e) => {
+              if (filtering) return;
+              e.preventDefault();
+              const idx = dragOver?.columnId === col.id ? dragOver.index : col.cards.length;
+              handleDrop(col.id, idx);
+            }}
+          >
+            <ColumnHeader
+              column={col}
+              count={realCounts.get(col.id) ?? col.cards.length}
+              locale={locale}
+              canManage={canManage}
+              boardId={boardId}
+            />
+            <div className="px-2 py-1 flex-1 overflow-y-auto space-y-2">
+              {col.cards.map((card, i) => (
+                <div
+                  key={card.id}
+                  onDragOver={(e) => {
+                    if (filtering) return;
+                    e.preventDefault();
+                    setDragOver({ columnId: col.id, index: i });
+                  }}
+                >
+                  {!filtering && dragOver?.columnId === col.id && dragOver.index === i && (
+                    <div className="h-1.5 rounded bg-brand-500/60 my-1" />
+                  )}
+                  <CardItem
+                    boardId={boardId}
+                    card={card}
+                    locale={locale}
+                    draggable={!filtering}
+                    onDragStart={() => handleDragStart(card.id)}
+                    onDragEnd={handleDragEnd}
+                    onContextMenu={(x, y) => setContextMenu({ x, y, cardId: card.id })}
+                  />
+                </div>
+              ))}
+              {!filtering && dragOver?.columnId === col.id && dragOver.index >= col.cards.length && (
+                <div className="h-1.5 rounded bg-brand-500/60 my-1" />
+              )}
+            </div>
+            {!filtering && <AddCardForm columnId={col.id} locale={locale} />}
           </div>
-          <AddCardForm columnId={col.id} locale={locale} />
-        </div>
-      ))}
-      {canManage && <AddColumnForm boardId={boardId} locale={locale} />}
+        ))}
+        {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
+      </div>
+      {filtering && visibleCount === 0 && (
+        <p className="text-sm opacity-60 px-1">{t("filterNoMatch", locale)}</p>
+      )}
       {contextMenu && (
         <CardContextMenu
           locale={locale}
@@ -194,18 +304,122 @@ export default function TaskBoard({ boardId, columns: initialColumns, locale, ca
   );
 }
 
+function FilterBar({
+  filters,
+  setFilters,
+  assigneeOptions,
+  tagOptions,
+  filtering,
+  visibleCount,
+  locale,
+}: {
+  filters: Filters;
+  setFilters: (next: Filters) => void;
+  assigneeOptions: { id: string; name: string }[];
+  tagOptions: { id: string; name: string }[];
+  filtering: boolean;
+  visibleCount: number;
+  locale: Locale;
+}) {
+  const selectClass =
+    "!py-1 !text-sm rounded-md border border-[var(--border)] bg-transparent";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        type="search"
+        value={filters.query}
+        onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+        placeholder={t("filterSearchPlaceholder", locale)}
+        className="!py-1 !text-sm w-48"
+      />
+      <select
+        value={filters.assigneeId}
+        onChange={(e) => setFilters({ ...filters, assigneeId: e.target.value, mine: false })}
+        className={selectClass}
+        aria-label={t("filterAssignee", locale)}
+      >
+        <option value="">{t("filterAssignee", locale)}: {t("filterAll", locale)}</option>
+        {assigneeOptions.map((u) => (
+          <option key={u.id} value={u.id}>{u.name}</option>
+        ))}
+      </select>
+      <select
+        value={filters.tagId}
+        onChange={(e) => setFilters({ ...filters, tagId: e.target.value })}
+        className={selectClass}
+        aria-label={t("filterTag", locale)}
+      >
+        <option value="">{t("filterTag", locale)}: {t("filterAll", locale)}</option>
+        {tagOptions.map((tg) => (
+          <option key={tg.id} value={tg.id}>{tg.name}</option>
+        ))}
+      </select>
+      <select
+        value={filters.priority}
+        onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+        className={selectClass}
+        aria-label={t("filterPriority", locale)}
+      >
+        <option value="">{t("filterPriority", locale)}: {t("filterAll", locale)}</option>
+        {PRIORITIES.map((p) => (
+          <option key={p} value={p}>{priorityLabel(p, locale)}</option>
+        ))}
+      </select>
+      <select
+        value={filters.deadline}
+        onChange={(e) => setFilters({ ...filters, deadline: e.target.value as Filters["deadline"] })}
+        className={selectClass}
+        aria-label={t("filterDeadline", locale)}
+      >
+        <option value="">{t("filterDeadline", locale)}: {t("filterAll", locale)}</option>
+        <option value="overdue">{t("cardOverdue", locale)}</option>
+        <option value="has">{t("filterHasDeadline", locale)}</option>
+        <option value="none">{t("cardNoDeadline", locale)}</option>
+      </select>
+      <button
+        type="button"
+        onClick={() => setFilters({ ...filters, mine: !filters.mine, assigneeId: "" })}
+        aria-pressed={filters.mine}
+        className={cn(
+          "rounded-md text-sm px-2.5 py-1 border transition",
+          filters.mine
+            ? "bg-brand-600 text-white border-transparent"
+            : "border-[var(--border)] opacity-80 hover:opacity-100"
+        )}
+      >
+        {t("filterAssignedToMe", locale)}
+      </button>
+      {filtering && (
+        <>
+          <span className="text-xs opacity-60">{visibleCount}</span>
+          <button
+            type="button"
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="rounded-md text-sm px-2.5 py-1 border border-[var(--border)] opacity-80 hover:opacity-100"
+          >
+            {t("filterClear", locale)}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ColumnHeader({
   column,
+  count,
   locale,
   canManage,
   boardId,
 }: {
   column: ColumnDTO;
+  count: number;
   locale: Locale;
   canManage: boolean;
   boardId: string;
 }) {
   const [editing, setEditing] = useState(false);
+  const over = column.wipLimit != null && count > column.wipLimit;
   return (
     <div className="px-3 py-2 border-b border-[var(--border)] flex items-center gap-2">
       {editing ? (
@@ -214,7 +428,7 @@ function ColumnHeader({
             await renameColumnAction(fd);
             setEditing(false);
           }}
-          className="flex-1 flex gap-2"
+          className="flex-1 flex flex-wrap gap-2"
         >
           <input type="hidden" name="columnId" value={column.id} />
           <input
@@ -222,7 +436,17 @@ function ColumnHeader({
             defaultValue={column.name}
             autoFocus
             maxLength={80}
-            className="!py-1"
+            className="!py-1 flex-1 min-w-0"
+          />
+          <input
+            type="number"
+            name="wipLimit"
+            min={1}
+            max={999}
+            defaultValue={column.wipLimit ?? ""}
+            placeholder={t("columnWipLimit", locale)}
+            title={t("columnWipLimit", locale)}
+            className="!py-1 w-16"
           />
           <button className="text-sm rounded bg-brand-600 hover:bg-brand-700 text-white px-2">
             {t("save", locale)}
@@ -238,7 +462,16 @@ function ColumnHeader({
           >
             {column.name}
           </button>
-          <span className="text-xs opacity-60">{column.cards.length}</span>
+          <span
+            className={cn(
+              "text-xs tabular-nums",
+              over ? "text-red-500 font-semibold" : "opacity-60"
+            )}
+            title={column.wipLimit != null ? t("columnWipLimit", locale) : undefined}
+          >
+            {count}
+            {column.wipLimit != null && `/${column.wipLimit}`}
+          </span>
           {canManage && (
             <form action={deleteColumnAction}>
               <input type="hidden" name="columnId" value={column.id} />
@@ -371,6 +604,7 @@ function CardItem({
   boardId,
   card,
   locale,
+  draggable,
   onDragStart,
   onDragEnd,
   onContextMenu,
@@ -378,6 +612,7 @@ function CardItem({
   boardId: string;
   card: CardDTO;
   locale: Locale;
+  draggable: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
   onContextMenu: (x: number, y: number) => void;
@@ -386,19 +621,30 @@ function CardItem({
   return (
     <Link
       href={`/tasks/${boardId}/cards/${card.id}`}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", card.id);
-        onDragStart();
-      }}
-      onDragEnd={onDragEnd}
+      draggable={draggable}
+      onDragStart={
+        draggable
+          ? (e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", card.id);
+              onDragStart();
+            }
+          : undefined
+      }
+      onDragEnd={draggable ? onDragEnd : undefined}
       onContextMenu={(e) => {
         e.preventDefault();
         onContextMenu(e.clientX, e.clientY);
       }}
-      className="block surface border rounded-lg p-3 hover:border-brand-500 transition shadow-sm"
+      className="block surface border rounded-lg p-3 hover:border-brand-500 transition shadow-sm overflow-hidden"
     >
+      {card.coverColor && (
+        <div
+          className="-mx-3 -mt-3 mb-2 h-1.5"
+          style={{ background: card.coverColor }}
+          aria-hidden="true"
+        />
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="text-sm font-medium leading-snug">{card.title}</div>
       </div>

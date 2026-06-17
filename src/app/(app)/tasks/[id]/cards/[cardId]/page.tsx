@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 import {
   CardAssignees,
+  CardCover,
   CardDeadlineEditor,
   CardDescriptionEditor,
   CardPriorityEditor,
@@ -164,6 +165,10 @@ export default async function CardDetailPage({
                 assignees={card.assignees.map((a) => a.user)}
                 members={board.members.map((m) => m.user)}
               />
+            </div>
+            <div className="p-4 space-y-2">
+              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardCover", locale)}</h3>
+              <CardCover cardId={card.id} initialColor={card.coverColor} locale={locale} />
             </div>
             <div className="p-4 space-y-2">
               <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardTags", locale)}</h3>

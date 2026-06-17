@@ -81,6 +81,7 @@ model BoardColumn {
   boardId  String
   name     String
   position Int
+  wipLimit Int?
 
   board Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards TaskCard[]
@@ -95,6 +96,7 @@ model TaskCard {
   description String?
   position    Int
   priority    String   @default("normal")
+  coverColor  String?
   deadline    DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

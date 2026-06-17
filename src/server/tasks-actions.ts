@@ -350,12 +350,19 @@ export async function addColumnAction(formData: FormData) {
 const columnRenameSchema = z.object({
   columnId: z.string().min(1),
   name: z.string().trim().min(1).max(80),
+  wipLimit: z
+    .preprocess(
+      (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+      z.number().int().min(1).max(999).nullable()
+    )
+    .optional(),
 });
 
 export async function renameColumnAction(formData: FormData) {
   const data = columnRenameSchema.parse({
     columnId: formData.get("columnId"),
     name: formData.get("name"),
+    wipLimit: formData.has("wipLimit") ? formData.get("wipLimit") : undefined,
   });
   const col = await prisma.boardColumn.findUnique({
     where: { id: data.columnId },
@@ -365,7 +372,10 @@ export async function renameColumnAction(formData: FormData) {
   await loadBoardAccess(col.boardId);
   await prisma.boardColumn.update({
     where: { id: data.columnId },
-    data: { name: data.name },
+    data: {
+      name: data.name,
+      ...(data.wipLimit !== undefined ? { wipLimit: data.wipLimit } : {}),
+    },
   });
   revalidatePath(`/tasks/${col.boardId}`);
   publishBoard(col.boardId);
@@ -438,15 +448,23 @@ const cardUpdateSchema = z.object({
   description: z.string().trim().max(20_000).optional().nullable(),
   priority: z.enum(["low", "normal", "high", "critical"]).optional(),
   deadline: z.string().optional().nullable(),
+  coverColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional()
+    .nullable(),
 });
 
 export async function updateCardAction(formData: FormData) {
+  const rawCover = formData.has("coverColor") ? String(formData.get("coverColor") ?? "") : undefined;
   const data = cardUpdateSchema.parse({
     cardId: formData.get("cardId"),
     title: formData.get("title") ?? undefined,
     description: formData.has("description") ? formData.get("description") : undefined,
     priority: formData.get("priority") ?? undefined,
     deadline: formData.has("deadline") ? formData.get("deadline") : undefined,
+    coverColor: rawCover === "" ? null : rawCover,
   });
   const card = await prisma.taskCard.findUnique({
     where: { id: data.cardId },
@@ -469,6 +487,7 @@ export async function updateCardAction(formData: FormData) {
       description: data.description ?? undefined,
       priority: data.priority,
       deadline,
+      coverColor: rawCover === undefined ? undefined : data.coverColor,
     },
   });
   revalidatePath(`/tasks/${card.column.boardId}`);

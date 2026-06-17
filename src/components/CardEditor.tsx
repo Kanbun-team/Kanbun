@@ -6,6 +6,7 @@ import Avatar from "./Avatar";
 import { cn } from "@/lib/utils";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale } from "@/lib/i18n";
+import { renderMarkdownToHtml } from "@/lib/markdown";
 import { toggleAssigneeAction, updateCardAction } from "@/server/tasks-actions";
 
 interface CardEditorProps {
@@ -117,10 +118,14 @@ export function CardDescriptionEditor({
   }
   return (
     <div
-      className="prose dark:prose-invert text-sm whitespace-pre-wrap cursor-pointer surface border border-dashed border-[var(--border)] rounded-md p-3 min-h-[60px]"
+      className="prose-sm text-sm cursor-pointer surface border border-dashed border-[var(--border)] rounded-md p-3 min-h-[60px] [&_a]:break-words [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold space-y-2"
       onClick={() => setEditing(true)}
     >
-      {value || <span className="opacity-60">{t("cardDescription", locale)}...</span>}
+      {value ? (
+        <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(value) }} />
+      ) : (
+        <span className="opacity-60">{t("cardDescription", locale)}...</span>
+      )}
     </div>
   );
 }
@@ -229,6 +234,80 @@ export function CardDeadlineEditor({
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+const COVER_PRESETS = [
+  "#2563eb",
+  "#7c3aed",
+  "#16a34a",
+  "#dc2626",
+  "#ea580c",
+  "#0891b2",
+  "#db2777",
+  "#65a30d",
+  "#475569",
+];
+
+export function CardCover({
+  cardId,
+  initialColor,
+  locale,
+}: {
+  cardId: string;
+  initialColor: string | null;
+  locale: Locale;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [value, setValue] = useState(initialColor);
+  useEffect(() => setValue(initialColor), [initialColor]);
+
+  function pick(color: string | null) {
+    setValue(color); // optimistic
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", cardId);
+      fd.set("coverColor", color ?? "");
+      await updateCardAction(fd);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
+      {COVER_PRESETS.map((c) => {
+        const active = value?.toLowerCase() === c;
+        return (
+          <button
+            key={c}
+            type="button"
+            onClick={() => pick(c)}
+            aria-label={c}
+            aria-pressed={active}
+            className={cn(
+              "w-6 h-6 rounded-full transition",
+              active
+                ? "ring-2 ring-offset-1 ring-offset-[var(--bg)] ring-brand-500"
+                : "ring-1 ring-[var(--border)] hover:scale-110"
+            )}
+            style={{ background: c }}
+          />
+        );
+      })}
+      <button
+        type="button"
+        onClick={() => pick(null)}
+        aria-label={t("none", locale)}
+        title={t("none", locale)}
+        className={cn(
+          "w-6 h-6 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-xs leading-none",
+          !value ? "ring-2 ring-brand-500" : "opacity-70 hover:opacity-100"
+        )}
+      >
+        &times;
+      </button>
     </div>
   );
 }
