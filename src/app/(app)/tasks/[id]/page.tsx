@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { loadBoardAccess, canManageBoard } from "@/server/board-access";
-import TaskBoard, { type ColumnDTO } from "@/components/TaskBoard";
+import Board from "@/components/board/Board";
+import type { ColumnDTO } from "@/components/board/types";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export default async function BoardPage({
           )}
         </div>
       </div>
-      <TaskBoard
+      <Board
         boardId={board.id}
         columns={dto}
         locale={locale}
