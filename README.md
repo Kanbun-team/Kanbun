@@ -26,7 +26,9 @@
 - User profiles with year-long activity heatmap, latest moves, latest comments.
 - Active and recent sessions per user, with web/mobile/desktop detection.
 - Online dot driven by a 60s heartbeat. 5-minute online window.
-- Light/dark theme + English/Polish UI. Login screen stays English.
+- Markdown in card descriptions and comments, WIP limits, card covers, board filters.
+- In-app notifications for assignments, @mentions and blocked cards.
+- Light/dark theme. UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
 - Mobile responsive with hamburger drawer. PWA manifest + safe-area insets.
 - Loading skeletons on every data-fetching page.
 
@@ -50,6 +52,14 @@ npm run dev
 ```
 
 Visit `http://localhost:3000` and log in.
+
+Checks (also run in CI):
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+```
 
 ## Quick start (Docker)
 
@@ -95,7 +105,7 @@ prisma/
   schema.prisma        SQLite data model
 public/
   manifest.webmanifest PWA manifest
-  icons/               192/512/maskable SVG icons
+  icons/               app icons (PNG + SVG)
 scripts/
   create-admin.ts      bootstrap script
 ```
@@ -106,6 +116,8 @@ scripts/
 - The session heartbeat creates a `panelSessionId` cookie scoped per browser.
 - Card moves are logged to `TaskCardMoveEvent` only when the column actually changes.
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
+- Sessions are JWTs, but the user is re-read from the database on every request, so deleting a user, changing a role, or resetting a password applies immediately.
+- Failed logins are rate limited in memory per IP and username. Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). This is single-process by design; running multiple instances would need an external broker.
 
 ## Pro modules (optional)
