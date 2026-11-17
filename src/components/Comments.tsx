@@ -49,6 +49,9 @@ export default function Comments({
               />
               {c.canDelete && (
                 <form
+                  onSubmit={(e) => {
+                    if (!window.confirm(t("confirmDeleteComment", locale))) e.preventDefault();
+                  }}
                   action={async (fd) => {
                     await deleteCommentAction(fd);
                     router.refresh();

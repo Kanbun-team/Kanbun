@@ -175,5 +175,12 @@
   "monthSep": "Wrz",
   "monthOct": "Paź",
   "monthNov": "Lis",
-  "monthDec": "Gru"
+  "monthDec": "Gru",
+  "confirmDeleteColumn": "Usunąć kolumnę „{name}” razem ze wszystkimi kartami ({count})? Tej operacji nie można cofnąć.",
+  "confirmDeleteCard": "Usunąć tę kartę? Tej operacji nie można cofnąć.",
+  "confirmDeleteBoard": "Usunąć tę tablicę ze wszystkimi kolumnami i kartami? Tej operacji nie można cofnąć.",
+  "confirmDeleteComment": "Usunąć ten komentarz?",
+  "confirmDeleteTag": "Usunąć ten tag? Zniknie ze wszystkich kart.",
+  "confirmRemoveMember": "Usunąć tę osobę z tablicy?",
+  "confirmDeleteUser": "Usunąć tego użytkownika? Jego karty i komentarze też zostaną usunięte."
 }

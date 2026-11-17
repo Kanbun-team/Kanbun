@@ -176,5 +176,12 @@
   "monthSep": "Sep",
   "monthOct": "Okt",
   "monthNov": "Nov",
-  "monthDec": "Dez"
+  "monthDec": "Dez",
+  "confirmDeleteColumn": "Die Spalte „{name}“ mit allen {count} Karten löschen? Das kann nicht rückgängig gemacht werden.",
+  "confirmDeleteCard": "Diese Karte löschen? Das kann nicht rückgängig gemacht werden.",
+  "confirmDeleteBoard": "Dieses Board mit allen Spalten und Karten löschen? Das kann nicht rückgängig gemacht werden.",
+  "confirmDeleteComment": "Diesen Kommentar löschen?",
+  "confirmDeleteTag": "Diesen Tag löschen? Er wird von allen Karten entfernt.",
+  "confirmRemoveMember": "Dieses Mitglied aus dem Board entfernen?",
+  "confirmDeleteUser": "Diesen Benutzer löschen? Seine Karten und Kommentare werden ebenfalls gelöscht."
 }

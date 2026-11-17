@@ -563,7 +563,15 @@ function ColumnHeader({
             {column.wipLimit != null && `/${column.wipLimit}`}
           </span>
           {canManage && (
-            <form action={deleteColumnAction}>
+            <form
+              action={deleteColumnAction}
+              onSubmit={(e) => {
+                const message = t("confirmDeleteColumn", locale)
+                  .replace("{name}", column.name)
+                  .replace("{count}", String(column.cards.length));
+                if (!window.confirm(message)) e.preventDefault();
+              }}
+            >
               <input type="hidden" name="columnId" value={column.id} />
               <button
                 type="submit"
@@ -960,6 +968,9 @@ function CardContextMenu({
 
       <div className="my-1 border-t border-[var(--border)]" />
       <form
+        onSubmit={(e) => {
+          if (!window.confirm(t("confirmDeleteCard", locale))) e.preventDefault();
+        }}
         action={async (fd) => {
           await deleteCardAction(fd);
           onClose();

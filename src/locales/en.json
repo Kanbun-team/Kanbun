@@ -176,5 +176,12 @@
   "monthSep": "Sep",
   "monthOct": "Oct",
   "monthNov": "Nov",
-  "monthDec": "Dec"
+  "monthDec": "Dec",
+  "confirmDeleteColumn": "Delete the column \"{name}\" and all {count} cards in it? This cannot be undone.",
+  "confirmDeleteCard": "Delete this card? This cannot be undone.",
+  "confirmDeleteBoard": "Delete this board with all its columns and cards? This cannot be undone.",
+  "confirmDeleteComment": "Delete this comment?",
+  "confirmDeleteTag": "Delete this tag? It will be removed from every card.",
+  "confirmRemoveMember": "Remove this member from the board?",
+  "confirmDeleteUser": "Delete this user? Their cards and comments will be deleted too."
 }

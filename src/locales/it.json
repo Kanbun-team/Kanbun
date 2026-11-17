@@ -176,5 +176,12 @@
   "monthSep": "Set",
   "monthOct": "Ott",
   "monthNov": "Nov",
-  "monthDec": "Dic"
+  "monthDec": "Dic",
+  "confirmDeleteColumn": "Eliminare la colonna \"{name}\" e tutte le sue {count} card? L'operazione non può essere annullata.",
+  "confirmDeleteCard": "Eliminare questa card? L'operazione non può essere annullata.",
+  "confirmDeleteBoard": "Eliminare questa bacheca con tutte le colonne e le card? L'operazione non può essere annullata.",
+  "confirmDeleteComment": "Eliminare questo commento?",
+  "confirmDeleteTag": "Eliminare questo tag? Verrà rimosso da tutte le card.",
+  "confirmRemoveMember": "Rimuovere questo membro dalla bacheca?",
+  "confirmDeleteUser": "Eliminare questo utente? Anche le sue card e i suoi commenti verranno eliminati."
 }

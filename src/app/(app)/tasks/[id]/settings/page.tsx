@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db-local";
 import Avatar from "@/components/Avatar";
 import ColorPicker from "@/components/ColorPicker";
 import { getLocale } from "@/lib/get-locale";
+import ConfirmForm from "@/components/ConfirmForm";
 import { t } from "@/lib/i18n";
 import { boardRoleLabel } from "@/lib/labels";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
@@ -85,13 +86,13 @@ export default async function BoardSettingsPage({
           </button>
         </form>
 
-        <form action={deleteBoardAction} className="surface border rounded-xl p-4 flex items-center justify-between">
+        <ConfirmForm message={t("confirmDeleteBoard", locale)} action={deleteBoardAction} className="surface border rounded-xl p-4 flex items-center justify-between">
           <input type="hidden" name="boardId" value={board.id} />
           <span className="text-sm">{t("boardDelete", locale)}</span>
           <button className="rounded px-3 py-1.5 text-sm border border-red-500/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
             {t("delete", locale)}
           </button>
-        </form>
+        </ConfirmForm>
       </div>
 
       <section className="surface border rounded-xl p-4 space-y-3">
@@ -113,13 +114,13 @@ export default async function BoardSettingsPage({
                   {m.role === "owner" ? t("boardMakeMember", locale) : t("boardMakeOwner", locale)}
                 </button>
               </form>
-              <form action={removeBoardMemberAction}>
+              <ConfirmForm message={t("confirmRemoveMember", locale)} action={removeBoardMemberAction}>
                 <input type="hidden" name="boardId" value={board.id} />
                 <input type="hidden" name="userId" value={m.userId} />
                 <button className="text-xs ml-2 text-red-500 hover:underline">
                   {t("boardRemoveMember", locale)}
                 </button>
-              </form>
+              </ConfirmForm>
             </li>
           ))}
         </ul>
@@ -140,10 +141,10 @@ export default async function BoardSettingsPage({
               <span className="w-3 h-3 rounded-full" style={{ background: tag.color }} />
               <span className="text-sm flex-1">{tag.name}</span>
               <span className="text-xs opacity-60">{tag.color}</span>
-              <form action={deleteBoardTagAction}>
+              <ConfirmForm message={t("confirmDeleteTag", locale)} action={deleteBoardTagAction}>
                 <input type="hidden" name="tagId" value={tag.id} />
                 <button className="text-xs text-red-500 hover:underline ml-2">{t("delete", locale)}</button>
-              </form>
+              </ConfirmForm>
             </li>
           ))}
           {board.tags.length === 0 && <li className="text-sm opacity-60">{t("none", locale)}</li>}

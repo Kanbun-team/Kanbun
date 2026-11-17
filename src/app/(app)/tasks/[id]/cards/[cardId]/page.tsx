@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db-local";
 import { requirePageUser } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
+import ConfirmForm from "@/components/ConfirmForm";
 import { t } from "@/lib/i18n";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 import {
@@ -91,10 +92,10 @@ export default async function CardDetailPage({
         <Link href={`/tasks/${boardId}`} className="text-sm opacity-70 hover:opacity-100">
           &larr; {board.name} / {card.column.name}
         </Link>
-        <form action={deleteCardAction}>
+        <ConfirmForm message={t("confirmDeleteCard", locale)} action={deleteCardAction}>
           <input type="hidden" name="cardId" value={card.id} />
           <button className="text-sm text-red-500 hover:underline">{t("cardDelete", locale)}</button>
-        </form>
+        </ConfirmForm>
       </div>
 
       <CardTitleEditor cardId={card.id} initialTitle={card.title} locale={locale} />

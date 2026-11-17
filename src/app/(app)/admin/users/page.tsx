@@ -4,6 +4,7 @@ import Avatar from "@/components/Avatar";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
+import ConfirmForm from "@/components/ConfirmForm";
 import { t, formatDateTime } from "@/lib/i18n";
 import { asAppRole, roleBadgeClass, roleFullLabel } from "@/lib/labels";
 import { isOnline } from "@/lib/sessions";
@@ -171,7 +172,7 @@ export default async function AdminUsersPage() {
                     </form>
 
                     {!isMe && (
-                      <form action={adminDeleteUserAction} className="pt-3 mt-3 border-t border-[var(--border)]">
+                      <ConfirmForm message={t("confirmDeleteUser", locale)} action={adminDeleteUserAction} className="pt-3 mt-3 border-t border-[var(--border)]">
                         <h3 className="text-xs uppercase tracking-wide opacity-60 mb-2">
                           {t("delete", locale)}
                         </h3>
@@ -179,7 +180,7 @@ export default async function AdminUsersPage() {
                         <button className="rounded-lg border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm px-3 py-1.5">
                           {t("adminDeleteUser", locale)}
                         </button>
-                      </form>
+                      </ConfirmForm>
                     )}
                   </div>
                   </div>
