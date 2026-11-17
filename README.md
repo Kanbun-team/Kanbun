@@ -152,4 +152,6 @@ See [LICENSING.md](./LICENSING.md) for the long form.
 
 ## Contributing
 
+Where the project is heading and the design rules it follows: [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/DESIGN.md](docs/DESIGN.md).
+
 Contributions go through a Contributor License Agreement so that the project can offer both AGPL and commercial licenses. See [CLA.md](./CLA.md). The CLA assistant bot will prompt you on your first PR.
