@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-17
+
+### Security
+
+- Sessions are re-validated against the database on every request. Deleting a user, changing their role, or resetting their password now takes effect immediately instead of when the 30-day token expires. An admin password reset signs the user out everywhere (new `User.sessionVersion` column, applied automatically by `prisma migrate deploy`).
+- Failed logins are rate limited per IP and username (10 per 15 minutes per account, 50 per IP).
+- Only board members can be assigned to a card. Previously any member could assign, and notify, any user of the instance.
+- Upgraded `next` to 15.5.29 and `next-auth` to 5.0.0-beta.32 to pick up upstream security fixes, and moved to `zod` 4. Removed the unused `@auth/prisma-adapter` dependency.
+
+### Fixed
+
+- `npm run create-admin` lowercases the username, so the account it creates can actually log in.
+- Pages no longer throw when the session disappears mid-request; they redirect to the login screen.
+- Expected failed-login errors are no longer logged in production builds.
+
 ## [0.2.0] - 2026-06-17
 
 ### Added
@@ -40,6 +55,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Kanbun-team/Kanbun/releases/tag/v0.1.0

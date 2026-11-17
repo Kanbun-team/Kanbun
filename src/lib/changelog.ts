@@ -8,6 +8,36 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-17",
+    title: { en: "Version 0.2.1", it: "Versione 0.2.1", pl: "Wersja 0.2.1", de: "Version 0.2.1" },
+    items: [
+      {
+        en: "Security: removing a user, changing their role, or resetting their password now takes effect immediately.",
+        it: "Sicurezza: eliminare un utente, cambiarne il ruolo o reimpostarne la password ha effetto immediato.",
+        pl: "Bezpieczeństwo: usunięcie użytkownika, zmiana jego roli lub reset hasła działają natychmiast.",
+        de: "Sicherheit: Das Löschen eines Benutzers, eine Rollenänderung oder ein Passwort-Reset wirken sofort.",
+      },
+      {
+        en: "Repeated failed logins are now rate limited.",
+        it: "I tentativi di accesso falliti ripetuti ora sono limitati.",
+        pl: "Powtarzające się nieudane logowania są teraz ograniczane.",
+        de: "Wiederholte fehlgeschlagene Anmeldungen werden jetzt begrenzt.",
+      },
+      {
+        en: "Only board members can be assigned to a card.",
+        it: "Solo i membri della board possono essere assegnati a una card.",
+        pl: "Do karty można przypisać tylko członków tablicy.",
+        de: "Nur Board-Mitglieder können einer Karte zugewiesen werden.",
+      },
+      {
+        en: "Dependency updates with upstream security fixes.",
+        it: "Aggiornamenti delle dipendenze con correzioni di sicurezza.",
+        pl: "Aktualizacje zależności z poprawkami bezpieczeństwa.",
+        de: "Aktualisierte Abhängigkeiten mit Sicherheitskorrekturen.",
+      },
+    ],
+  },
+  {
     date: "2026-06-17",
     title: { en: "Version 0.2.0", it: "Versione 0.2.0", pl: "Wersja 0.2.0", de: "Version 0.2.0" },
     items: [
