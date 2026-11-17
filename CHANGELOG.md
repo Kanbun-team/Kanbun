@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-17
+
+### Fixed
+
+- @mentions followed by punctuation now notify the user ("Thanks @bob." mentions `bob`), and email addresses are no longer treated as mentions.
+- Markdown: formatting no longer applies inside `code` spans or link URLs, and links stay intact when an underscore appears later in the line.
+- The Polish UI now uses proper Polish characters throughout.
+
+### Added
+
+- Complete German, Italian and Polish translations (previously missing strings fell back to English).
+- ESLint, a Vitest test suite and both wired into CI (`npm run lint`, `npm test`).
+
 ## [0.2.1] - 2026-11-17
 
 ### Security
@@ -20,6 +33,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `npm run create-admin` lowercases the username, so the account it creates can actually log in.
 - Pages no longer throw when the session disappears mid-request; they redirect to the login screen.
 - Expected failed-login errors are no longer logged in production builds.
+
+### Changed
+
+- Board filters collapsed into a single Filter dropdown.
+- The add-card button flows as the last item in a column.
+- Richer card context menu with submenus.
 
 ## [0.2.0] - 2026-06-17
 
@@ -55,7 +74,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Kanbun-team/Kanbun/releases/tag/v0.1.0
