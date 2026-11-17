@@ -9,6 +9,36 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-17",
+    title: { en: "Version 0.2.3", it: "Versione 0.2.3", pl: "Wersja 0.2.3", de: "Version 0.2.3" },
+    items: [
+      {
+        en: "The board uses the full window width, so every column is visible.",
+        it: "La bacheca usa tutta la larghezza della finestra, così ogni colonna è visibile.",
+        pl: "Tablica zajmuje całą szerokość okna, więc widać wszystkie kolumny.",
+        de: "Das Board nutzt die volle Fensterbreite, sodass alle Spalten sichtbar sind.",
+      },
+      {
+        en: "Deleting anything now asks for confirmation first.",
+        it: "Ora ogni eliminazione chiede prima una conferma.",
+        pl: "Każde usuwanie wymaga teraz potwierdzenia.",
+        de: "Jedes Löschen fragt jetzt zuerst nach einer Bestätigung.",
+      },
+      {
+        en: "The System theme now follows your operating system.",
+        it: "Il tema Sistema ora segue il sistema operativo.",
+        pl: "Motyw systemowy podąża teraz za ustawieniem systemu.",
+        de: "Das System-Design folgt jetzt deinem Betriebssystem.",
+      },
+      {
+        en: "Upgraded to Next.js 16 and React 19.",
+        it: "Aggiornato a Next.js 16 e React 19.",
+        pl: "Aktualizacja do Next.js 16 i React 19.",
+        de: "Aktualisiert auf Next.js 16 und React 19.",
+      },
+    ],
+  },
+  {
+    date: "2026-11-17",
     title: { en: "Version 0.2.2", it: "Versione 0.2.2", pl: "Wersja 0.2.2", de: "Version 0.2.2" },
     items: [
       {

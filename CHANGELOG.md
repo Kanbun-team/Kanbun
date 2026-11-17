@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-17
+
+### Changed
+
+- Upgraded to Next.js 16 and React 19. No configuration changes are needed; the Docker image already runs Node 22.
+- The board view uses the full window width, so all columns are visible instead of being clipped by the page container.
+
+### Fixed
+
+- Deleting a column, card, board, tag, comment, member or user now asks for confirmation and says what will be lost. Previously a single click on the small "x" in a column header deleted the column and every card in it.
+- The "System" theme follows the operating system setting instead of always showing the dark theme.
+- The page language attribute matches the selected UI language, which helps screen readers and hyphenation.
+
+### Added
+
+- `npm run seed:demo` fills an empty database with a demo workspace.
+- A screenshot in the README, plus [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/DESIGN.md](docs/DESIGN.md) describing where Kanbun is heading and the design standards it follows.
+
 ## [0.2.2] - 2026-11-17
 
 ### Fixed
@@ -74,7 +92,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.1.0...v0.2.0
