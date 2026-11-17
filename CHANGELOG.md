@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-17
+
+Phase 2 of the [roadmap](docs/ROADMAP.md): a board that feels instant.
+
+### Added
+
+- New drag and drop for cards and columns: mouse, touch (long-press) and keyboard (Space to pick up, arrows to move, Space to drop, Escape to cancel), with screen-reader announcements in every UI language. Cards can now be moved on phones.
+- Columns can be reordered by dragging their handle or from the column menu.
+- "Move to" in every card's menu moves a card to another column without dragging.
+- Cards open in a side panel over the board (a full-height sheet on phones). The board keeps its scroll position and filters; the card URL still works on its own.
+- A "..." menu on every card (also on right-click) and on every column: assign to me, assignees, tags, priority, cover, move, rename, WIP limit, collapse, delete.
+- Collapsible columns, remembered per browser.
+- Keyboard shortcuts on the board: `/` search, `n` new card, `e` rename, `a` assign to me, `j`/`k`/`h`/`l` or arrows to move between cards, `?` for the list.
+- Pasting several lines into "Add card" creates one card per line.
+- Phones show one column per screen with a column switcher at the top.
+
+### Changed
+
+- Redesigned card face: priority shows as a colored edge only for High and Critical, deadlines are relative ("Tomorrow", "In 3 days") and turn amber when due within a day and red when late, icons replace abbreviations like "2c", blocked cards show a "Blocked" label, and assignees are an overlapping avatar stack.
+- Edits from the card menu apply instantly and roll back with a message if the server rejects them.
+- The WIP count turns amber when a column reaches its limit and red when it goes over.
+
 ## [0.3.0] - 2026-11-17
 
 Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
@@ -120,7 +142,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.1...v0.2.2

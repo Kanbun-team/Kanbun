@@ -9,6 +9,36 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-17",
+    title: { en: "Version 0.4.0", it: "Versione 0.4.0", pl: "Wersja 0.4.0", de: "Version 0.4.0" },
+    items: [
+      {
+        en: "Drag cards and columns with a mouse, on your phone (press and hold) or with the keyboard.",
+        it: "Trascina card e colonne con il mouse, sul telefono (tieni premuto) o con la tastiera.",
+        pl: "Przeciągaj karty i kolumny myszą, na telefonie (przytrzymaj) albo klawiaturą.",
+        de: "Ziehe Karten und Spalten mit der Maus, auf dem Handy (gedrückt halten) oder mit der Tastatur.",
+      },
+      {
+        en: "Cards open in a side panel, so the board stays where you left it.",
+        it: "Le card si aprono in un pannello laterale, così la bacheca resta dove l'hai lasciata.",
+        pl: "Karty otwierają się w panelu bocznym, więc tablica zostaje tam, gdzie była.",
+        de: "Karten öffnen sich in einem Seitenbereich, das Board bleibt, wo du es verlassen hast.",
+      },
+      {
+        en: "A cleaner card: relative deadlines, a Blocked label and priority only when it matters.",
+        it: "Una card più pulita: scadenze relative, etichetta Bloccata e priorità solo quando conta.",
+        pl: "Czytelniejsza karta: terminy względne, etykieta Zablokowana i priorytet tylko wtedy, gdy ma znaczenie.",
+        de: "Eine klarere Karte: relative Fristen, ein Blockiert-Label und Priorität nur, wenn sie zählt.",
+      },
+      {
+        en: "Menus on cards and columns, \"Move to\", collapsible columns and keyboard shortcuts (press ?).",
+        it: "Menu su card e colonne, \"Sposta in\", colonne comprimibili e scorciatoie da tastiera (premi ?).",
+        pl: "Menu kart i kolumn, „Przenieś do”, zwijane kolumny i skróty klawiszowe (naciśnij ?).",
+        de: "Menüs für Karten und Spalten, „Verschieben nach“, einklappbare Spalten und Tastenkürzel (drücke ?).",
+      },
+    ],
+  },
+  {
+    date: "2026-11-17",
     title: { en: "Version 0.3.0", it: "Versione 0.3.0", pl: "Wersja 0.3.0", de: "Version 0.3.0" },
     items: [
       {

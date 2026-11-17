@@ -2,7 +2,7 @@
 
 Goal: the best self-hosted board for small teams. Fast enough that it never gets in the way, calm enough to leave open all day, and safe enough that nobody loses work. Visual and interaction rules are in [DESIGN.md](DESIGN.md); every item below follows them.
 
-Status as of v0.3.0 (November 2026): Next.js 16, React 19, SQLite, live updates over SSE, 4 languages, trash and undo, design tokens, and lint, unit, end-to-end and accessibility tests in CI. The items below come from a hands-on review of the running app (demo workspace, desktop and phone, light and dark, Lighthouse) plus a code review.
+Status as of v0.4.0 (November 2026): Next.js 16, React 19, SQLite, live updates over SSE, 4 languages, trash and undo, design tokens, keyboard and touch drag and drop, a card side panel, and lint, unit, end-to-end and accessibility tests in CI. The items below come from a hands-on review of the running app (demo workspace, desktop and phone, light and dark, Lighthouse) plus a code review.
 
 ## Where we stand
 
@@ -41,18 +41,18 @@ Shipped in v0.3.0. What landed, and what moved:
 6. **Typed action results and error boundaries.** Done. *Fixes F3 for errors.*
 7. **End-to-end tests.** Done: 12 Playwright tests, axe on 10 pages in both themes, zero violations, in CI.
 
-## Phase 2: A board that feels instant (v0.4)
+## Phase 2: A board that feels instant (v0.4): done
 
-The board is the product (DESIGN.md, principle 1). This phase makes it the best part of the app.
+Shipped in v0.4.0. What landed, and what moved:
 
-1. **New drag and drop** with `@dnd-kit`: mouse, touch (long-press), keyboard, screen-reader announcements, auto-scroll at edges, column reordering. Plus a "Move to..." action in the card menu. *Fixes F1.*
-2. **Optimistic everything.** Moves and edits apply instantly and roll back with a toast on failure. Teammates' changes glide into place.
-3. **Card panel.** Open cards in a side panel (sheet on phones) through intercepting routes, so the URL still points at the card but the board stays mounted. *Fixes F4.*
-4. **Card face redesign** per DESIGN.md 4.1: priority notch for High and Critical only, relative deadlines with amber/vermilion states, icon meta, "Blocked" chip, ringed avatar stack. *Fixes F6.*
-5. **Column menu.** Rename, set WIP limit, move, collapse, and delete (via trash) in one "..." menu instead of a bare "x" next to the count. WIP limit shown as a small gauge that turns amber when reached.
-6. **Quick add and quick edit.** `n` adds a card in the focused column; inline title edit with `e`; paste multiple lines to create multiple cards.
-7. **Mobile board.** One column per screen with swipe, a column switcher, and a bottom "Add card" bar within thumb reach.
-8. **Keyboard shortcuts** with a `?` cheat sheet (DESIGN.md section 6). *Part of F10.*
+1. **New drag and drop.** Done with `@dnd-kit`: mouse, touch long-press, keyboard (Left/Right jump between columns, Up/Down reorder), translated screen-reader announcements, column reordering, and "Move to" in the card menu. *Fixes F1.*
+2. **Optimistic everything.** Done for moves and card-menu edits (rollback by re-fetching, with an error toast). Animating teammates' live changes into place moves to Phase 4 (presence).
+3. **Card panel.** Done with a parallel `@panel` slot and an intercepting route; reloading a card URL still gives the full page. *Fixes F4.*
+4. **Card face redesign.** Done per DESIGN.md 4.1. *Fixes F6.*
+5. **Column menu.** Done: rename, WIP limit, add card, move left/right, collapse, delete. WIP count turns amber at the limit and red above it.
+6. **Quick add and quick edit.** Done: `n`, `e`, multi-line paste.
+7. **Mobile board.** Partly done: one column per screen with snap scrolling and a column switcher. The bottom "Add card" bar moves to Phase 3.
+8. **Keyboard shortcuts.** Done with a `?` sheet. `d` (set deadline) moves to Phase 3 with the shared date picker. *Part of F10.*
 
 ## Phase 3: Find and focus (v0.5)
 

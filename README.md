@@ -19,7 +19,8 @@
 
 ## Features
 
-- Boards, columns, cards with native HTML5 drag-and-drop.
+- Boards, columns and cards with drag and drop that works with a mouse, on touch screens (long-press) and with the keyboard (Space, arrows), with screen-reader announcements. Every card also has a "Move to" action.
+- Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).
 - Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh.
 - Subtasks, tags, comments, blocking dependencies, priorities, deadlines.
 - Per-board membership with owner/member roles. Admin override.
