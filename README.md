@@ -28,7 +28,10 @@
 - Online dot driven by a 60s heartbeat. 5-minute online window.
 - Markdown in card descriptions and comments, WIP limits, card covers, board filters.
 - In-app notifications for assignments, @mentions and blocked cards.
-- Light/dark theme. UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
+- Trash with undo: deleted cards, columns and boards can be restored for 30 days.
+- Deactivate users instead of deleting them: they can no longer sign in, but their work stays.
+- Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run.
+- Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
 - Mobile responsive with hamburger drawer. PWA manifest + safe-area insets.
 - Loading skeletons on every data-fetching page.
 
@@ -61,7 +64,13 @@ Checks (also run in CI):
 npm run lint
 npm run typecheck
 npm test
+
+# End-to-end and accessibility tests (Playwright + axe) against a production build
+npx playwright install chromium   # once
+npm run build && npm run test:e2e
 ```
+
+The e2e suite starts its own server on port 3456 with a throwaway demo database (`prisma/e2e.db`).
 
 ## Quick start (Docker)
 
@@ -117,8 +126,10 @@ scripts/
 - Schema changes: edit `prisma/schema.prisma`, then `npx prisma migrate dev --name <change>`.
 - The session heartbeat creates a `panelSessionId` cookie scoped per browser.
 - Card moves are logged to `TaskCardMoveEvent` only when the column actually changes.
+- Deleted cards, columns and boards are stored as JSON snapshots in `TrashItem` and restored with their original ids (`src/server/trash.ts`). Items older than 30 days are purged on the next delete.
+- Server actions return typed results (`{ ok, error }`, see `src/lib/action-result.ts`); the UI turns error codes into translated toasts.
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
-- Sessions are JWTs, but the user is re-read from the database on every request, so deleting a user, changing a role, or resetting a password applies immediately.
+- Sessions are JWTs, but the user is re-read from the database on every request, so deactivating or deleting a user, changing a role, or resetting a password applies immediately.
 - Failed logins are rate limited in memory per IP and username. Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). This is single-process by design; running multiple instances would need an external broker.
 

@@ -2,7 +2,7 @@
 
 Goal: the best self-hosted board for small teams. Fast enough that it never gets in the way, calm enough to leave open all day, and safe enough that nobody loses work. Visual and interaction rules are in [DESIGN.md](DESIGN.md); every item below follows them.
 
-Status as of v0.2.2 (November 2026): Next.js 16, React 19, SQLite, live updates over SSE, 4 languages, lint and unit tests in CI. The items below come from a hands-on review of the running app (demo workspace, desktop and phone, light and dark, Lighthouse) plus a code review.
+Status as of v0.3.0 (November 2026): Next.js 16, React 19, SQLite, live updates over SSE, 4 languages, trash and undo, design tokens, and lint, unit, end-to-end and accessibility tests in CI. The items below come from a hands-on review of the running app (demo workspace, desktop and phone, light and dark, Lighthouse) plus a code review.
 
 ## Where we stand
 
@@ -29,17 +29,17 @@ Status as of v0.2.2 (November 2026): Next.js 16, React 19, SQLite, live updates 
 | F10 | No keyboard shortcuts, no command palette, no global search. | Power users slow down as boards grow. |
 | F11 | Single process only (in-memory event bus and rate limiter), SQLite only. | Fine for most self-hosters; blocks larger teams and HA setups. |
 
-## Phase 1: Foundations and trust (v0.3)
+## Phase 1: Foundations and trust (v0.3): done
 
-Make the app safe to rely on and give it a real design system, so everything after this is built once and built right.
+Shipped in v0.3.0. What landed, and what moved:
 
-1. **Design tokens and fonts.** Implement the color, type, spacing, radius and elevation tokens from DESIGN.md as CSS variables plus Tailwind theme keys; bundle IBM Plex Sans; remove hard-coded palette classes. *Done when:* no `slate-*`/`gray-*` classes or raw hex remain in components; both themes pass the contrast test.
-2. **Validated color palette.** One palette module for tags, covers, boards and avatars with per-theme text/background pairs and a unit test asserting 4.5:1. *Fixes F5.*
-3. **UI primitives** in `src/components/ui/` on React Aria Components: Button, IconButton, TextField, Combobox, Menu, Popover, Dialog, Sheet, Toast, Tooltip, Avatar, Chip, DatePicker, EmptyState. *Done when:* existing screens use them and `window.confirm` is gone.
-4. **Trash and undo.** Soft-delete cards, columns and boards (`deletedAt`), restorable for 30 days from a Trash view; every delete shows an "Undo" toast. Replace the v0.2.3 confirmations with undo where possible. *Fixes F3.*
-5. **Deactivate instead of delete users.** Deactivated users cannot log in and disappear from pickers, but their cards, comments and history stay; `createdBy` moves to `SetNull`. Hard delete stays as an admin-only action that reassigns content first. *Fixes F2.*
-6. **Typed action results and error boundaries.** Server actions return `{ ok, error }` with translated messages; add `error.tsx` and `not-found.tsx` per route group. *Fixes F3.*
-7. **End-to-end tests.** Playwright on the demo seed: log in, create board, add/move/edit card, comment with mention, filters, permissions. Run `axe` on each page. *Done when:* CI fails on any accessibility violation.
+1. **Design tokens and fonts.** Done. Semantic tokens in `globals.css` exposed as Tailwind keys (`paper`, `surface`, `raised`, `ink`, `line`, `accent`, `danger`, `warning`, `success`); IBM Plex Sans bundled; every screen migrated, no palette classes left.
+2. **Validated color palette.** Done (`src/lib/palette.ts`, unit-tested). Text colors are derived per color and theme, so custom hex colors are safe too. *Fixes F5.*
+3. **UI primitives.** Partly done: button styles, confirm dialog (React Aria), toast with action, tag chip, avatar, `ActionForm`; `window.confirm` is gone. Menu, Combobox, Popover, Sheet, Tooltip and DatePicker move to Phase 2 and 3, built together with the features that need them (card menu, card panel, pickers).
+4. **Trash and undo.** Done. Snapshots in `TrashItem` instead of `deletedAt` columns, so live queries never need a soft-delete filter. *Fixes F3 for deletes.*
+5. **Deactivate instead of delete users.** Done; hard delete keeps content (`SET NULL`). *Fixes F2.*
+6. **Typed action results and error boundaries.** Done. *Fixes F3 for errors.*
+7. **End-to-end tests.** Done: 12 Playwright tests, axe on 10 pages in both themes, zero violations, in CI.
 
 ## Phase 2: A board that feels instant (v0.4)
 

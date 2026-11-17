@@ -30,7 +30,7 @@ What we deliberately avoid, because it reads as a generic template: all-caps eye
 
 ### 3.1 Color tokens
 
-All colors are CSS custom properties on `:root` and `html.dark`. Components use semantic tokens only, never raw hex or Tailwind palette classes like `bg-slate-800`.
+All colors are CSS custom properties on `:root` and `html.dark` (stored as RGB triplets so opacity modifiers work). Components use semantic tokens only, never raw hex or Tailwind palette classes like `bg-slate-800`. In Tailwind they are `paper`, `surface`, `raised`, `ink`, `ink-muted`, `line`, `accent` (indigo, with `accent-soft`, `accent-hover`, `accent-fg`), `danger` (vermilion), `warning` (amber) and `success` (moss).
 
 | Token | Role | Light | Dark |
 |---|---|---|---|
@@ -60,7 +60,7 @@ Users pick from a fixed palette of 10 hues. Each hue has a pre-computed pair per
 - Chip text: a darker shade of the hue in light mode, a lighter shade in dark mode. Never the raw hue on its own tint (that is what fails today: `#ea580c` on its own tint is 2.8:1).
 - Avatar initials: white on the hue only when the pair reaches 4.5:1. Otherwise use the dark shade for the background.
 
-The palette lives in one module (`src/lib/palette.ts`) with a unit test that asserts every pair's contrast.
+The palette lives in one module (`src/lib/palette.ts`) with a unit test that asserts every pair's contrast. Because users can also enter a custom hex color, text colors are derived at render time: the hue is shifted toward black (light) or white (dark) until it reaches 4.5:1 on its own tint.
 
 ### 3.3 Typography
 
