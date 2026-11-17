@@ -20,7 +20,7 @@ describe("renderMarkdownToHtml", () => {
 
   it("renders inline formatting", () => {
     expect(md("**b** *i* _i_ ~~s~~ `c`")).toBe(
-      '<p><strong>b</strong> <em>i</em> <em>i</em> <del>s</del> <code class="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.85em]">c</code></p>'
+      '<p><strong>b</strong> <em>i</em> <em>i</em> <del>s</del> <code class="px-1 py-0.5 rounded bg-ink/5 text-[0.85em]">c</code></p>'
     );
   });
 

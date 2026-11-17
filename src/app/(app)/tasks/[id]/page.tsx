@@ -95,19 +95,19 @@ export default async function BoardPage({
             {board.name}
           </h1>
           {board.description && (
-            <p className="text-sm opacity-70">{board.description}</p>
+            <p className="text-sm text-ink-muted">{board.description}</p>
           )}
         </div>
         <div className="flex items-center gap-2 text-sm">
           {board.archived && (
-            <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800">
+            <span className="px-2 py-0.5 rounded-control bg-ink/5 text-ink-muted">
               {t("boardArchived", locale)}
             </span>
           )}
           {canManageBoard(access) && (
             <Link
               href={`/tasks/${board.id}/settings`}
-              className="rounded-md px-3 py-1 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="rounded-control px-3 py-1 hover:bg-ink/5"
             >
               {t("boardSettings", locale)}
             </Link>

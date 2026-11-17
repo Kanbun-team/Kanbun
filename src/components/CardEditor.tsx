@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { buttonClass, iconButtonClass } from "./ui/button";
 import Avatar from "./Avatar";
 import { cn, isPast } from "@/lib/utils";
 import { useSyncedState } from "@/lib/use-synced-state";
@@ -54,7 +55,7 @@ export function CardTitleEditor({
           onChange={(e) => setValue(e.target.value)}
           className="text-xl font-semibold"
         />
-        <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3">
+        <button className="rounded-control bg-accent hover:bg-accent-hover text-accent-fg text-sm font-medium px-3">
           {t("save", locale)}
         </button>
       </form>
@@ -104,13 +105,13 @@ export function CardDescriptionEditor({
           autoFocus
         />
         <div className="flex gap-2">
-          <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1">
+          <button className={buttonClass("primary")}>
             {t("save", locale)}
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="text-sm px-3 py-1 opacity-70 hover:opacity-100"
+            className={buttonClass("ghost")}
           >
             {t("cancel", locale)}
           </button>
@@ -120,13 +121,13 @@ export function CardDescriptionEditor({
   }
   return (
     <div
-      className="prose-sm text-sm cursor-pointer surface border border-dashed border-[var(--border)] rounded-md p-3 min-h-[60px] [&_a]:break-words [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold space-y-2"
+      className="prose-sm text-md cursor-pointer bg-surface border border-dashed border-line-strong rounded-card p-3 max-w-[70ch] [&_a]:text-accent [&_a]:underline min-h-[60px] [&_a]:break-words [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold space-y-2"
       onClick={() => setEditing(true)}
     >
       {value ? (
         <div dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(value) }} />
       ) : (
-        <span className="opacity-60">{t("cardDescription", locale)}...</span>
+        <span className="text-ink-muted">{t("cardDescription", locale)}...</span>
       )}
     </div>
   );
@@ -168,12 +169,13 @@ export function CardPriorityEditor({
             onClick={() => pick(p)}
             aria-pressed={active}
             className={cn(
-              "rounded-full px-2.5 py-1 text-xs font-medium border transition",
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border transition",
               active
-                ? cn(priorityClass(p), "border-transparent shadow-sm")
-                : "border-[var(--border)] opacity-55 hover:opacity-100 hover:border-brand-500"
+                ? "border-accent bg-accent-soft text-ink"
+                : "border-line text-ink-muted hover:text-ink hover:border-accent"
             )}
           >
+            <span aria-hidden="true" className={cn("w-2 h-2 rounded-full shrink-0", priorityClass(p))} />
             {priorityLabel(p, locale)}
           </button>
         );
@@ -214,21 +216,22 @@ export function CardDeadlineEditor({
         type="date"
         value={value}
         onChange={(e) => save(e.target.value)}
-        className={cn("!py-1 !text-sm w-auto", overdue && "text-red-500 border-red-400")}
+        aria-label={t("cardDeadline", locale)}
+        className={cn("!py-1 !text-sm w-auto", overdue && "text-danger border-danger")}
       />
       {value === "" ? (
-        <span className="text-xs opacity-50">{t("cardNoDeadline", locale)}</span>
+        <span className="text-xs text-ink-muted">{t("cardNoDeadline", locale)}</span>
       ) : (
         <>
           {overdue && (
-            <span className="text-xs font-medium text-red-500">{t("cardOverdue", locale)}</span>
+            <span className="text-xs font-medium text-danger">{t("cardOverdue", locale)}</span>
           )}
           <button
             type="button"
             onClick={() => save("")}
             aria-label={t("remove", locale)}
             title={t("remove", locale)}
-            className="text-sm opacity-50 hover:opacity-100 hover:text-red-500"
+            className={iconButtonClass("w-7 h-7 hover:text-danger")}
           >
             &times;
           </button>
@@ -278,8 +281,8 @@ export function CardCover({
             className={cn(
               "w-6 h-6 rounded-full transition",
               active
-                ? "ring-2 ring-offset-1 ring-offset-[var(--bg)] ring-brand-500"
-                : "ring-1 ring-[var(--border)] hover:scale-110"
+                ? "ring-2 ring-offset-1 ring-offset-surface ring-accent"
+                : "ring-1 ring-line hover:scale-110"
             )}
             style={{ background: c }}
           />
@@ -291,8 +294,8 @@ export function CardCover({
         aria-label={t("none", locale)}
         title={t("none", locale)}
         className={cn(
-          "w-6 h-6 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-xs leading-none",
-          !value ? "ring-2 ring-brand-500" : "opacity-70 hover:opacity-100"
+          "w-6 h-6 rounded-full border border-dashed border-line-strong flex items-center justify-center text-xs leading-none",
+          !value ? "ring-2 ring-accent text-ink" : "text-ink-muted hover:text-ink"
         )}
       >
         &times;
@@ -340,8 +343,8 @@ export function CardAssignees({
             key={u.id}
             type="button"
             onClick={() => toggle(u.id)}
-            title={`${u.displayName ?? u.username} — ${t("remove", locale)}`}
-            className="group relative rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500"
+            title={`${t("remove", locale)}: ${u.displayName ?? u.username}`}
+            className="group relative rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={28} />
             <span className="absolute inset-0 rounded-full bg-black/55 text-white text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
@@ -354,18 +357,18 @@ export function CardAssignees({
           onClick={() => setOpen((o) => !o)}
           aria-label={t("add", locale)}
           aria-expanded={open}
-          className="w-7 h-7 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-base leading-none opacity-70 hover:opacity-100 hover:border-brand-500"
+          className="w-7 h-7 rounded-full border border-dashed border-line-strong flex items-center justify-center text-base leading-none text-ink-muted hover:text-ink hover:border-accent"
         >
           +
         </button>
         {assignees.length === 0 && (
-          <span className="text-sm opacity-50">{t("cardNoAssignees", locale)}</span>
+          <span className="text-sm text-ink-muted">{t("cardNoAssignees", locale)}</span>
         )}
       </div>
       {open && (
-        <div className="absolute mt-2 z-50 w-64 surface border rounded-lg shadow-lg max-h-72 overflow-auto p-1">
+        <div className="absolute mt-2 z-50 w-64 bg-raised border border-line rounded-panel shadow-float max-h-72 overflow-auto p-1">
           {members.length === 0 && (
-            <div className="px-3 py-2 text-sm opacity-60">{t("noResults", locale)}</div>
+            <div className="px-3 py-2 text-sm text-ink-muted">{t("noResults", locale)}</div>
           )}
           {members.map((u) => {
             const on = assignedIds.has(u.id);
@@ -375,13 +378,13 @@ export function CardAssignees({
                 type="button"
                 onClick={() => toggle(u.id)}
                 className={cn(
-                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
-                  on && "bg-slate-50 dark:bg-slate-800/50"
+                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-control hover:bg-ink/5",
+                  on && "bg-accent-soft"
                 )}
               >
                 <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={22} />
                 <span className="text-sm flex-1 truncate">{u.displayName ?? u.username}</span>
-                {on && <span className="text-brand-600">&#10003;</span>}
+                {on && <span className="text-accent">&#10003;</span>}
               </button>
             );
           })}

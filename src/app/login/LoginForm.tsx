@@ -12,10 +12,10 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full rounded-lg bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white py-2.5 font-medium transition disabled:opacity-60 flex items-center justify-center gap-2"
+      className="w-full rounded-control bg-accent hover:bg-accent-hover text-accent-fg py-2.5 font-medium transition disabled:opacity-60 flex items-center justify-center gap-2"
     >
       {pending && (
-        <span className="w-4 h-4 rounded-full border-2 border-white/70 border-t-transparent animate-spin" />
+        <span className="w-4 h-4 rounded-full border-2 border-accent-fg/70 border-t-transparent animate-spin" />
       )}
       <span>{pending ? "Signing in..." : "Sign in"}</span>
     </button>
@@ -28,7 +28,7 @@ export default function LoginForm({ from }: { from: string }) {
     <form action={formAction} className="space-y-4" autoComplete="on">
       <input type="hidden" name="from" value={from} />
       <label className="block">
-        <span className="text-sm font-medium opacity-80">Username</span>
+        <span className="text-sm font-medium text-ink-muted">Username</span>
         <input
           name="username"
           autoComplete="username"
@@ -41,7 +41,7 @@ export default function LoginForm({ from }: { from: string }) {
         />
       </label>
       <label className="block">
-        <span className="text-sm font-medium opacity-80">Password</span>
+        <span className="text-sm font-medium text-ink-muted">Password</span>
         <input
           name="password"
           type="password"
@@ -52,7 +52,7 @@ export default function LoginForm({ from }: { from: string }) {
       </label>
       {state?.error && (
         <p
-          className="text-sm text-red-500 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-md px-3 py-2"
+          className="text-sm text-danger bg-danger/10 border border-danger/40 rounded-control px-3 py-2"
           role="alert"
         >
           {state.error}

@@ -26,7 +26,7 @@ export default function ColorPicker({
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <label
-        className="relative shrink-0 rounded-lg overflow-hidden border border-[var(--border)] cursor-pointer block"
+        className="relative shrink-0 rounded-control overflow-hidden border border-line cursor-pointer block"
         style={{ width: swatchSize, height: swatchSize, background: value }}
         title={value.toUpperCase()}
       >
@@ -38,7 +38,7 @@ export default function ColorPicker({
           className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
         />
       </label>
-      <code className="text-xs font-mono opacity-70 select-all">{value.toUpperCase()}</code>
+      <code className="text-xs font-mono text-ink-muted select-all">{value.toUpperCase()}</code>
       {presets.length > 0 && (
         <div className="flex items-center gap-1 ml-auto">
           {presets.map((p) => {
@@ -51,8 +51,8 @@ export default function ColorPicker({
                 onClick={() => setValue(norm)}
                 title={norm.toUpperCase()}
                 className={cn(
-                  "w-5 h-5 rounded-full ring-offset-1 ring-offset-[var(--bg-elev)] cursor-pointer transition",
-                  active ? "ring-2 ring-brand-500" : "ring-1 ring-[var(--border)]"
+                  "w-5 h-5 rounded-full ring-offset-1 ring-offset-surface cursor-pointer transition",
+                  active ? "ring-2 ring-accent" : "ring-1 ring-line"
                 )}
                 style={{ background: norm }}
                 aria-label={`Pick ${norm}`}

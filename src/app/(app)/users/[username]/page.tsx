@@ -135,8 +135,8 @@ export default async function ProfilePage({
         <Avatar src={user.avatarUrl} name={user.displayName ?? user.username} size={64} online={online} />
         <div>
           <h1 className="text-xl font-semibold">{user.displayName ?? user.username}</h1>
-          <div className="text-sm opacity-70">@{user.username}</div>
-          <div className="text-xs opacity-60">
+          <div className="text-sm text-ink-muted">@{user.username}</div>
+          <div className="text-xs text-ink-muted">
             {online ? t("online", locale) : `${t("lastSeen", locale)}: ${lastSession ? formatDateTime(lastSession.lastSeenAt, locale) : t("none", locale)}`}
           </div>
         </div>
@@ -149,8 +149,8 @@ export default async function ProfilePage({
         <Counter label={t("subtasksCount", locale)} value={subtasksCount} />
       </section>
 
-      <section className="surface border rounded-xl p-4">
-        <h2 className="text-sm uppercase tracking-wide opacity-60 mb-3">{t("profileHeatmap", locale)}</h2>
+      <section className="bg-surface border border-line rounded-panel p-4">
+        <h2 className="text-md font-semibold mb-3">{t("profileHeatmap", locale)}</h2>
         <Heatmap
           startDate={oneYearAgo}
           endDate={new Date()}
@@ -159,10 +159,10 @@ export default async function ProfilePage({
         />
       </section>
 
-      <section className="surface border rounded-xl p-4">
-        <h2 className="text-sm uppercase tracking-wide opacity-60 mb-3">{t("profileAssignedNow", locale)}</h2>
+      <section className="bg-surface border border-line rounded-panel p-4">
+        <h2 className="text-md font-semibold mb-3">{t("profileAssignedNow", locale)}</h2>
         {assignedNow.length === 0 ? (
-          <p className="text-sm opacity-60">{t("none", locale)}</p>
+          <p className="text-sm text-ink-muted">{t("none", locale)}</p>
         ) : (
           <ul className="space-y-1 text-sm">
             {assignedNow.map((a) => (
@@ -173,7 +173,7 @@ export default async function ProfilePage({
                 >
                   {a.card.title}
                 </Link>
-                <span className="text-xs opacity-60 shrink-0">
+                <span className="text-xs text-ink-muted shrink-0">
                   {a.card.column.board.name} / {a.card.column.name}
                 </span>
               </li>
@@ -183,10 +183,10 @@ export default async function ProfilePage({
       </section>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <section className="surface border rounded-xl p-4">
-          <h2 className="text-sm uppercase tracking-wide opacity-60 mb-3">{t("profileLatestMoves", locale)}</h2>
+        <section className="bg-surface border border-line rounded-panel p-4">
+          <h2 className="text-md font-semibold mb-3">{t("profileLatestMoves", locale)}</h2>
           {latestMoves.length === 0 ? (
-            <p className="text-sm opacity-60">{t("none", locale)}</p>
+            <p className="text-sm text-ink-muted">{t("none", locale)}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {latestMoves.map((m) => (
@@ -197,7 +197,7 @@ export default async function ProfilePage({
                   >
                     {m.cardTitle}
                   </Link>
-                  <div className="text-xs opacity-60">
+                  <div className="text-xs text-ink-muted">
                     {m.fromColumnName ? `${m.fromColumnName} -> ` : ""}{m.toColumnName} - {formatDateTime(m.createdAt, locale)}
                   </div>
                 </li>
@@ -206,10 +206,10 @@ export default async function ProfilePage({
           )}
         </section>
 
-        <section className="surface border rounded-xl p-4">
-          <h2 className="text-sm uppercase tracking-wide opacity-60 mb-3">{t("profileLatestComments", locale)}</h2>
+        <section className="bg-surface border border-line rounded-panel p-4">
+          <h2 className="text-md font-semibold mb-3">{t("profileLatestComments", locale)}</h2>
           {latestComments.length === 0 ? (
-            <p className="text-sm opacity-60">{t("none", locale)}</p>
+            <p className="text-sm text-ink-muted">{t("none", locale)}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {latestComments.map((c) => (
@@ -220,7 +220,7 @@ export default async function ProfilePage({
                   >
                     {c.card.title}
                   </Link>
-                  <div className="text-xs opacity-60 line-clamp-2">{c.body}</div>
+                  <div className="text-xs text-ink-muted line-clamp-2">{c.body}</div>
                 </li>
               ))}
             </ul>
@@ -258,9 +258,9 @@ export default async function ProfilePage({
 
 function Counter({ label, value }: { label: string; value: number }) {
   return (
-    <div className="surface border rounded-xl p-4">
-      <div className="text-xs uppercase opacity-60">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
+    <div className="bg-surface border border-line rounded-panel p-4">
+      <div className="text-sm text-ink-muted">{label}</div>
+      <div className="text-xl font-semibold mt-1 tabular-nums">{value}</div>
     </div>
   );
 }
@@ -275,10 +275,10 @@ function SessionsList({
   locale: import("@/lib/i18n").Locale;
 }) {
   return (
-    <section className="surface border rounded-xl p-4">
-      <h2 className="text-sm uppercase tracking-wide opacity-60 mb-3">{title}</h2>
+    <section className="bg-surface border border-line rounded-panel p-4">
+      <h2 className="text-md font-semibold mb-3">{title}</h2>
       {sessions.length === 0 ? (
-        <p className="text-sm opacity-60">{t("none", locale)}</p>
+        <p className="text-sm text-ink-muted">{t("none", locale)}</p>
       ) : (
         <ul className="space-y-1 text-sm">
           {sessions.map((s) => (
@@ -291,7 +291,7 @@ function SessionsList({
                   ? t("profileSessionDesktop", locale)
                   : t("profileSessionWeb", locale)}
               </span>
-              <span className="text-xs opacity-60 ml-auto">{formatDateTime(new Date(s.lastSeenAt), locale)}</span>
+              <span className="text-xs text-ink-muted ml-auto tabular-nums">{formatDateTime(new Date(s.lastSeenAt), locale)}</span>
             </li>
           ))}
         </ul>

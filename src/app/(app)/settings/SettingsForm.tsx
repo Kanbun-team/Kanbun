@@ -32,8 +32,8 @@ export default function SettingsForm({ locale, initial }: Props) {
 
   return (
     <div className="space-y-6">
-      <section className="surface border rounded-xl p-4 space-y-3">
-        <h2 className="font-medium">{t("settingsTheme", locale)}</h2>
+      <section className="bg-surface border border-line rounded-panel p-4 space-y-3">
+        <h2 className="text-md font-semibold">{t("settingsTheme", locale)}</h2>
         <div className="flex gap-2">
           {(["light", "dark", "system"] as const).map((opt) => (
             <button
@@ -47,10 +47,10 @@ export default function SettingsForm({ locale, initial }: Props) {
                   router.refresh();
                 });
               }}
-              className={`rounded px-3 py-1 text-sm border ${
+              className={`rounded-control px-3 py-1 text-sm border ${
                 initial.theme === opt
-                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30"
-                  : "border-[var(--border)]"
+                  ? "border-accent bg-accent-soft"
+                  : "border-line-strong hover:bg-ink/5"
               }`}
             >
               {opt === "light" ? t("themeLight", locale) : opt === "dark" ? t("themeDark", locale) : t("themeSystem", locale)}
@@ -59,8 +59,8 @@ export default function SettingsForm({ locale, initial }: Props) {
         </div>
       </section>
 
-      <section className="surface border rounded-xl p-4 space-y-3">
-        <h2 className="font-medium">{t("settingsLanguage", locale)}</h2>
+      <section className="bg-surface border border-line rounded-panel p-4 space-y-3">
+        <h2 className="text-md font-semibold">{t("settingsLanguage", locale)}</h2>
         <div className="flex gap-2">
           {(["en", "it", "pl", "de"] as const).map((lng) => (
             <button
@@ -73,10 +73,10 @@ export default function SettingsForm({ locale, initial }: Props) {
                   router.refresh();
                 })
               }
-              className={`rounded px-3 py-1 text-sm border ${
+              className={`rounded-control px-3 py-1 text-sm border ${
                 initial.language === lng
-                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30"
-                  : "border-[var(--border)]"
+                  ? "border-accent bg-accent-soft"
+                  : "border-line-strong hover:bg-ink/5"
               }`}
             >
               {lng === "en" ? t("langEnglish", locale) :

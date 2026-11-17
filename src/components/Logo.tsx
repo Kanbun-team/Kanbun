@@ -8,10 +8,10 @@ export default function Logo({ size = 28, className = "" }: { size?: number; cla
       className={className}
       aria-hidden="true"
     >
-      <rect x="2" y="2" width="28" height="28" rx="6" fill="#2563eb" />
-      <rect x="6" y="6" width="6" height="14" rx="1.5" fill="#ffffff" />
-      <rect x="14" y="6" width="6" height="20" rx="1.5" fill="#bfdbfe" />
-      <rect x="22" y="6" width="6" height="10" rx="1.5" fill="#dbeafe" />
+      <rect x="2" y="2" width="28" height="28" rx="6" fill="#2B4C9B" />
+      <rect x="6" y="6" width="6" height="14" rx="1.5" fill="#FFFFFF" />
+      <rect x="14" y="6" width="6" height="20" rx="1.5" fill="#C9D5F0" />
+      <rect x="22" y="6" width="6" height="10" rx="1.5" fill="#E8EDF8" />
     </svg>
   );
 }

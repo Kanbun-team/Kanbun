@@ -33,7 +33,7 @@ export default function UserMenu({ user, locale }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full p-1 hover:bg-slate-200/40 dark:hover:bg-slate-700/40 transition"
+        className="flex items-center gap-2 rounded-full p-1 hover:bg-ink/5 transition"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -45,33 +45,33 @@ export default function UserMenu({ user, locale }: Props) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-56 rounded-xl surface border shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 mt-2 w-56 rounded-panel bg-raised border border-line shadow-float z-50 overflow-hidden"
         >
           <Link
             href={`/users/${encodeURIComponent(user.username)}`}
             onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-4 py-2 text-sm hover:bg-ink/5"
           >
             {t("navProfile", locale)}
           </Link>
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-4 py-2 text-sm hover:bg-ink/5"
           >
             {t("navSettings", locale)}
           </Link>
           <Link
             href="/trash"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-4 py-2 text-sm hover:bg-ink/5"
           >
             {t("navTrash", locale)}
           </Link>
           <Link
             href="/whats-new"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-4 py-2 text-sm hover:bg-ink/5"
           >
             {t("navWhatsNew", locale)}
           </Link>
@@ -79,7 +79,7 @@ export default function UserMenu({ user, locale }: Props) {
             <Link
               href="/admin/users"
               onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="block px-4 py-2 text-sm hover:bg-ink/5"
             >
               {t("navAdmin", locale)}
             </Link>
@@ -87,7 +87,7 @@ export default function UserMenu({ user, locale }: Props) {
           <form action={logoutAction}>
             <button
               type="submit"
-              className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-[var(--border)]"
+              className="block w-full text-left px-4 py-2 text-sm hover:bg-ink/5 border-t border-line"
             >
               {t("navLogout", locale)}
             </button>

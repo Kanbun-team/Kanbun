@@ -31,7 +31,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
   const notifications = await getNotifications(user.id);
 
   return (
-    <header className="border-b border-[var(--border)] surface sticky top-0 z-40">
+    <header className="border-b border-line bg-surface sticky top-0 z-40">
       <div className="mx-auto max-w-7xl group-has-[[data-wide]]/app:max-w-none px-4 sm:px-6">
         <div className="flex items-center gap-3 h-14">
           <Link href="/tasks" className="flex items-center gap-2 font-semibold">
@@ -41,20 +41,20 @@ export default async function AppNav({ locale }: { locale: Locale }) {
           <nav className="hidden md:flex items-center gap-1 ml-4 text-sm">
             <Link
               href="/tasks"
-              className="px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-3 py-1.5 rounded-control hover:bg-ink/5"
             >
               {t("navBoards", locale)}
             </Link>
             <Link
               href="/tasks/me"
-              className="px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-3 py-1.5 rounded-control hover:bg-ink/5"
             >
               {t("navMyTasks", locale)}
             </Link>
             {isAdmin && (
               <Link
                 href="/admin/users"
-                className="px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="px-3 py-1.5 rounded-control hover:bg-ink/5"
               >
                 {t("navAdmin", locale)}
               </Link>

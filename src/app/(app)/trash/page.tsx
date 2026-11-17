@@ -69,10 +69,10 @@ export default async function TrashPage() {
                   <div className="font-medium truncate">
                     <span className="text-ink-muted font-normal">{kindLabel[item.kind as keyof typeof kindLabel]}: </span>
                     {item.label}
+                    {board && <span className="text-ink-muted font-normal"> {t("trashOnBoard", locale).replace("{board}", board)}</span>}
                   </div>
                   <div className="text-sm text-ink-muted">
                     {[
-                      board ? t("trashOnBoard", locale).replace("{board}", board) : null,
                       by ? t("trashDeletedBy", locale).replace("{name}", by) : null,
                       formatDateTime(item.deletedAt, locale),
                     ]

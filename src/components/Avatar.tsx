@@ -65,6 +65,7 @@ export default function Avatar({
             online ? "bg-success" : "bg-ink-muted"
           )}
           style={{ width: dotSize, height: dotSize }}
+          role="img"
           aria-label={online ? "online" : "offline"}
         />
       )}

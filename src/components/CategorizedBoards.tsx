@@ -291,8 +291,8 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
           <section
             key={cat.id}
             className={cn(
-              "space-y-3 rounded-xl transition-colors duration-150",
-              isTargetEmpty && "bg-slate-50 dark:bg-slate-900/40 ring-2 ring-dashed"
+              "space-y-3 rounded-panel transition-colors duration-150",
+              isTargetEmpty && "bg-ink/5 ring-2 ring-dashed"
             )}
             style={
               isTargetEmpty
@@ -306,10 +306,10 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
                 className="w-2.5 h-2.5 rounded-full"
                 style={{ background: cat.color }}
               />
-              <h2 className="text-sm font-semibold uppercase tracking-wide opacity-80">
+              <h2 className="text-md font-semibold">
                 {cat.name}
               </h2>
-              <span className="text-xs opacity-50">{list.length}</span>
+              <span className="text-sm text-ink-muted tabular-nums">{list.length}</span>
             </header>
             {renderGrid(list, cat.id)}
           </section>

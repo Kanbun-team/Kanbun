@@ -39,7 +39,7 @@ function inline(raw: string): string {
   // Code spans first, so nothing inside them is formatted.
   out = out.replace(/`([^`]+)`/g, (_m, code: string) =>
     stash(
-      `<code class="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.85em]">${code}</code>`
+      `<code class="px-1 py-0.5 rounded bg-ink/5 text-[0.85em]">${code}</code>`
     )
   );
 
@@ -50,7 +50,7 @@ function inline(raw: string): string {
     /\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)/g,
     (_m, text: string, url: string) =>
       stash(
-        `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand-600 underline">${emphasis(text)}</a>`
+        `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-accent underline">${emphasis(text)}</a>`
       )
   );
 

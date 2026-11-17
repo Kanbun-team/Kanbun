@@ -32,11 +32,11 @@ function dateKey(d: Date): string {
 }
 
 function intensityClass(total: number): string {
-  if (total === 0) return "bg-slate-200/60 dark:bg-slate-700/40";
-  if (total < 2) return "bg-brand-200 dark:bg-brand-900/60";
-  if (total < 5) return "bg-brand-400 dark:bg-brand-700";
-  if (total < 10) return "bg-brand-500 dark:bg-brand-600";
-  return "bg-brand-700 dark:bg-brand-500";
+  if (total === 0) return "bg-ink/10";
+  if (total < 2) return "bg-accent/25";
+  if (total < 5) return "bg-accent/50";
+  if (total < 10) return "bg-accent/75";
+  return "bg-accent";
 }
 
 export default function Heatmap({ startDate, endDate, buckets, locale }: HeatmapProps) {
@@ -71,7 +71,7 @@ export default function Heatmap({ startDate, endDate, buckets, locale }: Heatmap
           {monthLabels.map((m) => (
             <div
               key={m.col}
-              className="text-[10px] opacity-60"
+              className="text-xs text-ink-muted whitespace-nowrap"
               style={{ gridColumn: m.col + 1, gridRow: 1 }}
             >
               {m.label}

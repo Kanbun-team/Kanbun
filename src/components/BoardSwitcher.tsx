@@ -54,7 +54,7 @@ export default function BoardSwitcher({ boards, locale }: Props) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-1 px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 max-w-[220px]"
+        className="flex items-center gap-1 px-3 py-1.5 rounded-control hover:bg-ink/5 max-w-[220px]"
       >
         <span className="truncate font-medium">{current.name}</span>
         <svg
@@ -66,7 +66,7 @@ export default function BoardSwitcher({ boards, locale }: Props) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="opacity-60 shrink-0"
+          className="text-ink-muted shrink-0"
           aria-hidden="true"
         >
           <path d="M5 8l5 5 5-5" />
@@ -75,16 +75,16 @@ export default function BoardSwitcher({ boards, locale }: Props) {
       {open && (
         <div
           role="menu"
-          className="absolute mt-2 w-64 rounded-xl surface border shadow-lg z-50 max-h-80 overflow-auto"
+          className="absolute mt-2 w-64 rounded-panel bg-raised border border-line shadow-float z-50 max-h-80 overflow-auto"
         >
           {others.length === 0 ? (
-            <div className="px-4 py-2 text-xs opacity-60">{t("noResults", locale)}</div>
+            <div className="px-4 py-2 text-xs text-ink-muted">{t("noResults", locale)}</div>
           ) : (
             others.map((b) => (
               <Link
                 key={b.id}
                 href={`/tasks/${b.id}`}
-                className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 truncate"
+                className="block px-4 py-2 text-sm hover:bg-ink/5 truncate"
               >
                 {b.name}
               </Link>
@@ -92,7 +92,7 @@ export default function BoardSwitcher({ boards, locale }: Props) {
           )}
           <Link
             href="/tasks"
-            className="block px-4 py-2 text-sm font-medium border-t border-[var(--border)] hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="block px-4 py-2 text-sm font-medium border-t border-line hover:bg-ink/5"
           >
             {t("boardsTitle", locale)}
           </Link>

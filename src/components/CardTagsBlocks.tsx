@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { chipStyle } from "@/lib/palette";
+import { buttonClass } from "./ui/button";
 import { addBlockAction, removeBlockAction, toggleCardTagAction } from "@/server/tasks-actions";
 
 export interface CardTagsProps {
@@ -49,12 +51,12 @@ export function CardTags({ cardId, boardTags, selectedTagIds, locale }: CardTags
             key={tag.id}
             type="button"
             onClick={() => toggle(tag.id)}
-            title={`${tag.name} — ${t("remove", locale)}`}
-            className="group inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
-            style={{ background: tag.color + "33", color: tag.color }}
+            title={`${t("remove", locale)}: ${tag.name}`}
+            className="chip group inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-control font-medium focus:outline-none focus:ring-2 focus:ring-accent"
+            style={chipStyle(tag.color) as CSSProperties}
           >
             {tag.name}
-            <span className="opacity-50 group-hover:opacity-100">&times;</span>
+            <span aria-hidden="true">&times;</span>
           </button>
         ))}
         <button
@@ -62,18 +64,18 @@ export function CardTags({ cardId, boardTags, selectedTagIds, locale }: CardTags
           onClick={() => setOpen((o) => !o)}
           aria-label={t("add", locale)}
           aria-expanded={open}
-          className="w-6 h-6 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-sm leading-none opacity-70 hover:opacity-100 hover:border-brand-500"
+          className="w-6 h-6 rounded-full border border-dashed border-line-strong flex items-center justify-center text-sm leading-none text-ink-muted hover:text-ink hover:border-accent"
         >
           +
         </button>
         {selected.length === 0 && (
-          <span className="text-sm opacity-50">{t("cardNoTags", locale)}</span>
+          <span className="text-sm text-ink-muted">{t("cardNoTags", locale)}</span>
         )}
       </div>
       {open && (
-        <div className="absolute mt-2 z-50 w-60 surface border rounded-lg shadow-lg p-1 max-h-64 overflow-auto">
+        <div className="absolute mt-2 z-50 w-60 bg-raised border border-line rounded-panel shadow-float p-1 max-h-64 overflow-auto">
           {boardTags.length === 0 && (
-            <p className="text-sm opacity-60 px-2 py-1">{t("noResults", locale)}</p>
+            <p className="text-sm text-ink-muted px-2 py-1">{t("noResults", locale)}</p>
           )}
           {boardTags.map((tag) => {
             const on = set.has(tag.id);
@@ -83,13 +85,13 @@ export function CardTags({ cardId, boardTags, selectedTagIds, locale }: CardTags
                 type="button"
                 onClick={() => toggle(tag.id)}
                 className={cn(
-                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
-                  on && "bg-slate-50 dark:bg-slate-800/50"
+                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-control hover:bg-ink/5",
+                  on && "bg-accent-soft"
                 )}
               >
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: tag.color }} />
                 <span className="text-sm flex-1 truncate">{tag.name}</span>
-                {on && <span className="text-brand-600">&#10003;</span>}
+                {on && <span className="text-accent">&#10003;</span>}
               </button>
             );
           })}
@@ -136,11 +138,11 @@ export function CardBlocks({
           await addBlockAction(fd);
           router.refresh();
         }}
-        className="sm:col-span-2 flex flex-wrap items-end gap-2 surface border rounded-lg p-3"
+        className="sm:col-span-2 flex flex-wrap items-end gap-2 bg-surface border border-line rounded-panel p-3"
       >
         <input type="hidden" name="blockedId" value={cardId} />
         <label className="flex-1 min-w-[200px]">
-          <span className="text-xs opacity-70">{t("cardBlockedBy", locale)}</span>
+          <span className="text-sm font-medium text-ink-muted">{t("cardBlockedBy", locale)}</span>
           <select name="blockerId" required className="mt-1">
             <option value="">{t("cardBlockSelectCard", locale)}</option>
             {candidates.map((c) => (
@@ -150,7 +152,7 @@ export function CardBlocks({
             ))}
           </select>
         </label>
-        <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1">
+        <button className={buttonClass("primary")}>
           {t("cardBlockAdd", locale)}
         </button>
       </form>
@@ -171,10 +173,10 @@ function BlocksColumn({
 }) {
   const router = useRouter();
   return (
-    <div className="surface border rounded-lg p-3">
-      <div className="text-xs uppercase tracking-wide opacity-60 mb-2">{title}</div>
+    <div className="bg-surface border border-line rounded-panel p-3">
+      <div className="text-sm font-medium text-ink-muted mb-2">{title}</div>
       {items.length === 0 ? (
-        <p className="text-sm opacity-60">{emptyText}</p>
+        <p className="text-sm text-ink-muted">{emptyText}</p>
       ) : (
         <ul className="space-y-1 text-sm">
           {items.map((it) => (
@@ -192,7 +194,7 @@ function BlocksColumn({
                 }}
               >
                 <input type="hidden" name="blockId" value={it.blockId} />
-                <button className="text-xs opacity-50 hover:opacity-100">&times;</button>
+                <button className="text-xs text-ink-muted hover:text-ink">&times;</button>
               </form>
             </li>
           ))}

@@ -24,6 +24,7 @@ import {
 import { useUi } from "./ui/UiProvider";
 import { useUndo } from "./ui/useUndo";
 import TagChip from "./ui/TagChip";
+import { buttonClass } from "./ui/button";
 
 export interface MemberOption {
   id: string;
@@ -262,7 +263,7 @@ export default function TaskBoard({
           <section
             key={col.id}
             aria-label={col.name}
-            className="surface border rounded-xl w-80 shrink-0 snap-start flex flex-col max-h-[80vh]"
+            className="bg-surface border border-line rounded-panel w-80 shrink-0 snap-start flex flex-col max-h-[80vh]"
             onDragOver={(e) => {
               if (filtering) return;
               e.preventDefault();
@@ -293,7 +294,7 @@ export default function TaskBoard({
                   }}
                 >
                   {!filtering && dragOver?.columnId === col.id && dragOver.index === i && (
-                    <div className="h-1.5 rounded bg-brand-500/60 my-1" />
+                    <div className="h-1.5 rounded-full bg-accent/60 my-1" />
                   )}
                   <CardItem
                     boardId={boardId}
@@ -307,7 +308,7 @@ export default function TaskBoard({
                 </div>
               ))}
               {!filtering && dragOver?.columnId === col.id && dragOver.index >= col.cards.length && (
-                <div className="h-1.5 rounded bg-brand-500/60 my-1" />
+                <div className="h-1.5 rounded-full bg-accent/60 my-1" />
               )}
               {!filtering && <AddCardForm columnId={col.id} locale={locale} />}
             </div>
@@ -316,7 +317,7 @@ export default function TaskBoard({
         {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
       </div>
       {filtering && visibleCount === 0 && (
-        <p className="text-sm opacity-60 px-1">{t("filterNoMatch", locale)}</p>
+        <p className="text-sm text-ink-muted px-1">{t("filterNoMatch", locale)}</p>
       )}
       {contextMenu && (
         <CardContextMenu
@@ -371,8 +372,8 @@ function FilterBar({
     (filters.mine ? 1 : 0);
 
   const selectClass =
-    "!py-1 !text-sm w-full rounded-md border border-[var(--border)] bg-transparent";
-  const fieldLabel = "block text-xs uppercase tracking-wide opacity-50 mb-1";
+    "!py-1 !text-sm w-full rounded-control border border-line-strong bg-transparent";
+  const fieldLabel = "block text-sm font-medium text-ink-muted mb-1";
 
   return (
     <div className="relative inline-block" ref={ref}>
@@ -381,10 +382,10 @@ function FilterBar({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         className={cn(
-          "inline-flex items-center gap-2 rounded-md text-sm px-3 py-1.5 border transition",
+          "inline-flex items-center gap-2 rounded-control text-sm px-3 py-1.5 border transition",
           filtering
-            ? "border-brand-500 text-brand-600"
-            : "border-[var(--border)] opacity-80 hover:opacity-100"
+            ? "border-accent bg-accent-soft text-accent"
+            : "border-line-strong text-ink-muted hover:text-ink hover:bg-ink/5"
         )}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -392,13 +393,13 @@ function FilterBar({
         </svg>
         {t("filter", locale)}
         {activeCount > 0 && (
-          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-600 text-white text-[11px] font-semibold flex items-center justify-center">
+          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-accent-fg text-xs font-semibold tabular-nums flex items-center justify-center">
             {activeCount}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute left-0 z-50 mt-2 w-72 surface border rounded-xl shadow-xl p-3 space-y-3">
+        <div className="absolute left-0 z-50 mt-2 w-72 bg-raised border border-line rounded-panel shadow-float p-3 space-y-3">
           <div>
             <input
               type="search"
@@ -466,21 +467,21 @@ function FilterBar({
             onClick={() => setFilters({ ...filters, mine: !filters.mine, assigneeId: "" })}
             aria-pressed={filters.mine}
             className={cn(
-              "w-full rounded-md text-sm px-2.5 py-1.5 border transition",
+              "w-full rounded-control text-sm px-2.5 py-1.5 border transition",
               filters.mine
-                ? "bg-brand-600 text-white border-transparent"
-                : "border-[var(--border)] opacity-80 hover:opacity-100"
+                ? "bg-accent text-accent-fg border-transparent"
+                : "border-line-strong text-ink-muted hover:text-ink hover:bg-ink/5"
             )}
           >
             {t("filterAssignedToMe", locale)}
           </button>
           {filtering && (
-            <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
-              <span className="text-xs opacity-60">{visibleCount}</span>
+            <div className="flex items-center justify-between pt-1 border-t border-line">
+              <span className="text-xs text-ink-muted tabular-nums">{visibleCount}</span>
               <button
                 type="button"
                 onClick={() => setFilters(EMPTY_FILTERS)}
-                className="text-sm opacity-70 hover:opacity-100"
+                className="text-sm text-ink-muted hover:text-ink"
               >
                 {t("filterClear", locale)}
               </button>
@@ -523,7 +524,7 @@ function ColumnHeader({
     });
   }
   return (
-    <div className="px-3 py-2 border-b border-[var(--border)] flex items-center gap-2">
+    <div className="px-3 py-2 border-b border-line flex items-center gap-2">
       {editing ? (
         <form
           action={async (fd) => {
@@ -549,7 +550,7 @@ function ColumnHeader({
             title={t("columnWipLimit", locale)}
             className="!py-1 w-16"
           />
-          <button className="text-sm rounded bg-brand-600 hover:bg-brand-700 text-white px-2">
+          <button className="text-sm font-medium rounded-control bg-accent hover:bg-accent-hover text-accent-fg px-2">
             {t("save", locale)}
           </button>
         </form>
@@ -566,7 +567,7 @@ function ColumnHeader({
           <span
             className={cn(
               "text-xs tabular-nums",
-              over ? "text-red-500 font-semibold" : "opacity-60"
+              over ? "text-danger font-semibold" : "text-ink-muted"
             )}
             title={column.wipLimit != null ? t("columnWipLimit", locale) : undefined}
           >
@@ -577,7 +578,7 @@ function ColumnHeader({
             <button
               type="button"
               onClick={deleteColumn}
-              className="text-xs opacity-60 hover:opacity-100 px-1"
+              className="text-xs text-ink-muted hover:text-ink px-1"
               title={t("columnDelete", locale)}
               aria-label={`${t("columnDelete", locale)}: ${column.name}`}
             >
@@ -600,7 +601,7 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
     return (
       <button
         type="button"
-        className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] py-2 text-sm font-medium opacity-60 hover:opacity-100 hover:border-brand-500 hover:bg-slate-50 dark:hover:bg-slate-900/40 transition"
+        className="w-full flex items-center justify-center gap-2 rounded-card border border-dashed border-line-strong py-2 text-sm font-medium text-ink-muted hover:text-ink hover:border-accent hover:bg-ink/5 transition"
         onClick={() => setOpen(true)}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -640,13 +641,13 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
         }}
       />
       <div className="flex gap-2">
-        <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1">
+        <button className={buttonClass("primary", "sm")}>
           {t("add", locale)}
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-sm px-3 py-1 opacity-70 hover:opacity-100"
+          className={buttonClass("ghost", "sm")}
         >
           {t("cancel", locale)}
         </button>
@@ -669,7 +670,7 @@ function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale })
             ref.current?.reset();
             setOpen(false);
           }}
-          className="surface border rounded-xl p-3 space-y-2"
+          className="bg-surface border border-line rounded-panel p-3 space-y-2"
         >
           <input type="hidden" name="boardId" value={boardId} />
           <input
@@ -680,13 +681,13 @@ function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale })
             placeholder={t("columnName", locale)}
           />
           <div className="flex gap-2">
-            <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1">
+            <button className={buttonClass("primary", "sm")}>
               {t("add", locale)}
             </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-sm px-3 py-1 opacity-70 hover:opacity-100"
+              className={buttonClass("ghost", "sm")}
             >
               {t("cancel", locale)}
             </button>
@@ -696,7 +697,7 @@ function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale })
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-full text-left p-3 rounded-xl border border-dashed border-[var(--border)] hover:border-brand-500"
+          className="w-full text-left p-3 rounded-panel border border-dashed border-line-strong text-ink-muted hover:text-ink hover:border-accent hover:bg-ink/5"
         >
           + {t("columnAdd", locale)}
         </button>
@@ -741,7 +742,7 @@ function CardItem({
         e.preventDefault();
         onContextMenu(e.clientX, e.clientY);
       }}
-      className="block surface border rounded-lg p-3 hover:border-brand-500 transition shadow-sm overflow-hidden"
+      className="block bg-raised border border-line rounded-card p-3 hover:border-accent transition shadow-card overflow-hidden"
     >
       {card.coverColor && (
         <div
@@ -751,7 +752,7 @@ function CardItem({
         />
       )}
       <div className="flex items-start justify-between gap-2">
-        <div className="text-sm font-medium leading-snug">{card.title}</div>
+        <div className="text-base font-medium leading-snug">{card.title}</div>
       </div>
       {card.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
@@ -760,26 +761,27 @@ function CardItem({
           ))}
         </div>
       )}
-      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1 flex-wrap">
-          <span className={cn("rounded px-1.5 py-0.5 font-medium", priorityClass(card.priority))}>
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-ink-muted">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1 font-medium">
+            <span aria-hidden="true" className={cn("w-2 h-2 rounded-full shrink-0", priorityClass(card.priority))} />
             {priorityLabel(card.priority, locale)}
           </span>
           {card.deadline && (
-            <span className={cn("opacity-80", overdue && "text-red-500")}>
+            <span className={cn("tabular-nums", overdue && "text-danger font-medium")}>
               {formatDate(new Date(card.deadline), locale)}
             </span>
           )}
           {card.subtasksTotal > 0 && (
-            <span className="opacity-80">
+            <span className="tabular-nums">
               {card.subtasksDone}/{card.subtasksTotal}
             </span>
           )}
           {card.commentsCount > 0 && (
-            <span className="opacity-70">{card.commentsCount}c</span>
+            <span className="tabular-nums">{card.commentsCount}c</span>
           )}
           {card.blockedByCount > 0 && (
-            <span className="text-red-500" title={t("cardBlockedBy", locale)}>
+            <span className="text-danger font-semibold" title={t("cardBlockedBy", locale)}>
               !
             </span>
           )}
@@ -812,9 +814,9 @@ function ContextSubmenu({
 }) {
   return (
     <div className="group relative">
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-default">
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-ink/5 cursor-default">
         <span>{label}</span>
-        <span className="flex items-center gap-1 opacity-60">
+        <span className="flex items-center gap-1 text-ink-muted">
           {value && <span className="text-xs">{value}</span>}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M9 6l6 6-6 6" />
@@ -827,7 +829,7 @@ function ContextSubmenu({
           flip ? "right-full pr-1" : "left-full pl-1"
         )}
       >
-        <div className="w-56 surface border rounded-lg shadow-xl py-1 max-h-72 overflow-auto">
+        <div className="w-56 bg-raised border border-line rounded-panel shadow-float py-1 max-h-72 overflow-auto">
           {children}
         </div>
       </div>
@@ -883,17 +885,17 @@ function CardContextMenu({
   }
 
   const itemClass =
-    "flex items-center gap-2 w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800";
+    "flex items-center gap-2 w-full text-left px-3 py-1.5 hover:bg-ink/5";
 
   return (
     <div
-      className="fixed z-50 w-52 surface border rounded-lg shadow-xl text-sm py-1"
+      className="fixed z-50 w-52 bg-raised border border-line rounded-panel shadow-float text-sm py-1"
       style={{ top: y, left: x }}
       onClick={(e) => e.stopPropagation()}
     >
       <ContextSubmenu label={t("cardAssignees", locale)} flip={flip}>
         {members.length === 0 && (
-          <div className="px-3 py-1.5 opacity-60">{t("noResults", locale)}</div>
+          <div className="px-3 py-1.5 text-ink-muted">{t("noResults", locale)}</div>
         )}
         {members.map((u) => (
           <button
@@ -904,14 +906,14 @@ function CardContextMenu({
           >
             <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={20} />
             <span className="flex-1 truncate">{u.displayName ?? u.username}</span>
-            {assignedIds.has(u.id) && <span className="text-brand-600">&#10003;</span>}
+            {assignedIds.has(u.id) && <span className="text-accent">&#10003;</span>}
           </button>
         ))}
       </ContextSubmenu>
 
       <ContextSubmenu label={t("cardTags", locale)} flip={flip}>
         {boardTags.length === 0 && (
-          <div className="px-3 py-1.5 opacity-60">{t("noResults", locale)}</div>
+          <div className="px-3 py-1.5 text-ink-muted">{t("noResults", locale)}</div>
         )}
         {boardTags.map((tg) => (
           <button
@@ -922,7 +924,7 @@ function CardContextMenu({
           >
             <span className="w-3 h-3 rounded-full shrink-0" style={{ background: tg.color }} />
             <span className="flex-1 truncate">{tg.name}</span>
-            {tagIds.has(tg.id) && <span className="text-brand-600">&#10003;</span>}
+            {tagIds.has(tg.id) && <span className="text-accent">&#10003;</span>}
           </button>
         ))}
       </ContextSubmenu>
@@ -941,7 +943,7 @@ function CardContextMenu({
           >
             <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", priorityClass(p))} />
             <span className="flex-1">{priorityLabel(p, locale)}</span>
-            {card.priority === p && <span className="text-brand-600">&#10003;</span>}
+            {card.priority === p && <span className="text-accent">&#10003;</span>}
           </button>
         ))}
       </ContextSubmenu>
@@ -957,8 +959,8 @@ function CardContextMenu({
               className={cn(
                 "w-6 h-6 rounded-full transition",
                 card.coverColor?.toLowerCase() === c
-                  ? "ring-2 ring-offset-1 ring-offset-[var(--bg)] ring-brand-500"
-                  : "ring-1 ring-[var(--border)] hover:scale-110"
+                  ? "ring-2 ring-offset-1 ring-offset-raised ring-accent"
+                  : "ring-1 ring-line hover:scale-110"
               )}
               style={{ background: c }}
             />
@@ -969,8 +971,8 @@ function CardContextMenu({
             aria-label={t("none", locale)}
             title={t("none", locale)}
             className={cn(
-              "w-6 h-6 rounded-full border border-dashed border-[var(--border)] flex items-center justify-center text-xs leading-none",
-              !card.coverColor ? "ring-2 ring-brand-500" : "opacity-70 hover:opacity-100"
+              "w-6 h-6 rounded-full border border-dashed border-line-strong flex items-center justify-center text-xs leading-none",
+              !card.coverColor ? "ring-2 ring-accent text-ink" : "text-ink-muted hover:text-ink"
             )}
           >
             &times;
@@ -978,7 +980,7 @@ function CardContextMenu({
         </div>
       </ContextSubmenu>
 
-      <div className="my-1 border-t border-[var(--border)]" />
+      <div className="my-1 border-t border-line" />
       <button
         type="button"
         onClick={deleteCard}

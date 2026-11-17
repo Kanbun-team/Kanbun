@@ -20,14 +20,14 @@ export function priorityLabel(p: string, locale: Locale): string {
 export function priorityClass(p: string): string {
   switch (p) {
     case "low":
-      return "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
+      return "bg-ink-muted";
     case "high":
-      return "bg-orange-200 text-orange-900 dark:bg-orange-700/40 dark:text-orange-200";
+      return "bg-warning";
     case "critical":
-      return "bg-red-200 text-red-900 dark:bg-red-700/40 dark:text-red-200";
+      return "bg-danger";
     case "normal":
     default:
-      return "bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200";
+      return "bg-accent";
   }
 }
 
@@ -44,8 +44,8 @@ export function roleFullLabel(role: string, locale: Locale): string {
 
 export function roleBadgeClass(role: string): string {
   return asAppRole(role) === "admin"
-    ? "bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200"
-    : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+    ? "bg-accent-soft text-accent"
+    : "bg-ink/5 text-ink-muted";
 }
 
 export function boardRoleLabel(role: string, locale: Locale): string {
