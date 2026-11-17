@@ -24,9 +24,17 @@ for (const colorScheme of ["light", "dark"] as const) {
       await scan("board");
       const boardUrl = page.url();
 
-      await column(page, "In progress").getByRole("link", { name: "Responsive navigation" }).click();
+      await column(page, "In progress").getByRole("link", { name: /Responsive navigation/ }).click();
       await page.waitForURL(/\/cards\//);
-      await scan("card");
+      await page.getByRole("dialog").waitFor();
+      await scan("card panel");
+      const cardUrl = page.url();
+      await page.goto(cardUrl);
+      await scan("card page");
+      await page.goto(boardUrl);
+      await page.locator("body").press("?");
+      await scan("shortcuts");
+      await page.keyboard.press("Escape");
 
       for (const path of [`${boardUrl}/settings`, "/tasks/me", "/settings", "/admin/users", "/trash", "/whats-new", "/users/marta"]) {
         await page.goto(path);

@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 export const PASSWORD = "demo1234";
@@ -37,4 +37,25 @@ export async function axeViolations(page: Page) {
     nodes: v.nodes.slice(0, 3).map((n) => n.target.join(" ")),
   }));
   return summary;
+}
+
+/** Pointer drag in small steps, the way a person drags (dnd-kit needs real moves). */
+export async function drag(page: Page, from: Locator, to: Locator) {
+  const a = await from.boundingBox();
+  const b = await to.boundingBox();
+  if (!a || !b) throw new Error("drag: element not visible");
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(a.x + a.width / 2 + 10, a.y + a.height / 2 + 10, { steps: 5 });
+  await page.mouse.move(b.x + b.width / 2, b.y + Math.min(b.height / 2, 60), { steps: 15 });
+  await page.mouse.up();
+}
+
+export function card(page: Page, columnName: string, title: string) {
+  return column(page, columnName).locator("[data-card-id]").filter({ hasText: title });
+}
+
+/** The app's toast (dnd-kit has its own role=status live region). */
+export function toast(page: Page) {
+  return page.getByRole("region", { name: "Messages" });
 }
