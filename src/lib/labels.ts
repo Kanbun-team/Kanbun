@@ -1,4 +1,4 @@
-import { t, type Locale, type DictKey } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n";
 
 export const PRIORITIES = ["low", "normal", "high", "critical"] as const;
 export type Priority = (typeof PRIORITIES)[number];
