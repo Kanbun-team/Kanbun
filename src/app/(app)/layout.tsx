@@ -13,9 +13,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const locale = await getLocale();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="group/app min-h-screen flex flex-col">
       <AppNav locale={locale} />
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-6">
+      <main className="flex-1 mx-auto w-full max-w-7xl has-[[data-wide]]:max-w-none px-4 sm:px-6 py-6">
         {children}
       </main>
       <Footer locale={locale} />

@@ -82,7 +82,7 @@ export default async function BoardPage({
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-wide>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">

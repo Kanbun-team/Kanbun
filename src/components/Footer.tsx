@@ -9,8 +9,8 @@ export default async function Footer({ locale }: { locale: Locale }) {
   const { edition } = await getEdition();
   const isPro = edition === "pro";
   return (
-    <footer className="border-t border-[var(--border)] mt-12 py-6 px-4 safe-bottom">
-      <div className="mx-auto max-w-6xl flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm opacity-80">
+    <footer className="border-t border-[var(--border)] mt-12 py-6 px-4 sm:px-6 safe-bottom">
+      <div className="mx-auto max-w-7xl group-has-[[data-wide]]/app:max-w-none flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm opacity-80">
         <div className="flex items-center gap-2 flex-wrap">
           <Logo size={20} />
           <span className="font-medium">{t("appName", locale)}</span>

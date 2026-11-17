@@ -32,7 +32,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
 
   return (
     <header className="border-b border-[var(--border)] surface sticky top-0 z-40">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl group-has-[[data-wide]]/app:max-w-none px-4 sm:px-6">
         <div className="flex items-center gap-3 h-14">
           <Link href="/tasks" className="flex items-center gap-2 font-semibold">
             <Logo size={26} />
