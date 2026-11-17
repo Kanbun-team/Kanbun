@@ -413,6 +413,37 @@ export async function renameColumnAction(formData: FormData) {
   });
 }
 
+const columnMoveSchema = z.object({
+  columnId: z.string().min(1),
+  position: z.coerce.number().int().min(0),
+});
+
+export async function moveColumnAction(input: { columnId: string; position: number }) {
+  return safeAction(async () => {
+    const data = columnMoveSchema.parse(input);
+    const col = await prisma.boardColumn.findUnique({
+      where: { id: data.columnId },
+      select: { boardId: true },
+    });
+    if (!col) throw new ActionError("notFound");
+    const access = await loadBoardAccess(col.boardId);
+    if (!canManageBoard(access)) throw new ActionError("forbidden");
+    await prisma.$transaction(async (tx) => {
+      const cols = await tx.boardColumn.findMany({
+        where: { boardId: col.boardId },
+        orderBy: { position: "asc" },
+        select: { id: true },
+      });
+      const ids = cols.map((c) => c.id).filter((id) => id !== data.columnId);
+      const bounded = Math.max(0, Math.min(data.position, ids.length));
+      ids.splice(bounded, 0, data.columnId);
+      await Promise.all(ids.map((id, idx) => tx.boardColumn.update({ where: { id }, data: { position: idx } })));
+    });
+    revalidatePath(`/tasks/${col.boardId}`);
+    publishBoard(col.boardId);
+  });
+}
+
 export async function deleteColumnAction(formData: FormData) {
   return safeAction(async () => {
     const columnId = String(formData.get("columnId") ?? "");
@@ -439,43 +470,44 @@ const cardCreateSchema = z.object({
   title: z.string().trim().min(1).max(200),
 });
 
+// Each non-empty line of the title becomes its own card, so pasting a list
+// creates one card per line (up to 50).
 export async function addCardAction(formData: FormData) {
   return safeAction(async () => {
     const user = await requireUser();
-    const data = cardCreateSchema.parse({
-      columnId: formData.get("columnId"),
-      title: formData.get("title"),
-    });
+    const columnId = z.string().min(1).parse(formData.get("columnId"));
+    const titles = String(formData.get("title") ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 50)
+      .map((title) => cardCreateSchema.shape.title.parse(title));
+    if (titles.length === 0) throw new ActionError("invalid");
     const col = await prisma.boardColumn.findUnique({
-      where: { id: data.columnId },
+      where: { id: columnId },
       select: { boardId: true, name: true },
     });
     if (!col) throw new ActionError("notFound");
     await loadBoardAccess(col.boardId);
     const last = await prisma.taskCard.findFirst({
-      where: { columnId: data.columnId },
+      where: { columnId },
       orderBy: { position: "desc" },
       select: { position: true },
     });
-    const card = await prisma.taskCard.create({
-      data: {
-        columnId: data.columnId,
-        title: data.title,
-        position: (last?.position ?? -1) + 1,
-        createdById: user.id,
-      },
-    });
-    await prisma.taskCardMoveEvent.create({
-      data: {
-        cardId: card.id,
-        cardTitle: card.title,
-        boardId: col.boardId,
-        toColumnName: col.name,
-        userId: user.id,
-      },
+    let position = (last?.position ?? -1) + 1;
+    await prisma.$transaction(async (tx) => {
+      for (const title of titles) {
+        const card = await tx.taskCard.create({
+          data: { columnId, title, position: position++, createdById: user.id },
+        });
+        await tx.taskCardMoveEvent.create({
+          data: { cardId: card.id, cardTitle: card.title, boardId: col.boardId, toColumnName: col.name, userId: user.id },
+        });
+      }
     });
     revalidatePath(`/tasks/${col.boardId}`);
     publishBoard(col.boardId);
+    return { count: titles.length };
   });
 }
 
