@@ -15,7 +15,7 @@
 
 </div>
 
-<!-- Add a screenshot or GIF of the board view here. Recommended: docs/screenshot.png at ~1200px wide. -->
+![Kanbun board view](docs/screenshot.png)
 
 ## Features
 
@@ -34,11 +34,11 @@
 
 ## Stack
 
-- Next.js 15 (App Router, server components by default)
+- Next.js 16 (App Router, server components by default)
 - TypeScript
 - Prisma + SQLite (`file:./dev.db`)
 - Auth.js v5 (credentials + JWT sessions, bcrypt)
-- Tailwind CSS v3 with `darkMode: "class"`
+- React 19, Tailwind CSS v3 with `darkMode: "class"`
 
 ## Quick start (local)
 
@@ -50,6 +50,8 @@ npx prisma migrate deploy
 npm run create-admin
 npm run dev
 ```
+
+Want to look around first? On an empty database, `npm run seed:demo` creates a demo workspace (log in as `admin` / `demo1234`).
 
 Visit `http://localhost:3000` and log in.
 
@@ -100,7 +102,7 @@ src/
   lib/                 i18n, locale, prisma client, helpers
   server/              server actions
   auth.ts              Auth.js setup
-  middleware.ts        protects routes
+  proxy.ts             protects routes
 prisma/
   schema.prisma        SQLite data model
 public/
