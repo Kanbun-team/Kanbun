@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import ColorPicker from "./ColorPicker";
 import { createBoardCategoryAction } from "@/server/tasks-actions";
 import { t, type Locale } from "@/lib/i18n";
+import { useUi } from "./ui/UiProvider";
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -24,6 +25,7 @@ function SubmitButton({ label }: { label: string }) {
 
 export default function CreateCategoryModal({ locale }: { locale: Locale }) {
   const [open, setOpen] = useState(false);
+  const { report } = useUi();
 
   useEffect(() => {
     if (!open) return;
@@ -62,8 +64,7 @@ export default function CreateCategoryModal({ locale }: { locale: Locale }) {
           <div className="relative w-full max-w-md surface border rounded-2xl shadow-2xl">
             <form
               action={async (fd) => {
-                await createBoardCategoryAction(fd);
-                setOpen(false);
+                if (report(await createBoardCategoryAction(fd)).ok) setOpen(false);
               }}
               className="flex flex-col"
             >

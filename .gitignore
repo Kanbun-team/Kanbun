@@ -15,3 +15,7 @@ dist
 .turbo
 coverage
 tsconfig.tsbuildinfo
+prisma/e2e.db
+prisma/e2e.db-journal
+test-results
+playwright-report

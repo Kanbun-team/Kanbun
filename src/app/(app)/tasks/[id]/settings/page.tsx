@@ -4,7 +4,9 @@ import { prisma } from "@/lib/db-local";
 import Avatar from "@/components/Avatar";
 import ColorPicker from "@/components/ColorPicker";
 import { getLocale } from "@/lib/get-locale";
-import ConfirmForm from "@/components/ConfirmForm";
+import ActionForm from "@/components/ui/ActionForm";
+import { buttonClass } from "@/components/ui/button";
+import TagChip from "@/components/ui/TagChip";
 import { t } from "@/lib/i18n";
 import { boardRoleLabel } from "@/lib/labels";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
@@ -40,7 +42,9 @@ export default async function BoardSettingsPage({
     where: { id },
     include: {
       members: {
-        include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+        include: {
+          user: { select: { id: true, username: true, displayName: true, avatarUrl: true, deactivatedAt: true } },
+        },
         orderBy: { addedAt: "asc" },
       },
       tags: { orderBy: { position: "asc" } },
@@ -48,121 +52,148 @@ export default async function BoardSettingsPage({
   });
   if (!board) notFound();
 
+  const card = "bg-surface border border-line rounded-panel p-4";
+  const label = "text-sm text-ink-muted";
+
   return (
-    <div className="space-y-6">
-      <Link href={`/tasks/${id}`} className="text-sm opacity-70 hover:opacity-100">
+    <div className="space-y-6 max-w-3xl">
+      <Link href={`/tasks/${id}`} className="text-sm text-ink-muted hover:text-ink">
         &larr; {board.name}
       </Link>
       <h1 className="text-xl font-semibold">{t("boardSettings", locale)}</h1>
 
-      <form action={updateBoardAction} className="surface border rounded-xl p-4 space-y-3">
+      <ActionForm action={updateBoardAction} success={t("savedToast", locale)} className={`${card} space-y-3`}>
         <input type="hidden" name="boardId" value={board.id} />
-        <label className="block">
-          <span className="text-sm opacity-80">{t("boardName", locale)}</span>
+        <label className="block space-y-1">
+          <span className={label}>{t("boardName", locale)}</span>
           <input name="name" defaultValue={board.name} required maxLength={120} />
         </label>
-        <label className="block">
-          <span className="text-sm opacity-80">{t("boardDescription", locale)}</span>
+        <label className="block space-y-1">
+          <span className={label}>{t("boardDescription", locale)}</span>
           <textarea name="description" defaultValue={board.description ?? ""} rows={3} maxLength={2000} />
         </label>
         <div>
-          <span className="text-sm opacity-80 block mb-1.5">{t("boardColor", locale)}</span>
+          <span className={`${label} block mb-1.5`}>{t("boardColor", locale)}</span>
           <ColorPicker name="color" defaultValue={board.color} />
         </div>
-        <button className="rounded bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 text-sm">
-          {t("save", locale)}
-        </button>
-      </form>
+        <button className={buttonClass("primary")}>{t("save", locale)}</button>
+      </ActionForm>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <form action={archiveBoardAction} className="surface border rounded-xl p-4 flex items-center justify-between">
+        <ActionForm action={archiveBoardAction} className={`${card} flex items-center justify-between gap-3`}>
           <input type="hidden" name="boardId" value={board.id} />
           <input type="hidden" name="archived" value={String(!board.archived)} />
-          <span className="text-sm">
-            {board.archived ? t("boardArchived", locale) : t("boardArchive", locale)}
-          </span>
-          <button className="rounded px-3 py-1.5 text-sm border border-[var(--border)] hover:bg-slate-100 dark:hover:bg-slate-800">
+          <span>{board.archived ? t("boardArchived", locale) : t("boardArchive", locale)}</span>
+          <button className={buttonClass("secondary")}>
             {board.archived ? t("boardUnarchive", locale) : t("boardArchive", locale)}
           </button>
-        </form>
+        </ActionForm>
 
-        <ConfirmForm message={t("confirmDeleteBoard", locale)} action={deleteBoardAction} className="surface border rounded-xl p-4 flex items-center justify-between">
+        <ActionForm
+          action={deleteBoardAction}
+          undo
+          success={t("boardDeleted", locale)}
+          redirectTo="/tasks"
+          className={`${card} flex items-center justify-between gap-3`}
+        >
           <input type="hidden" name="boardId" value={board.id} />
-          <span className="text-sm">{t("boardDelete", locale)}</span>
-          <button className="rounded px-3 py-1.5 text-sm border border-red-500/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
-            {t("delete", locale)}
-          </button>
-        </ConfirmForm>
+          <span>{t("boardDelete", locale)}</span>
+          <button className={buttonClass("danger")}>{t("delete", locale)}</button>
+        </ActionForm>
       </div>
 
-      <section className="surface border rounded-xl p-4 space-y-3">
-        <h2 className="text-sm uppercase tracking-wide opacity-60">{t("boardMembers", locale)}</h2>
-        <ul className="divide-y divide-[var(--border)]">
-          {board.members.map((m) => (
-            <li key={m.userId} className="py-2 flex items-center gap-3">
-              <Avatar src={m.user.avatarUrl} name={m.user.displayName ?? m.user.username} size={28} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{m.user.displayName ?? m.user.username}</div>
-                <div className="text-xs opacity-60 truncate">@{m.user.username}</div>
-              </div>
-              <span className="text-xs opacity-70 mr-2">{boardRoleLabel(m.role, locale)}</span>
-              <form action={updateBoardMemberAction}>
-                <input type="hidden" name="boardId" value={board.id} />
-                <input type="hidden" name="userId" value={m.userId} />
-                <input type="hidden" name="role" value={m.role === "owner" ? "member" : "owner"} />
-                <button className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-slate-100 dark:hover:bg-slate-800">
-                  {m.role === "owner" ? t("boardMakeMember", locale) : t("boardMakeOwner", locale)}
-                </button>
-              </form>
-              <ConfirmForm message={t("confirmRemoveMember", locale)} action={removeBoardMemberAction}>
-                <input type="hidden" name="boardId" value={board.id} />
-                <input type="hidden" name="userId" value={m.userId} />
-                <button className="text-xs ml-2 text-red-500 hover:underline">
-                  {t("boardRemoveMember", locale)}
-                </button>
-              </ConfirmForm>
-            </li>
-          ))}
+      <section className={`${card} space-y-3`}>
+        <h2 className="text-md font-semibold">{t("boardMembers", locale)}</h2>
+        <ul className="divide-y divide-line">
+          {board.members.map((m) => {
+            const name = m.user.displayName ?? m.user.username;
+            return (
+              <li key={m.userId} className="py-2 flex flex-wrap items-center gap-3">
+                <Avatar src={m.user.avatarUrl} name={name} size={28} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{name}</div>
+                  <div className="text-xs text-ink-muted truncate">
+                    @{m.user.username}
+                    {m.user.deactivatedAt && `, ${t("userDeactivated", locale).toLowerCase()}`}
+                  </div>
+                </div>
+                <span className="text-sm text-ink-muted">{boardRoleLabel(m.role, locale)}</span>
+                <ActionForm action={updateBoardMemberAction}>
+                  <input type="hidden" name="boardId" value={board.id} />
+                  <input type="hidden" name="userId" value={m.userId} />
+                  <input type="hidden" name="role" value={m.role === "owner" ? "member" : "owner"} />
+                  <button className={buttonClass("secondary", "sm")}>
+                    {m.role === "owner" ? t("boardMakeMember", locale) : t("boardMakeOwner", locale)}
+                  </button>
+                </ActionForm>
+                <ActionForm
+                  action={removeBoardMemberAction}
+                  confirm={{
+                    title: t("confirmRemoveMember", locale).replace("{name}", name),
+                    body: t("confirmRemoveMemberBody", locale),
+                    confirmLabel: t("boardRemoveMember", locale),
+                    danger: true,
+                  }}
+                >
+                  <input type="hidden" name="boardId" value={board.id} />
+                  <input type="hidden" name="userId" value={m.userId} />
+                  <button className={buttonClass("ghost", "sm", "text-danger hover:text-danger")}>
+                    {t("boardRemoveMember", locale)}
+                  </button>
+                </ActionForm>
+              </li>
+            );
+          })}
         </ul>
-        <form action={addBoardMemberAction} className="flex gap-2 pt-2">
+        <ActionForm action={addBoardMemberAction} resetOnSuccess className="flex gap-2 pt-2">
           <input type="hidden" name="boardId" value={board.id} />
-          <input name="username" required placeholder="username" />
-          <button className="rounded bg-brand-600 hover:bg-brand-700 text-white px-3 text-sm">
-            {t("boardAddMember", locale)}
-          </button>
-        </form>
+          <input
+            name="username"
+            required
+            placeholder={t("authUsername", locale)}
+            aria-label={t("authUsername", locale)}
+          />
+          <button className={buttonClass("primary", "md", "h-auto")}>{t("boardAddMember", locale)}</button>
+        </ActionForm>
       </section>
 
-      <section className="surface border rounded-xl p-4 space-y-3">
-        <h2 className="text-sm uppercase tracking-wide opacity-60">{t("boardTags", locale)}</h2>
+      <section className={`${card} space-y-3`}>
+        <h2 className="text-md font-semibold">{t("boardTags", locale)}</h2>
         <ul className="space-y-1">
           {board.tags.map((tag) => (
             <li key={tag.id} className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ background: tag.color }} />
-              <span className="text-sm flex-1">{tag.name}</span>
-              <span className="text-xs opacity-60">{tag.color}</span>
-              <ConfirmForm message={t("confirmDeleteTag", locale)} action={deleteBoardTagAction}>
+              <TagChip name={tag.name} color={tag.color} />
+              <span className="flex-1" />
+              <ActionForm
+                action={deleteBoardTagAction}
+                confirm={{
+                  title: t("confirmDeleteTag", locale).replace("{name}", tag.name),
+                  body: t("confirmDeleteTagBody", locale),
+                  confirmLabel: t("delete", locale),
+                  danger: true,
+                }}
+              >
                 <input type="hidden" name="tagId" value={tag.id} />
-                <button className="text-xs text-red-500 hover:underline ml-2">{t("delete", locale)}</button>
-              </ConfirmForm>
+                <button className={buttonClass("ghost", "sm", "text-danger hover:text-danger")}>
+                  {t("delete", locale)}
+                </button>
+              </ActionForm>
             </li>
           ))}
-          {board.tags.length === 0 && <li className="text-sm opacity-60">{t("none", locale)}</li>}
+          {board.tags.length === 0 && <li className="text-ink-muted">{t("none", locale)}</li>}
         </ul>
-        <form action={createBoardTagAction} className="space-y-3 pt-2">
+        <ActionForm action={createBoardTagAction} resetOnSuccess className="space-y-3 pt-2">
           <input type="hidden" name="boardId" value={board.id} />
-          <label className="block">
-            <span className="text-xs opacity-70">{t("cardTags", locale)}</span>
-            <input name="name" required maxLength={40} placeholder="bug" />
+          <label className="block space-y-1">
+            <span className={label}>{t("tagName", locale)}</span>
+            <input name="name" required maxLength={40} />
           </label>
           <div>
-            <span className="text-xs opacity-70 block mb-1.5">{t("boardColor", locale)}</span>
+            <span className={`${label} block mb-1.5`}>{t("boardColor", locale)}</span>
             <ColorPicker name="color" />
           </div>
-          <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1.5">
-            {t("add", locale)}
-          </button>
-        </form>
+          <button className={buttonClass("primary")}>{t("add", locale)}</button>
+        </ActionForm>
       </section>
     </div>
   );

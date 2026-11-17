@@ -62,6 +62,13 @@ export default function UserMenu({ user, locale }: Props) {
             {t("navSettings", locale)}
           </Link>
           <Link
+            href="/trash"
+            onClick={() => setOpen(false)}
+            className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            {t("navTrash", locale)}
+          </Link>
+          <Link
             href="/whats-new"
             onClick={() => setOpen(false)}
             className="block px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"

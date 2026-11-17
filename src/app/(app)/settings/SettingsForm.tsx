@@ -1,5 +1,7 @@
 "use client";
 
+import ActionForm from "@/components/ui/ActionForm";
+import { buttonClass } from "@/components/ui/button";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setLocaleAction, setThemeAction, updateProfileAction } from "@/server/actions";
@@ -87,20 +89,18 @@ export default function SettingsForm({ locale, initial }: Props) {
         </div>
       </section>
 
-      <form action={updateProfileAction} className="surface border rounded-xl p-4 space-y-3">
-        <h2 className="font-medium">{t("navProfile", locale)}</h2>
+      <ActionForm action={updateProfileAction} success={t("savedToast", locale)} className="bg-surface border border-line rounded-panel p-4 space-y-3">
+        <h2 className="text-md font-semibold">{t("navProfile", locale)}</h2>
         <label className="block">
-          <span className="text-sm opacity-80">{t("settingsDisplayName", locale)}</span>
+          <span className="text-sm text-ink-muted">{t("settingsDisplayName", locale)}</span>
           <input name="displayName" defaultValue={initial.displayName} required maxLength={64} />
         </label>
         <label className="block">
-          <span className="text-sm opacity-80">{t("settingsAvatar", locale)}</span>
+          <span className="text-sm text-ink-muted">{t("settingsAvatar", locale)}</span>
           <input name="avatarUrl" type="url" defaultValue={initial.avatarUrl} maxLength={500} />
         </label>
-        <button className="rounded bg-brand-600 hover:bg-brand-700 text-white text-sm px-3 py-1.5">
-          {t("save", locale)}
-        </button>
-      </form>
+        <button className={buttonClass("primary")}>{t("save", locale)}</button>
+      </ActionForm>
     </div>
   );
 }

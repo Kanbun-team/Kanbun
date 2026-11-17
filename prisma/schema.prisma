@@ -19,6 +19,9 @@ model User {
   // Bumped to invalidate every outstanding JWT for this user (e.g. after an
   // admin password reset). Compared against the value stored in the token.
   sessionVersion   Int      @default(0)
+  // Set when an admin deactivates the account: the user can no longer sign in
+  // and is hidden from pickers, but everything they created stays.
+  deactivatedAt    DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -43,8 +46,8 @@ model Board {
   archived     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  createdById  String
-  createdBy    User     @relation("BoardCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?    @relation("BoardCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   categoryId String?
   category   BoardCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -104,10 +107,10 @@ model TaskCard {
   deadline    DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  createdById String
+  createdById String?
 
   column     BoardColumn        @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  createdBy  User               @relation("CardCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy  User?              @relation("CardCreator", fields: [createdById], references: [id], onDelete: SetNull)
   assignees  TaskCardAssignee[]
   comments   TaskCardComment[]
   subtasks   TaskSubtask[]
@@ -149,11 +152,11 @@ model TaskBlock {
   blockerId   String
   blockedId   String
   createdAt   DateTime @default(now())
-  createdById String
+  createdById String?
 
   blocker   TaskCard @relation("CardBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
   blocked   TaskCard @relation("CardBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
-  createdBy User     @relation("BlockCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("BlockCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([blockerId, blockedId])
   @@index([blockedId])
@@ -189,13 +192,13 @@ model TaskCardAssignee {
 model TaskCardComment {
   id        String   @id @default(cuid())
   cardId    String
-  authorId  String
+  authorId  String?
   body      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   card   TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  author User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([cardId, createdAt])
   @@index([authorId, createdAt])
@@ -248,4 +251,21 @@ model UserSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, lastSeenAt])
+}
+
+// Deleted cards, columns and boards. The full subtree is stored as JSON so it
+// can be restored (with its original ids) for 30 days; live tables never hold
+// soft-deleted rows, so no query has to filter them out.
+model TrashItem {
+  id          String   @id @default(cuid())
+  kind        String // "card" | "column" | "board"
+  entityId    String
+  boardId     String
+  label       String
+  payload     String
+  deletedById String?
+  deletedAt   DateTime @default(now())
+
+  @@index([boardId, deletedAt])
+  @@index([deletedAt])
 }

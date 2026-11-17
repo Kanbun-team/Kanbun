@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import { cn, isPast } from "@/lib/utils";
 import { useSyncedState } from "@/lib/use-synced-state";
+import { PALETTE } from "@/lib/palette";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale } from "@/lib/i18n";
 import { renderMarkdownToHtml } from "@/lib/markdown";
@@ -237,17 +238,7 @@ export function CardDeadlineEditor({
   );
 }
 
-const COVER_PRESETS = [
-  "#2563eb",
-  "#7c3aed",
-  "#16a34a",
-  "#dc2626",
-  "#ea580c",
-  "#0891b2",
-  "#db2777",
-  "#65a30d",
-  "#475569",
-];
+const COVER_PRESETS: string[] = [...PALETTE];
 
 export function CardCover({
   cardId,

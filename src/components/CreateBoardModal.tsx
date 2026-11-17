@@ -6,6 +6,7 @@ import Avatar from "./Avatar";
 import ColorPicker from "./ColorPicker";
 import { createBoardAction } from "@/server/tasks-actions";
 import { t, type Locale } from "@/lib/i18n";
+import { useUi } from "./ui/UiProvider";
 
 interface UserOption {
   id: string;
@@ -53,6 +54,7 @@ export default function CreateBoardModal({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const { report } = useUi();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -124,7 +126,12 @@ export default function CreateBoardModal({
             aria-hidden="true"
           />
           <div className="relative w-full max-w-lg surface border rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
-            <form action={createBoardAction} className="flex flex-col flex-1 min-h-0">
+            <form
+              action={async (fd) => {
+                report(await createBoardAction(fd));
+              }}
+              className="flex flex-col flex-1 min-h-0"
+            >
               <header className="flex items-center justify-between p-4 border-b border-[var(--border)]">
                 <h2 className="font-semibold">{t("boardCreate", locale)}</h2>
                 <button

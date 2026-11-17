@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { PALETTE } from "@/lib/palette";
 
 interface Props {
   name: string;
@@ -11,17 +12,7 @@ interface Props {
   presets?: string[];
 }
 
-const DEFAULT_PRESETS = [
-  "#2563eb",
-  "#7c3aed",
-  "#16a34a",
-  "#dc2626",
-  "#ea580c",
-  "#0891b2",
-  "#db2777",
-  "#65a30d",
-  "#475569",
-];
+const DEFAULT_PRESETS: string[] = [...PALETTE];
 
 export default function ColorPicker({
   name,

@@ -8,6 +8,8 @@ import { prisma } from "@/lib/db-local";
 import { auth, refreshSession, requireRole, requireUser } from "@/auth";
 import { isLocale } from "@/lib/i18n";
 import { LOCALE_COOKIE } from "@/lib/get-locale";
+import { safeAction } from "@/server/safe-action";
+import { ActionError } from "@/lib/action-result";
 
 async function tryRefreshSession(patch: Record<string, unknown>): Promise<void> {
   try {
@@ -21,37 +23,41 @@ const themeSchema = z.enum(["light", "dark", "system"]);
 const localeSchema = z.enum(["en", "it", "pl", "de"]);
 
 export async function setThemeAction(theme: string) {
-  const parsed = themeSchema.parse(theme);
-  const user = await requireUser();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { themePreference: parsed },
+  return safeAction(async () => {
+    const parsed = themeSchema.parse(theme);
+    const user = await requireUser();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { themePreference: parsed },
+    });
+    const cookieStore = await cookies();
+    cookieStore.set("kanbun_theme", parsed, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    await tryRefreshSession({ themePreference: parsed });
+    revalidatePath("/");
   });
-  const cookieStore = await cookies();
-  cookieStore.set("kanbun_theme", parsed, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
-  await tryRefreshSession({ themePreference: parsed });
-  revalidatePath("/");
 }
 
 export async function setLocaleAction(locale: string) {
-  const parsed = localeSchema.parse(locale);
-  const user = await requireUser();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { locale: parsed },
+  return safeAction(async () => {
+    const parsed = localeSchema.parse(locale);
+    const user = await requireUser();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { locale: parsed },
+    });
+    const cookieStore = await cookies();
+    cookieStore.set(LOCALE_COOKIE, parsed, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    await tryRefreshSession({ locale: parsed });
+    revalidatePath("/");
   });
-  const cookieStore = await cookies();
-  cookieStore.set(LOCALE_COOKIE, parsed, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
-  await tryRefreshSession({ locale: parsed });
-  revalidatePath("/");
 }
 
 const profileSchema = z.object({
@@ -65,21 +71,23 @@ const profileSchema = z.object({
 });
 
 export async function updateProfileAction(formData: FormData) {
-  const user = await requireUser();
-  const data = profileSchema.parse({
-    displayName: formData.get("displayName"),
-    avatarUrl: formData.get("avatarUrl") ?? "",
+  return safeAction(async () => {
+    const user = await requireUser();
+    const data = profileSchema.parse({
+      displayName: formData.get("displayName"),
+      avatarUrl: formData.get("avatarUrl") ?? "",
+    });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { displayName: data.displayName, avatarUrl: data.avatarUrl },
+    });
+    await tryRefreshSession({
+      displayName: data.displayName,
+      avatarUrl: data.avatarUrl,
+    });
+    revalidatePath("/settings");
+    revalidatePath("/");
   });
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { displayName: data.displayName, avatarUrl: data.avatarUrl },
-  });
-  await tryRefreshSession({
-    displayName: data.displayName,
-    avatarUrl: data.avatarUrl,
-  });
-  revalidatePath("/settings");
-  revalidatePath("/");
 }
 
 const userCreateSchema = z.object({
@@ -95,23 +103,30 @@ const userCreateSchema = z.object({
 });
 
 export async function adminCreateUserAction(formData: FormData) {
-  await requireRole("admin");
-  const data = userCreateSchema.parse({
-    username: formData.get("username"),
-    password: formData.get("password"),
-    displayName: formData.get("displayName") || null,
-    role: formData.get("role") || "member",
+  return safeAction(async () => {
+    await requireRole("admin");
+    const data = userCreateSchema.parse({
+      username: formData.get("username"),
+      password: formData.get("password"),
+      displayName: formData.get("displayName") || null,
+      role: formData.get("role") || "member",
+    });
+    const taken = await prisma.user.findUnique({
+      where: { username: data.username.toLowerCase() },
+      select: { id: true },
+    });
+    if (taken) throw new ActionError("usernameTaken");
+    const passwordHash = await bcrypt.hash(data.password, 12);
+    await prisma.user.create({
+      data: {
+        username: data.username.toLowerCase(),
+        passwordHash,
+        displayName: data.displayName ?? data.username,
+        role: data.role,
+      },
+    });
+    revalidatePath("/admin/users");
   });
-  const passwordHash = await bcrypt.hash(data.password, 12);
-  await prisma.user.create({
-    data: {
-      username: data.username.toLowerCase(),
-      passwordHash,
-      displayName: data.displayName ?? data.username,
-      role: data.role,
-    },
-  });
-  revalidatePath("/admin/users");
 }
 
 const userUpdateSchema = z.object({
@@ -121,20 +136,22 @@ const userUpdateSchema = z.object({
 });
 
 export async function adminUpdateUserAction(formData: FormData) {
-  await requireRole("admin");
-  const data = userUpdateSchema.parse({
-    userId: formData.get("userId"),
-    role: formData.get("role"),
-    displayName: formData.get("displayName") || null,
+  return safeAction(async () => {
+    await requireRole("admin");
+    const data = userUpdateSchema.parse({
+      userId: formData.get("userId"),
+      role: formData.get("role"),
+      displayName: formData.get("displayName") || null,
+    });
+    await prisma.user.update({
+      where: { id: data.userId },
+      data: {
+        role: data.role,
+        displayName: data.displayName ?? undefined,
+      },
+    });
+    revalidatePath("/admin/users");
   });
-  await prisma.user.update({
-    where: { id: data.userId },
-    data: {
-      role: data.role,
-      displayName: data.displayName ?? undefined,
-    },
-  });
-  revalidatePath("/admin/users");
 }
 
 const userResetSchema = z.object({
@@ -143,27 +160,50 @@ const userResetSchema = z.object({
 });
 
 export async function adminResetPasswordAction(formData: FormData) {
-  await requireRole("admin");
-  const data = userResetSchema.parse({
-    userId: formData.get("userId"),
-    password: formData.get("password"),
+  return safeAction(async () => {
+    await requireRole("admin");
+    const data = userResetSchema.parse({
+      userId: formData.get("userId"),
+      password: formData.get("password"),
+    });
+    const passwordHash = await bcrypt.hash(data.password, 12);
+    await prisma.user.update({
+      where: { id: data.userId },
+      // Bumping sessionVersion signs the user out everywhere.
+      data: { passwordHash, sessionVersion: { increment: 1 } },
+    });
+    revalidatePath("/admin/users");
   });
-  const passwordHash = await bcrypt.hash(data.password, 12);
-  await prisma.user.update({
-    where: { id: data.userId },
-    // Bumping sessionVersion signs the user out everywhere.
-    data: { passwordHash, sessionVersion: { increment: 1 } },
-  });
-  revalidatePath("/admin/users");
 }
 
 export async function adminDeleteUserAction(formData: FormData) {
-  const me = await requireRole("admin");
-  const userId = String(formData.get("userId") ?? "");
-  if (!userId) throw new Error("Invalid input");
-  if (userId === me.id) throw new Error("You cannot delete yourself.");
-  await prisma.user.delete({ where: { id: userId } });
-  revalidatePath("/admin/users");
+  return safeAction(async () => {
+    const me = await requireRole("admin");
+    const userId = String(formData.get("userId") ?? "");
+    if (!userId) throw new ActionError("invalid");
+    if (userId === me.id) throw new ActionError("selfAction");
+    await prisma.user.delete({ where: { id: userId } });
+    revalidatePath("/admin/users");
+  });
+}
+
+// Deactivated users cannot sign in (their sessions end on the next request)
+// and disappear from pickers, but their cards, comments and history stay.
+export async function adminSetUserActiveAction(formData: FormData) {
+  return safeAction(async () => {
+    const me = await requireRole("admin");
+    const userId = String(formData.get("userId") ?? "");
+    const active = formData.get("active") === "true";
+    if (!userId) throw new ActionError("invalid");
+    if (userId === me.id) throw new ActionError("selfAction");
+    await prisma.user.update({
+      where: { id: userId },
+      data: active
+        ? { deactivatedAt: null }
+        : { deactivatedAt: new Date(), sessionVersion: { increment: 1 } },
+    });
+    revalidatePath("/admin/users");
+  });
 }
 
 export async function getCurrentUser() {

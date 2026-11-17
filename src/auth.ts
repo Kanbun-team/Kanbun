@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db-local";
 import { z } from "zod";
+import { ActionError } from "@/lib/action-result";
 import { clientIp, isLoginBlocked, recordLoginFailure, recordLoginSuccess } from "@/lib/rate-limit";
 
 declare module "next-auth" {
@@ -81,7 +82,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         if (isLoginBlocked(ip, username)) return null;
         const user = await prisma.user.findUnique({ where: { username } });
         const ok = user ? await bcrypt.compare(password, user.passwordHash) : false;
-        if (!user || !ok) {
+        if (!user || !ok || user.deactivatedAt) {
           recordLoginFailure(ip, username);
           return null;
         }
@@ -108,7 +109,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
       if (!token.id) return null;
 
       // Re-read the user on every request instead of trusting claims baked
-      // into a 30-day token: a deleted user, a demoted admin, or a password
+      // into a 30-day token: a deleted or deactivated user, a demoted admin, or a password
       // reset (which bumps sessionVersion) takes effect immediately.
       const fresh = await prisma.user.findUnique({
         where: { id: token.id },
@@ -120,9 +121,10 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
           themePreference: true,
           locale: true,
           sessionVersion: true,
+          deactivatedAt: true,
         },
       });
-      if (!fresh || fresh.sessionVersion !== (token.sessionVersion ?? 0)) return null;
+      if (!fresh || fresh.deactivatedAt || fresh.sessionVersion !== (token.sessionVersion ?? 0)) return null;
 
       token.username = fresh.username;
       token.displayName = fresh.displayName;
@@ -165,7 +167,7 @@ export async function safeAuth(): Promise<SafeAuthResult> {
 export async function requireUser(): Promise<Session["user"]> {
   const session = (await auth()) as Session | null;
   if (!session?.user?.id) {
-    throw new Error("Unauthorized");
+    throw new ActionError("unauthorized");
   }
   return session.user;
 }
@@ -181,6 +183,6 @@ export async function requirePageUser(): Promise<Session["user"]> {
 
 export async function requireRole(role: "admin"): Promise<Session["user"]> {
   const user = await requireUser();
-  if (user.role !== role) throw new Error("Forbidden");
+  if (user.role !== role) throw new ActionError("forbidden");
   return user;
 }

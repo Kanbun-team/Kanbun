@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { avatarColor } from "@/lib/palette";
 
 interface AvatarProps {
   src?: string | null;
@@ -15,22 +16,8 @@ function initials(name?: string | null): string {
   return parts.map((p) => p.charAt(0).toUpperCase()).join("");
 }
 
-function colorFor(name?: string | null): string {
-  const palette = [
-    "#2563eb",
-    "#7c3aed",
-    "#16a34a",
-    "#dc2626",
-    "#ea580c",
-    "#0891b2",
-    "#db2777",
-    "#65a30d",
-  ];
-  if (!name) return palette[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) | 0;
-  return palette[Math.abs(hash) % palette.length];
-}
+// Initials sit on a palette hue darkened to reach 4.5:1 with white text.
+const colorFor = avatarColor;
 
 export default function Avatar({
   src,
@@ -74,8 +61,8 @@ export default function Avatar({
       {online !== undefined && (
         <span
           className={cn(
-            "absolute -bottom-0.5 -right-0.5 rounded-full ring-2 ring-[var(--bg)]",
-            online ? "bg-emerald-500" : "bg-slate-400"
+            "absolute -bottom-0.5 -right-0.5 rounded-full ring-2 ring-surface",
+            online ? "bg-success" : "bg-ink-muted"
           )}
           style={{ width: dotSize, height: dotSize }}
           aria-label={online ? "online" : "offline"}

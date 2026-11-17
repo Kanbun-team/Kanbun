@@ -67,6 +67,9 @@ export default function MobileNav({ boards, isAdmin, locale }: Props) {
               <Link href="/settings" onClick={() => setOpen(false)} className="block px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
                 {t("navSettings", locale)}
               </Link>
+              <Link href="/trash" onClick={() => setOpen(false)} className="block px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+                {t("navTrash", locale)}
+              </Link>
               <Link href="/whats-new" onClick={() => setOpen(false)} className="block px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
                 {t("navWhatsNew", locale)}
               </Link>

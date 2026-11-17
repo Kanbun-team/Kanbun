@@ -19,7 +19,7 @@ export default async function TasksIndexPage() {
       include: { _count: { select: { columns: true, members: true } } },
     }),
     prisma.user.findMany({
-      where: { id: { not: user.id } },
+      where: { id: { not: user.id }, deactivatedAt: null },
       orderBy: [{ displayName: "asc" }, { username: "asc" }],
       select: { id: true, username: true, displayName: true, avatarUrl: true },
     }),

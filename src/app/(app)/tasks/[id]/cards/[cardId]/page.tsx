@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db-local";
 import { requirePageUser } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
-import ConfirmForm from "@/components/ConfirmForm";
+import ActionForm from "@/components/ui/ActionForm";
+import { buttonClass } from "@/components/ui/button";
 import { t } from "@/lib/i18n";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 import {
@@ -67,6 +68,7 @@ export default async function CardDetailPage({
     where: { id: boardId },
     include: {
       members: {
+        where: { user: { deactivatedAt: null } },
         include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
       },
       tags: { orderBy: { position: "asc" } },
@@ -89,13 +91,13 @@ export default async function CardDetailPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <Link href={`/tasks/${boardId}`} className="text-sm opacity-70 hover:opacity-100">
-          &larr; {board.name} / {card.column.name}
+        <Link href={`/tasks/${boardId}`} className="text-sm text-ink-muted hover:text-ink">
+          &larr; {board.name}, {card.column.name}
         </Link>
-        <ConfirmForm message={t("confirmDeleteCard", locale)} action={deleteCardAction}>
+        <ActionForm action={deleteCardAction} undo success={t("cardDeleted", locale)} redirectTo={`/tasks/${boardId}`}>
           <input type="hidden" name="cardId" value={card.id} />
-          <button className="text-sm text-red-500 hover:underline">{t("cardDelete", locale)}</button>
-        </ConfirmForm>
+          <button className={buttonClass("ghost", "sm", "text-danger hover:text-danger")}>{t("cardDelete", locale)}</button>
+        </ActionForm>
       </div>
 
       <CardTitleEditor cardId={card.id} initialTitle={card.title} locale={locale} />
@@ -103,7 +105,7 @@ export default async function CardDetailPage({
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <section>
-            <h2 className="text-sm uppercase tracking-wide opacity-60 mb-2">
+            <h2 className="text-md font-semibold mb-2">
               {t("cardDescription", locale)}
             </h2>
             <CardDescriptionEditor
@@ -114,7 +116,7 @@ export default async function CardDetailPage({
           </section>
 
           <section>
-            <h2 className="text-sm uppercase tracking-wide opacity-60 mb-2">
+            <h2 className="text-md font-semibold mb-2">
               {t("cardSubtasks", locale)}
             </h2>
             <SubtaskList
@@ -125,7 +127,7 @@ export default async function CardDetailPage({
           </section>
 
           <section>
-            <h2 className="text-sm uppercase tracking-wide opacity-60 mb-2">
+            <h2 className="text-md font-semibold mb-2">
               {t("cardComments", locale)}
             </h2>
             <Comments
@@ -143,13 +145,13 @@ export default async function CardDetailPage({
         </div>
 
         <aside className="space-y-4">
-          <div className="surface border rounded-xl divide-y divide-[var(--border)]">
+          <div className="bg-surface border border-line rounded-panel divide-y divide-line">
             <div className="p-4 space-y-2">
-              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardPriority", locale)}</h3>
+              <h3 className="text-sm font-medium text-ink-muted">{t("cardPriority", locale)}</h3>
               <CardPriorityEditor cardId={card.id} initialPriority={card.priority} locale={locale} />
             </div>
             <div className="p-4 space-y-2">
-              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardDeadline", locale)}</h3>
+              <h3 className="text-sm font-medium text-ink-muted">{t("cardDeadline", locale)}</h3>
               <CardDeadlineEditor
                 cardId={card.id}
                 initialDeadline={card.deadline ? card.deadline.toISOString() : null}
@@ -157,7 +159,7 @@ export default async function CardDetailPage({
               />
             </div>
             <div className="p-4 space-y-2">
-              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardAssignees", locale)}</h3>
+              <h3 className="text-sm font-medium text-ink-muted">{t("cardAssignees", locale)}</h3>
               <CardAssignees
                 cardId={card.id}
                 locale={locale}
@@ -166,11 +168,11 @@ export default async function CardDetailPage({
               />
             </div>
             <div className="p-4 space-y-2">
-              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardCover", locale)}</h3>
+              <h3 className="text-sm font-medium text-ink-muted">{t("cardCover", locale)}</h3>
               <CardCover cardId={card.id} initialColor={card.coverColor} locale={locale} />
             </div>
             <div className="p-4 space-y-2">
-              <h3 className="text-xs uppercase tracking-wide opacity-50">{t("cardTags", locale)}</h3>
+              <h3 className="text-sm font-medium text-ink-muted">{t("cardTags", locale)}</h3>
               <CardTags
                 cardId={card.id}
                 boardTags={board.tags.map((tt) => ({ id: tt.id, name: tt.name, color: tt.color }))}
@@ -180,9 +182,7 @@ export default async function CardDetailPage({
             </div>
           </div>
           <section>
-            <h3 className="text-sm uppercase tracking-wide opacity-60 mb-2">
-              {t("cardBlocking", locale)} / {t("cardBlockedBy", locale)}
-            </h3>
+            <h3 className="text-md font-semibold mb-2">{t("cardDependencies", locale)}</h3>
             <CardBlocks
               boardId={boardId}
               cardId={card.id}

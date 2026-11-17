@@ -26,6 +26,7 @@ export default async function BoardPage({
     where: { id },
     include: {
       members: {
+        where: { user: { deactivatedAt: null } },
         include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
       },
       tags: { orderBy: { position: "asc" }, select: { id: true, name: true, color: true } },

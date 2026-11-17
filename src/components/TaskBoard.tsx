@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import { cn, isPast } from "@/lib/utils";
 import { useSyncedState } from "@/lib/use-synced-state";
+import { PALETTE } from "@/lib/palette";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale, formatDate } from "@/lib/i18n";
+import type { ActionResult } from "@/lib/action-result";
 import {
   addCardAction,
   addColumnAction,
@@ -19,6 +21,9 @@ import {
   toggleCardTagAction,
   updateCardAction,
 } from "@/server/tasks-actions";
+import { useUi } from "./ui/UiProvider";
+import { useUndo } from "./ui/useUndo";
+import TagChip from "./ui/TagChip";
 
 export interface MemberOption {
   id: string;
@@ -33,17 +38,7 @@ export interface TagOption {
   color: string;
 }
 
-const COVER_COLORS = [
-  "#2563eb",
-  "#7c3aed",
-  "#16a34a",
-  "#dc2626",
-  "#ea580c",
-  "#0891b2",
-  "#db2777",
-  "#65a30d",
-  "#475569",
-];
+const COVER_COLORS: string[] = [...PALETTE];
 
 export interface CardDTO {
   id: string;
@@ -111,6 +106,7 @@ export default function TaskBoard({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; cardId: string } | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const router = useRouter();
+  const { report } = useUi();
   const [, startTransition] = useTransition();
 
   // Live updates: when anyone mutates this board, the server pushes an SSE
@@ -243,7 +239,7 @@ export default function TaskBoard({
     setDragOver(null);
     startTransition(async () => {
       try {
-        await moveCardAction({ cardId, toColumnId, position });
+        report(await moveCardAction({ cardId, toColumnId, position }));
       } finally {
         router.refresh();
       }
@@ -263,8 +259,9 @@ export default function TaskBoard({
       />
       <div className="flex items-start gap-4 overflow-x-auto pb-2 scroll-shadow snap-x">
         {visibleColumns.map((col) => (
-          <div
+          <section
             key={col.id}
+            aria-label={col.name}
             className="surface border rounded-xl w-80 shrink-0 snap-start flex flex-col max-h-[80vh]"
             onDragOver={(e) => {
               if (filtering) return;
@@ -314,7 +311,7 @@ export default function TaskBoard({
               )}
               {!filtering && <AddCardForm columnId={col.id} locale={locale} />}
             </div>
-          </div>
+          </section>
         ))}
         {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
       </div>
@@ -509,14 +506,28 @@ function ColumnHeader({
   boardId: string;
 }) {
   const [editing, setEditing] = useState(false);
+  const { report } = useUi();
+  const offerUndo = useUndo();
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const over = column.wipLimit != null && count > column.wipLimit;
+
+  function deleteColumn() {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("columnId", column.id);
+      const result = report(await deleteColumnAction(fd));
+      if (!result.ok) return;
+      offerUndo(t("columnDeleted", locale).replace("{name}", column.name), result.data.trashId);
+      router.refresh();
+    });
+  }
   return (
     <div className="px-3 py-2 border-b border-[var(--border)] flex items-center gap-2">
       {editing ? (
         <form
           action={async (fd) => {
-            await renameColumnAction(fd);
-            setEditing(false);
+            if (report(await renameColumnAction(fd)).ok) setEditing(false);
           }}
           className="flex-1 flex flex-wrap gap-2"
         >
@@ -563,24 +574,15 @@ function ColumnHeader({
             {column.wipLimit != null && `/${column.wipLimit}`}
           </span>
           {canManage && (
-            <form
-              action={deleteColumnAction}
-              onSubmit={(e) => {
-                const message = t("confirmDeleteColumn", locale)
-                  .replace("{name}", column.name)
-                  .replace("{count}", String(column.cards.length));
-                if (!window.confirm(message)) e.preventDefault();
-              }}
+            <button
+              type="button"
+              onClick={deleteColumn}
+              className="text-xs opacity-60 hover:opacity-100 px-1"
+              title={t("columnDelete", locale)}
+              aria-label={`${t("columnDelete", locale)}: ${column.name}`}
             >
-              <input type="hidden" name="columnId" value={column.id} />
-              <button
-                type="submit"
-                className="text-xs opacity-60 hover:opacity-100 px-1"
-                title={t("columnDelete", locale)}
-              >
-                &times;
-              </button>
-            </form>
+              &times;
+            </button>
           )}
         </>
       )}
@@ -591,6 +593,7 @@ function ColumnHeader({
 
 function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale }) {
   const [open, setOpen] = useState(false);
+  const { report } = useUi();
   const ref = useRef<HTMLFormElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   if (!open) {
@@ -611,7 +614,7 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
     <form
       ref={ref}
       action={async (fd) => {
-        await addCardAction(fd);
+        if (!report(await addCardAction(fd)).ok) return;
         ref.current?.reset();
         // Keep the form open and focused so the next task can be typed right away.
         titleRef.current?.focus();
@@ -654,6 +657,7 @@ function AddCardForm({ columnId, locale }: { columnId: string; locale: Locale })
 
 function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale }) {
   const [open, setOpen] = useState(false);
+  const { report } = useUi();
   const ref = useRef<HTMLFormElement>(null);
   return (
     <div className="w-72 shrink-0">
@@ -661,7 +665,7 @@ function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale })
         <form
           ref={ref}
           action={async (fd) => {
-            await addColumnAction(fd);
+            if (!report(await addColumnAction(fd)).ok) return;
             ref.current?.reset();
             setOpen(false);
           }}
@@ -752,13 +756,7 @@ function CardItem({
       {card.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {card.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded font-semibold"
-              style={{ background: tag.color + "33", color: tag.color }}
-            >
-              {tag.name}
-            </span>
+            <TagChip key={tag.id} name={tag.name} color={tag.color} />
           ))}
         </div>
       )}
@@ -856,16 +854,30 @@ function CardContextMenu({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const { report } = useUi();
+  const offerUndo = useUndo();
   const assignedIds = new Set(card.assignees.map((a) => a.id));
   const tagIds = new Set(card.tags.map((tg) => tg.id));
   const flip = typeof window !== "undefined" && x > window.innerWidth - 460;
 
-  function run(action: (fd: FormData) => Promise<unknown>, fields: Record<string, string>) {
+  function run(action: (fd: FormData) => Promise<ActionResult<unknown>>, fields: Record<string, string>) {
     startTransition(async () => {
       const fd = new FormData();
       fd.set("cardId", card.id);
       for (const [k, v] of Object.entries(fields)) fd.set(k, v);
-      await action(fd);
+      report(await action(fd));
+      router.refresh();
+    });
+  }
+
+  function deleteCard() {
+    onClose();
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("cardId", card.id);
+      const result = report(await deleteCardAction(fd));
+      if (!result.ok) return;
+      offerUndo(t("cardDeleted", locale), result.data.trashId);
       router.refresh();
     });
   }
@@ -967,23 +979,13 @@ function CardContextMenu({
       </ContextSubmenu>
 
       <div className="my-1 border-t border-[var(--border)]" />
-      <form
-        onSubmit={(e) => {
-          if (!window.confirm(t("confirmDeleteCard", locale))) e.preventDefault();
-        }}
-        action={async (fd) => {
-          await deleteCardAction(fd);
-          onClose();
-        }}
+      <button
+        type="button"
+        onClick={deleteCard}
+        className="block w-full text-left px-3 py-1.5 text-danger hover:bg-danger/10"
       >
-        <input type="hidden" name="cardId" value={card.id} />
-        <button
-          type="submit"
-          className="block w-full text-left px-3 py-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-        >
-          {t("cardDelete", locale)}
-        </button>
-      </form>
+        {t("cardDelete", locale)}
+      </button>
     </div>
   );
 }
