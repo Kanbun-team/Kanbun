@@ -2,9 +2,11 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
 import type { Session } from "next-auth";
+import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db-local";
 import { z } from "zod";
+import { clientIp, isLoginBlocked, recordLoginFailure, recordLoginSuccess } from "@/lib/rate-limit";
 
 declare module "next-auth" {
   interface Session {
@@ -26,6 +28,7 @@ declare module "next-auth" {
     role?: string;
     themePreference?: string;
     locale?: string;
+    sessionVersion?: number;
   }
 }
 
@@ -38,6 +41,7 @@ declare module "next-auth/jwt" {
     role?: string;
     themePreference?: string;
     locale?: string;
+    sessionVersion?: number;
   }
 }
 
@@ -52,8 +56,10 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
   pages: { signIn: "/login" },
   logger: {
     error(error) {
-      const name = (error as { name?: string } | null)?.name;
-      if (name === "CredentialsSignin" || name === "CallbackRouteError") return;
+      // `type` survives minification in production builds; `name` does not.
+      const { type, name } = (error ?? {}) as { type?: string; name?: string };
+      const kind = type ?? name;
+      if (kind === "CredentialsSignin" || kind === "CallbackRouteError") return;
       console.error(error);
     },
     warn() {},
@@ -66,16 +72,20 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credSchema.safeParse(raw);
         if (!parsed.success) return null;
-        const { username, password } = parsed.data;
-        const user = await prisma.user.findUnique({
-          where: { username: username.toLowerCase() },
-        });
-        if (!user) return null;
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        const username = parsed.data.username.toLowerCase();
+        const { password } = parsed.data;
+        const ip = clientIp(request?.headers);
+        if (isLoginBlocked(ip, username)) return null;
+        const user = await prisma.user.findUnique({ where: { username } });
+        const ok = user ? await bcrypt.compare(password, user.passwordHash) : false;
+        if (!user || !ok) {
+          recordLoginFailure(ip, username);
+          return null;
+        }
+        recordLoginSuccess(ip, username);
         return {
           id: user.id,
           username: user.username,
@@ -84,32 +94,42 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
           role: user.role,
           themePreference: user.themePreference,
           locale: user.locale,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.username = user.username;
-        token.displayName = user.displayName ?? null;
-        token.avatarUrl = user.avatarUrl ?? null;
-        token.role = user.role;
-        token.themePreference = user.themePreference;
-        token.locale = user.locale;
+        token.sessionVersion = user.sessionVersion ?? 0;
       }
-      if (trigger === "update" && token.id) {
-        const fresh = await prisma.user.findUnique({ where: { id: token.id } });
-        if (fresh) {
-          token.username = fresh.username;
-          token.displayName = fresh.displayName;
-          token.avatarUrl = fresh.avatarUrl;
-          token.role = fresh.role;
-          token.themePreference = fresh.themePreference;
-          token.locale = fresh.locale;
-        }
-      }
+      if (!token.id) return null;
+
+      // Re-read the user on every request instead of trusting claims baked
+      // into a 30-day token: a deleted user, a demoted admin, or a password
+      // reset (which bumps sessionVersion) takes effect immediately.
+      const fresh = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: {
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          role: true,
+          themePreference: true,
+          locale: true,
+          sessionVersion: true,
+        },
+      });
+      if (!fresh || fresh.sessionVersion !== (token.sessionVersion ?? 0)) return null;
+
+      token.username = fresh.username;
+      token.displayName = fresh.displayName;
+      token.avatarUrl = fresh.avatarUrl;
+      token.role = fresh.role;
+      token.themePreference = fresh.themePreference;
+      token.locale = fresh.locale;
       return token;
     },
     async session({ session, token }) {
@@ -147,6 +167,15 @@ export async function requireUser(): Promise<Session["user"]> {
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+  return session.user;
+}
+
+// For server components under (app)/. The layout already guards these routes,
+// but pages render in parallel with it, so a session invalidated mid-flight
+// (deleted user, password reset) must redirect here too instead of crashing.
+export async function requirePageUser(): Promise<Session["user"]> {
+  const session = (await auth()) as Session | null;
+  if (!session?.user?.id) redirect("/login");
   return session.user;
 }
 

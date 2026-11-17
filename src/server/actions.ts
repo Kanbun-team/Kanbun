@@ -151,7 +151,8 @@ export async function adminResetPasswordAction(formData: FormData) {
   const passwordHash = await bcrypt.hash(data.password, 12);
   await prisma.user.update({
     where: { id: data.userId },
-    data: { passwordHash },
+    // Bumping sessionVersion signs the user out everywhere.
+    data: { passwordHash, sessionVersion: { increment: 1 } },
   });
   revalidatePath("/admin/users");
 }

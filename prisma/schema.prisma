@@ -16,6 +16,9 @@ model User {
   role             String   @default("member")
   themePreference  String   @default("system")
   locale           String   @default("en")
+  // Bumped to invalidate every outstanding JWT for this user (e.g. after an
+  // admin password reset). Compared against the value stored in the token.
+  sessionVersion   Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

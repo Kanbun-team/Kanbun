@@ -621,6 +621,13 @@ export async function toggleAssigneeAction(formData: FormData) {
       where: { cardId_userId: { cardId: data.cardId, userId: data.userId } },
     });
   } else {
+    // Only board members can be assigned: otherwise any member could assign
+    // (and notify, leaking the card title to) arbitrary users of the instance.
+    const targetMember = await prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId: card.column.boardId, userId: data.userId } },
+      select: { userId: true },
+    });
+    if (!targetMember) throw new Error("Forbidden");
     await prisma.taskCardAssignee.create({
       data: { cardId: data.cardId, userId: data.userId },
     });

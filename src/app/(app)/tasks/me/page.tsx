@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@/auth";
+import { requirePageUser } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
 import { t, formatDate } from "@/lib/i18n";
@@ -8,8 +8,7 @@ import { priorityClass, priorityLabel } from "@/lib/labels";
 export const dynamic = "force-dynamic";
 
 export default async function MyTasksPage() {
-  const session = await auth();
-  const user = session!.user;
+  const user = await requirePageUser();
   const locale = await getLocale();
 
   const cards = await prisma.taskCard.findMany({

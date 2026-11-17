@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requirePageUser } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import SettingsForm from "./SettingsForm";
@@ -6,8 +6,7 @@ import SettingsForm from "./SettingsForm";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const session = await auth();
-  const user = session!.user;
+  const user = await requirePageUser();
   const locale = await getLocale();
   return (
     <div className="space-y-6 max-w-2xl">

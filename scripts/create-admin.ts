@@ -14,7 +14,7 @@ async function ask(rl: ReturnType<typeof createInterface>, q: string, fallback?:
 async function main() {
   const rl = createInterface({ input, output });
   try {
-    const username = await ask(rl, "Admin username [admin]: ", "admin");
+    const username = (await ask(rl, "Admin username [admin]: ", "admin")).toLowerCase();
     const displayName = await ask(rl, `Display name [${username}]: `, username);
     const password = await ask(rl, "Password: ");
     if (!password) {
@@ -31,6 +31,7 @@ async function main() {
           passwordHash,
           displayName,
           role: "admin",
+          sessionVersion: { increment: 1 },
         },
       });
       console.log(`Updated existing user '${username}' to admin.`);

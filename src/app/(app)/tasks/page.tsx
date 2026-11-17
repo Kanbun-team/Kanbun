@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requirePageUser } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
@@ -8,8 +8,7 @@ import CreateCategoryModal from "@/components/CreateCategoryModal";
 export const dynamic = "force-dynamic";
 
 export default async function TasksIndexPage() {
-  const session = await auth();
-  const user = session!.user;
+  const user = await requirePageUser();
   const locale = await getLocale();
   const isAdmin = user.role === "admin";
 

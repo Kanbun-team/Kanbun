@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db-local";
-import { auth } from "@/auth";
+import { requirePageUser } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
@@ -26,7 +26,7 @@ export default async function CardDetailPage({
   params: Promise<{ id: string; cardId: string }>;
 }) {
   const { id: boardId, cardId } = await params;
-  const session = await auth();
+  const me = await requirePageUser();
   let access;
   try {
     access = await loadBoardAccess(boardId);
@@ -83,8 +83,6 @@ export default async function CardDetailPage({
     ...card.blockedBy.map((b) => b.blocker.id),
   ]);
   const candidates = allCards.filter((c) => !linkedIds.has(c.id));
-
-  const me = session!.user;
   const canManage = canManageBoard(access);
 
   return (
