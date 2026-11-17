@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
-import { cn } from "@/lib/utils";
+import { cn, isPast } from "@/lib/utils";
+import { useSyncedState } from "@/lib/use-synced-state";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale } from "@/lib/i18n";
 import { renderMarkdownToHtml } from "@/lib/markdown";
@@ -141,8 +142,7 @@ export function CardPriorityEditor({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [value, setValue] = useState(initialPriority);
-  useEffect(() => setValue(initialPriority), [initialPriority]);
+  const [value, setValue] = useSyncedState(initialPriority);
 
   function pick(p: string) {
     if (p === value) return;
@@ -192,8 +192,7 @@ export function CardDeadlineEditor({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [value, setValue] = useState(initialDeadline ? initialDeadline.slice(0, 10) : "");
-  useEffect(() => setValue(initialDeadline ? initialDeadline.slice(0, 10) : ""), [initialDeadline]);
+  const [value, setValue] = useSyncedState(initialDeadline ? initialDeadline.slice(0, 10) : "");
 
   function save(next: string) {
     setValue(next); // optimistic
@@ -206,7 +205,7 @@ export function CardDeadlineEditor({
     });
   }
 
-  const overdue = value !== "" && new Date(value).getTime() < Date.now();
+  const overdue = value !== "" && isPast(value);
 
   return (
     <div className={cn("flex items-center gap-2 flex-wrap", pending && "opacity-60")}>
@@ -261,8 +260,7 @@ export function CardCover({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [value, setValue] = useState(initialColor);
-  useEffect(() => setValue(initialColor), [initialColor]);
+  const [value, setValue] = useSyncedState(initialColor);
 
   function pick(color: string | null) {
     setValue(color); // optimistic

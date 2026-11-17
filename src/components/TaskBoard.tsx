@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } f
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
-import { cn } from "@/lib/utils";
+import { cn, isPast } from "@/lib/utils";
+import { useSyncedState } from "@/lib/use-synced-state";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale, formatDate } from "@/lib/i18n";
 import {
@@ -104,15 +105,13 @@ export default function TaskBoard({
   members,
   boardTags,
 }: TaskBoardProps) {
-  const [columns, setColumns] = useState(initialColumns);
+  const [columns, setColumns] = useSyncedState(initialColumns);
   const [dragCardId, setDragCardId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<{ columnId: string; index: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; cardId: string } | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const router = useRouter();
   const [, startTransition] = useTransition();
-
-  useEffect(() => setColumns(initialColumns), [initialColumns]);
 
   // Live updates: when anyone mutates this board, the server pushes an SSE
   // event and we re-fetch. Refreshes are debounced so a burst of changes
@@ -711,7 +710,7 @@ function CardItem({
   onDragEnd: () => void;
   onContextMenu: (x: number, y: number) => void;
 }) {
-  const overdue = card.deadline && new Date(card.deadline).getTime() < Date.now();
+  const overdue = card.deadline && isPast(card.deadline);
   return (
     <Link
       href={`/tasks/${boardId}/cards/${card.id}`}

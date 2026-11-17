@@ -7,7 +7,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
 import { t, formatDateTime } from "@/lib/i18n";
-import { isOnline, ONLINE_WINDOW_MS, type DeviceType } from "@/lib/sessions";
+import { isOnline, onlineSince, type DeviceType } from "@/lib/sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +114,7 @@ export default async function ProfilePage({
     ? await prisma.userSession.findMany({
         where: {
           userId: user.id,
-          lastSeenAt: { gte: new Date(Date.now() - ONLINE_WINDOW_MS) },
+          lastSeenAt: { gte: onlineSince() },
         },
         orderBy: { lastSeenAt: "desc" },
       })

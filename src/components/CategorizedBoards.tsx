@@ -7,6 +7,7 @@ import CreateBoardModal from "./CreateBoardModal";
 import { moveBoardAction } from "@/server/tasks-actions";
 import { type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useSyncedState } from "@/lib/use-synced-state";
 
 interface UserOption {
   id: string;
@@ -69,15 +70,11 @@ interface DragOver {
 }
 
 export default function CategorizedBoards({ boards: initial, categories, users, locale }: Props) {
-  const [boards, setBoards] = useState<Board[]>(initial);
+  const [boards, setBoards] = useSyncedState<Board[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<DragOver | null>(null);
   const router = useRouter();
   const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    setBoards(initial);
-  }, [initial]);
 
   // Live updates for the boards grid: reordering, creating, archiving, or
   // renaming a board on one client pushes an SSE event to the others.

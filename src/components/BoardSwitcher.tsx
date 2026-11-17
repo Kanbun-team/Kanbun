@@ -36,9 +36,12 @@ export default function BoardSwitcher({ boards, locale }: Props) {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  useEffect(() => {
+  // Close the menu after navigating.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   if (!current) return null;
 

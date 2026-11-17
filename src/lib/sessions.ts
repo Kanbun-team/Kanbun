@@ -22,3 +22,8 @@ export function isOnline(lastSeen: Date | null | undefined): boolean {
   if (!lastSeen) return false;
   return Date.now() - lastSeen.getTime() <= ONLINE_WINDOW_MS;
 }
+
+// Sessions seen after this instant count as online.
+export function onlineSince(): Date {
+  return new Date(Date.now() - ONLINE_WINDOW_MS);
+}
