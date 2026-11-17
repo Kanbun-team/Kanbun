@@ -42,9 +42,15 @@ export async function notifyMany(inputs: NotifyInput[]): Promise<void> {
 /** Extract unique, lowercased @usernames from a comment body. */
 export function parseMentions(body: string): string[] {
   const set = new Set<string>();
-  const re = /@([a-z0-9_.-]+)/gi;
+  // Not preceded by a word char, so "jan@example.com" is not a mention.
+  const re = /(?<![a-z0-9_])@([a-z0-9_.-]+)/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(body)) !== null) set.add(m[1].toLowerCase());
+  while ((m = re.exec(body)) !== null) {
+    // Usernames may contain "." and "-", but not as sentence punctuation:
+    // "Thanks @bob." mentions "bob".
+    const name = m[1].replace(/[.-]+$/, "").toLowerCase();
+    if (name) set.add(name);
+  }
   return [...set];
 }
 

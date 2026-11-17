@@ -18,27 +18,49 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function emphasis(s: string): string {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_]+)__/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, "$1<em>$2</em>")
+    .replace(/(^|[^_])_([^_\s][^_]*?)_/g, "$1<em>$2</em>")
+    .replace(/~~([^~]+)~~/g, "<del>$1</del>");
+}
+
+// Placeholder delimiter. NUL is stripped from input, so it cannot be forged.
+const PH = "\u0000";
+
 function inline(raw: string): string {
-  let out = escapeHtml(raw);
+  const slots: string[] = [];
+  const stash = (html: string) => `${PH}${slots.push(html) - 1}${PH}`;
+
+  let out = escapeHtml(raw.replace(/\u0000/g, ""));
+
+  // Code spans first, so nothing inside them is formatted.
+  out = out.replace(/`([^`]+)`/g, (_m, code: string) =>
+    stash(
+      `<code class="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.85em]">${code}</code>`
+    )
+  );
 
   // Links: [text](http(s)://… | mailto:…). The url is already escaped, so it
-  // cannot contain quotes that break out of the attribute.
+  // cannot contain quotes that break out of the attribute. The whole tag is
+  // stashed so emphasis rules never touch the url or the attributes.
   out = out.replace(
     /\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)/g,
     (_m, text: string, url: string) =>
-      `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand-600 underline">${text}</a>`
+      stash(
+        `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand-600 underline">${emphasis(text)}</a>`
+      )
   );
 
-  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  out = out.replace(/__([^_]+)__/g, "<strong>$1</strong>");
-  out = out.replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, "$1<em>$2</em>");
-  out = out.replace(/(^|[^_])_([^_\s][^_]*?)_/g, "$1<em>$2</em>");
-  out = out.replace(/~~([^~]+)~~/g, "<del>$1</del>");
-  out = out.replace(
-    /`([^`]+)`/g,
-    '<code class="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.85em]">$1</code>'
-  );
+  out = emphasis(out);
 
+  // Restore until stable: link text may itself contain a stashed code span.
+  const slot = new RegExp(`${PH}(\\d+)${PH}`, "g");
+  while (slot.test(out)) {
+    out = out.replace(slot, (_m, i: string) => slots[Number(i)]);
+  }
   return out;
 }
 
