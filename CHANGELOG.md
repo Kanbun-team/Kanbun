@@ -6,6 +6,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-17
+
+Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
+
+### Added
+
+- Trash: deleted cards, columns and boards stay restorable for 30 days from the new Trash page (user menu).
+- Undo: deleting a card, column or board shows an "Undo" toast instead of asking for confirmation first.
+- Admins can deactivate and reactivate users. Deactivated users are signed out, cannot log in and are hidden from pickers and mentions; their cards, comments and history stay.
+- Error and not-found pages with a way back, instead of the framework's default error screen.
+- End-to-end tests (Playwright) and accessibility checks (axe, WCAG 2.2 AA, light and dark) run in CI, plus a translation completeness test.
+
+### Changed
+
+- New visual foundation from [docs/DESIGN.md](docs/DESIGN.md): indigo brand color, semantic color tokens, IBM Plex Sans bundled with the app, sentence case instead of all-caps labels, 12px minimum text size.
+- Tag chips and avatar initials use contrast-checked colors in both themes.
+- Confirmations that remain (removing a member, deleting a tag, comment or user) use an accessible dialog that names what will happen, instead of the browser's confirm box.
+- Failed actions show a short, translated message saying what went wrong, instead of an error page.
+
+### Fixed
+
+- Deleting a user no longer deletes the boards, cards, comments and dependencies they created. Their comments now show "Deleted user".
+- 25 color contrast failures on tag chips, avatars and secondary text.
+
+### Upgrade notes
+
+- A database migration runs automatically on start (`prisma migrate deploy`). It rebuilds four tables to change foreign keys; back up the SQLite file first, as for any upgrade.
+
 ## [0.2.3] - 2026-11-17
 
 ### Changed
@@ -92,7 +120,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.0...v0.2.1

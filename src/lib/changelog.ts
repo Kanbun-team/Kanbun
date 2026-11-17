@@ -9,6 +9,36 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-17",
+    title: { en: "Version 0.3.0", it: "Versione 0.3.0", pl: "Wersja 0.3.0", de: "Version 0.3.0" },
+    items: [
+      {
+        en: "Deleted something by mistake? Press Undo, or restore it from the new Trash for 30 days.",
+        it: "Eliminato qualcosa per errore? Premi Annulla, oppure ripristinalo dal nuovo Cestino entro 30 giorni.",
+        pl: "Usunięte przez pomyłkę? Kliknij Cofnij albo przywróć z nowego Kosza w ciągu 30 dni.",
+        de: "Versehentlich gelöscht? Klicke auf Rückgängig oder stelle es 30 Tage lang aus dem neuen Papierkorb wieder her.",
+      },
+      {
+        en: "Admins can deactivate accounts. The person's cards and comments stay.",
+        it: "Gli amministratori possono disattivare gli account. Card e commenti della persona restano.",
+        pl: "Administratorzy mogą dezaktywować konta. Karty i komentarze tej osoby zostają.",
+        de: "Admins können Konten deaktivieren. Karten und Kommentare der Person bleiben erhalten.",
+      },
+      {
+        en: "A fresh look: new typeface, calmer colors and better contrast in light and dark themes.",
+        it: "Un aspetto nuovo: nuovo carattere, colori più calmi e contrasto migliore nei temi chiaro e scuro.",
+        pl: "Nowy wygląd: nowa czcionka, spokojniejsze kolory i lepszy kontrast w jasnym i ciemnym motywie.",
+        de: "Ein frischer Look: neue Schrift, ruhigere Farben und besserer Kontrast im hellen und dunklen Design.",
+      },
+      {
+        en: "When something fails, you now see a short message saying what went wrong.",
+        it: "Quando qualcosa non va, ora vedi un breve messaggio che spiega cosa è successo.",
+        pl: "Gdy coś się nie uda, zobaczysz krótki komunikat, co poszło nie tak.",
+        de: "Wenn etwas fehlschlägt, siehst du jetzt eine kurze Meldung, was schiefgelaufen ist.",
+      },
+    ],
+  },
+  {
+    date: "2026-11-17",
     title: { en: "Version 0.2.3", it: "Versione 0.2.3", pl: "Wersja 0.2.3", de: "Version 0.2.3" },
     items: [
       {
