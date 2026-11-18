@@ -73,7 +73,11 @@ export default function NotificationBell({ initial, locale }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label={t("notifTitle", locale)}
+        aria-label={
+          unread > 0
+            ? t("notifTitleUnread", locale).replace("{count}", unread > 9 ? "9+" : String(unread))
+            : t("notifTitle", locale)
+        }
         aria-expanded={open}
         className="relative rounded-control p-1.5 hover:bg-ink/5"
       >

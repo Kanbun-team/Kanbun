@@ -10,6 +10,12 @@ import { ActionError } from "@/lib/action-result";
 import { checklistFromText } from "@/lib/card-templates";
 import { nextOccurrence, toRule } from "@/lib/recurrence";
 import { createCardFromTemplate } from "@/server/card-templates";
+import { notifyNewCards } from "@/server/watchers";
+
+async function actorName(userId: string): Promise<string> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { username: true, displayName: true } });
+  return u?.displayName ?? u?.username ?? "";
+}
 
 // Card templates and recurring-card schedules. Board owners and admins manage
 // both in board settings; every board member can create a card from a
@@ -164,6 +170,7 @@ export async function createCardFromTemplateAction(input: { templateId: string; 
     const card = await prisma.$transaction((tx) =>
       createCardFromTemplate(tx, { template, column, actorId: access.userId, source: "template" })
     );
+    await notifyNewCards(column.boardId, [card], { id: access.userId, name: await actorName(access.userId) });
     revalidatePath(`/tasks/${column.boardId}`);
     publishBoard(column.boardId);
     return { cardId: card.id };

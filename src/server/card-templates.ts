@@ -4,6 +4,7 @@
 import type { CardTemplate, Prisma, PrismaClient } from "@prisma/client";
 import { logActivity } from "@/server/activity";
 import { parseStringArray } from "@/lib/card-templates";
+import { watchCard } from "@/server/watchers";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -25,7 +26,7 @@ export async function createCardFromTemplate(
     actorId: string | null;
     source: "template" | "schedule";
   }
-): Promise<{ id: string }> {
+): Promise<{ id: string; title: string }> {
   const wantedTags = parseStringArray(template.tagIds);
   const tags = wantedTags.length
     ? await tx.boardTag.findMany({ where: { id: { in: wantedTags }, boardId: column.boardId }, select: { id: true } })
@@ -49,6 +50,7 @@ export async function createCardFromTemplate(
     },
     select: { id: true, title: true },
   });
+  if (actorId) await watchCard(card.id, actorId, tx);
   await tx.taskCardMoveEvent.create({
     data: { cardId: card.id, cardTitle: card.title, boardId: column.boardId, toColumnName: column.name, userId: actorId },
   });
@@ -62,5 +64,5 @@ export async function createCardFromTemplate(
     },
     tx
   );
-  return { id: card.id };
+  return { id: card.id, title: card.title };
 }

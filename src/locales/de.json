@@ -148,6 +148,7 @@
   "cardCover": "Titelfarbe",
   "columnWipLimit": "WIP-Limit",
   "notifTitle": "Benachrichtigungen",
+  "notifTitleUnread": "Benachrichtigungen, {count} ungelesen",
   "notifEmpty": "Keine Benachrichtigungen",
   "notifMarkAllRead": "Alle als gelesen markieren",
   "notifSomeone": "Jemand",

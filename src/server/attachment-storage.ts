@@ -44,7 +44,8 @@ export function storagePathIn(dir: string, key: string): string {
   return path.join(dir, key.slice(0, 2), key);
 }
 
-export const attachmentsDir = () => attachmentsDirFrom(process.env, process.cwd());
+// The path is only known at runtime; tell Turbopack not to trace the whole project for it.
+export const attachmentsDir = () => attachmentsDirFrom(process.env, /* turbopackIgnore: true */ process.cwd());
 export const maxAttachmentBytes = () => maxAttachmentBytesFrom(process.env);
 const storagePath = (key: string) => storagePathIn(attachmentsDir(), key);
 
@@ -58,7 +59,7 @@ export async function saveAttachmentFile(key: string, bytes: Uint8Array): Promis
 }
 
 export function readAttachmentFile(key: string): Promise<Buffer> {
-  return readFile(storagePath(key));
+  return readFile(/* turbopackIgnore: true */ storagePath(key));
 }
 
 /** Removes stored files; missing files are ignored. */

@@ -148,6 +148,7 @@
   "cardCover": "Cover",
   "columnWipLimit": "WIP limit",
   "notifTitle": "Notifications",
+  "notifTitleUnread": "Notifications, {count} unread",
   "notifEmpty": "No notifications",
   "notifMarkAllRead": "Mark all read",
   "notifSomeone": "Someone",

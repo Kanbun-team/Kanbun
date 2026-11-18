@@ -148,6 +148,7 @@
   "cardCover": "Copertina",
   "columnWipLimit": "Limite WIP",
   "notifTitle": "Notifiche",
+  "notifTitleUnread": "Notifiche, {count} non lette",
   "notifEmpty": "Nessuna notifica",
   "notifMarkAllRead": "Segna tutte come lette",
   "notifSomeone": "Qualcuno",

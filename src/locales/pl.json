@@ -147,6 +147,7 @@
   "cardCover": "Okładka",
   "columnWipLimit": "Limit WIP",
   "notifTitle": "Powiadomienia",
+  "notifTitleUnread": "Powiadomienia, nieprzeczytane: {count}",
   "notifEmpty": "Brak powiadomień",
   "notifMarkAllRead": "Oznacz jako przeczytane",
   "notifSomeone": "Ktoś",
