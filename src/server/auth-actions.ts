@@ -9,7 +9,8 @@ import { SSO_PROVIDER_ID, ssoConfig } from "@/lib/sso";
 import { clearLinkIntent } from "@/server/sso";
 
 export type LoginState = {
-  error?: string;
+  /** Translated on the login screen: "invalid" (username or password) or "code" (two-factor code). */
+  error?: "invalid" | "code";
   /** "code" when the password was accepted and a two-factor code is needed. */
   step?: "code";
 };
@@ -20,7 +21,7 @@ export async function loginAction(_: unknown, formData: FormData): Promise<Login
   const code = String(formData.get("code") ?? "").trim();
   const from = safeRedirect(String(formData.get("from") ?? ""), "/tasks");
   if (!username || !password) {
-    return { error: "Invalid username or password." };
+    return { error: "invalid" };
   }
   try {
     await signIn("credentials", {
@@ -34,11 +35,11 @@ export async function loginAction(_: unknown, formData: FormData): Promise<Login
       return { step: "code" };
     }
     if (err instanceof CredentialsSignin && err.code === "totp_invalid") {
-      return { step: "code", error: "That code is not valid. Check your authenticator app and try again." };
+      return { step: "code", error: "code" };
     }
     if (err instanceof AuthError) {
       // A rate-limited or wrong login on the code step goes back to the start.
-      return { error: "Invalid username or password." };
+      return { error: "invalid" };
     }
     throw err;
   }

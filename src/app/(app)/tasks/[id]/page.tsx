@@ -9,8 +9,14 @@ import { BoardPresence } from "@/components/presence/Presence";
 import WatchButton from "@/components/WatchButton";
 import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
 import { parseFilters } from "@/lib/board-filters";
+import { boardTitle } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return boardTitle(id);
+}
 
 export default async function BoardPage({
   params,

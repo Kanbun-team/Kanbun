@@ -8,7 +8,8 @@ import { auth } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
 
 export const metadata: Metadata = {
-  title: "Kanbun",
+  // Pages set their own part (generateMetadata, see src/server/page-title.ts).
+  title: { default: "Kanbun", template: "%s · Kanbun" },
   description: "Self-hosted task boards.",
   manifest: "/manifest.webmanifest",
   icons: {

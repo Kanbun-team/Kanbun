@@ -15,8 +15,13 @@ import ApiTokenSettings from "./ApiTokenSettings";
 import { TOKEN_EXPIRY_DAYS, tokenState } from "@/lib/api-tokens";
 import TwoFactorSettings from "./TwoFactorSettings";
 import ConnectedAccounts from "./ConnectedAccounts";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("settingsTitle");
+}
 
 const SSO_NOTICE_KEYS: Record<string, DictKey> = {
   SsoIdentityInUse: "ssoErrorIdentityInUse",

@@ -8,6 +8,7 @@ export default async function NotFound() {
   const locale = await getLocale();
   return (
     <StatusPage title={t("notFoundTitle", locale)} body={t("notFoundBody", locale)}>
+      <title>{`${t("notFoundTitle", locale)} · Kanbun`}</title>
       <Link href="/tasks" className={buttonClass("primary")}>
         {t("backToBoards", locale)}
       </Link>

@@ -10,8 +10,13 @@ import { buttonClass } from "@/components/ui/button";
 import RelativeTime from "@/components/ui/RelativeTime";
 import { AUDIT_PAGE_SIZE, auditDetails, auditFilterOptions, auditWhere, parseAuditFilters } from "@/server/audit-query";
 import { auditRetentionDays } from "@/server/jobs/audit-purge";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("adminAudit");
+}
 
 function detailValue(value: unknown): string {
   if (value === null || value === undefined) return "";

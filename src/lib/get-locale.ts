@@ -1,10 +1,16 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n";
+import { localeFromAcceptLanguage } from "@/lib/accept-language";
 
 export const LOCALE_COOKIE = "kanbun_locale";
 
+/**
+ * The reader's language: the locale cookie, then the signed-in user's setting,
+ * then the browser's Accept-Language (so the login and setup screens speak it
+ * too), then English.
+ */
 export async function getLocale(): Promise<Locale> {
   try {
     const cookieStore = await cookies();
@@ -27,6 +33,13 @@ export async function getLocale(): Promise<Locale> {
     }
   } catch {
     // ignore
+  }
+
+  try {
+    const fromBrowser = localeFromAcceptLanguage((await headers()).get("accept-language"));
+    if (fromBrowser) return fromBrowser;
+  } catch {
+    // headers() may throw outside a request scope, ignore.
   }
 
   return DEFAULT_LOCALE;

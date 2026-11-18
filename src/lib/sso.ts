@@ -2,6 +2,8 @@
 // for an SSO sign-in. Database access lives in src/server/sso.ts; this file
 // only decides, so the rules are unit tested. See docs/SSO.md.
 
+import { t, type DictKey, type Locale } from "@/lib/i18n";
+
 export const SSO_PROVIDER_ID = "oidc";
 
 export interface SsoConfig {
@@ -209,29 +211,24 @@ export function usernameCandidates(base: string, count = 50): string[] {
   return out;
 }
 
-const SSO_ERROR_MESSAGES: Record<SsoErrorCode | "default", string> = {
-  SsoNotLinked:
-    "This single sign-on account is not linked to a Kanbun user. Sign in with your password and link it in Settings, or ask your administrator.",
-  SsoSignupDisabled:
-    "There is no Kanbun account for this single sign-on user, and new accounts can not be created this way. Ask your administrator to create one.",
-  SsoDeactivated: "This account has been deactivated. Ask your administrator.",
-  SsoIdentityInUse: "This single sign-on account is already linked to another Kanbun user.",
-  SsoAlreadyLinked: "Your account is already linked to a different single sign-on account. Disconnect it first.",
-  SsoInvalidProfile: "The identity provider did not send a usable profile. Ask your administrator.",
-  default: "Single sign-on failed. Try again or ask your administrator.",
+const SSO_ERROR_KEYS: Record<SsoErrorCode | "default", DictKey> = {
+  SsoNotLinked: "authSsoNotLinked",
+  SsoSignupDisabled: "authSsoSignupDisabled",
+  SsoDeactivated: "authSsoDeactivated",
+  SsoIdentityInUse: "authSsoIdentityInUse",
+  SsoAlreadyLinked: "authSsoAlreadyLinked",
+  SsoInvalidProfile: "authSsoInvalidProfile",
+  default: "authSsoFailed",
 };
 
-/**
- * Message for the `error` query parameter Auth.js puts on the login page.
- * Login stays English-only like the rest of the login screen.
- */
-export function loginErrorMessage(code: string | undefined): string | null {
+/** Message for the `error` query parameter Auth.js puts on the login page. */
+export function loginErrorMessage(code: string | undefined, locale: Locale = "en"): string | null {
   if (!code) return null;
-  if (code in SSO_ERROR_MESSAGES) return SSO_ERROR_MESSAGES[code as SsoErrorCode];
-  if (code === "CredentialsSignin") return "Invalid username or password.";
-  return SSO_ERROR_MESSAGES.default;
+  if (code in SSO_ERROR_KEYS) return t(SSO_ERROR_KEYS[code as SsoErrorCode], locale);
+  if (code === "CredentialsSignin") return t("authInvalid", locale);
+  return t(SSO_ERROR_KEYS.default, locale);
 }
 
 export function isSsoErrorCode(code: string): code is SsoErrorCode {
-  return code in SSO_ERROR_MESSAGES && code !== "default";
+  return code in SSO_ERROR_KEYS && code !== "default";
 }

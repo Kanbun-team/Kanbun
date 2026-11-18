@@ -6,8 +6,13 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { buttonClass } from "@/components/ui/button";
 import { isSqliteUrl } from "@/server/backup";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("adminData");
+}
 
 export default async function AdminDataPage() {
   const user = await requirePageUser();

@@ -5,8 +5,13 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { buttonClass } from "@/components/ui/button";
 import FirstBoardForm from "./FirstBoardForm";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("setupBoardTitle");
+}
 
 // Step 2 of first-run setup: offer a first board from a built-in template.
 export default async function SetupBoardPage() {

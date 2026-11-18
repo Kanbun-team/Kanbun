@@ -11,8 +11,13 @@ import CreateBoardModal from "@/components/CreateBoardModal";
 import CreateCategoryModal from "@/components/CreateCategoryModal";
 import EmptyState from "@/components/ui/EmptyState";
 import { LayoutDashboard } from "lucide-react";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("boardsTitle");
+}
 
 const userSelect = { id: true, username: true, displayName: true, avatarUrl: true } as const;
 

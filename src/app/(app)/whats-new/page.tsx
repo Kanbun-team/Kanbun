@@ -1,6 +1,11 @@
 import { getLocale } from "@/lib/get-locale";
 import { t, formatDate } from "@/lib/i18n";
 import { CHANGELOG, localizedItems, localizedTitle } from "@/lib/changelog";
+import { titleMetadata } from "@/server/page-title";
+
+export function generateMetadata() {
+  return titleMetadata("whatsNewTitle");
+}
 
 export default async function WhatsNewPage() {
   const locale = await getLocale();
