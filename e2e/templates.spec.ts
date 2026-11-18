@@ -11,14 +11,16 @@ test("create a template in settings, then a card from it with checklist and tags
 
   const section = page.getByRole("region", { name: "Card templates" });
   await section.getByText("New template").click();
+  // The demo board has templates already; fill in the new-template form.
+  const form = section.locator("details").filter({ has: page.getByText("New template", { exact: true }) });
   const name = `Bug report ${Date.now()}`;
-  await section.getByLabel("Template name").fill(name);
-  await section.getByLabel("Card title").fill("Fix: describe the bug");
-  await section.getByLabel("Description").fill("Steps to reproduce:");
-  await section.getByLabel("Priority").selectOption({ label: "High" });
-  await section.getByRole("checkbox", { name: "Bug" }).check();
-  await section.getByLabel("Checklist").fill("Reproduce it\nWrite a test\n\nShip the fix");
-  await section.getByRole("button", { name: "Create template" }).click();
+  await form.getByLabel("Template name").fill(name);
+  await form.getByLabel("Card title").fill("Fix: describe the bug");
+  await form.getByLabel("Description").fill("Steps to reproduce:");
+  await form.getByLabel("Priority").selectOption({ label: "High" });
+  await form.getByRole("checkbox", { name: "Bug" }).check();
+  await form.getByLabel("Checklist").fill("Reproduce it\nWrite a test\n\nShip the fix");
+  await form.getByRole("button", { name: "Create template" }).click();
   await expect(toast(page)).toContainText("Template created");
   await expect(section.getByText(name)).toBeVisible();
   await expect(section.getByText("3 checklist items")).toBeVisible();

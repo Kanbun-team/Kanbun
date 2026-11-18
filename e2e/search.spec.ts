@@ -13,6 +13,16 @@ async function openPalette(page: Page, key = "Control+K") {
   return input;
 }
 
+/** Moves the palette's virtual focus to `option` with the arrow keys. */
+async function highlight(page: Page, option: ReturnType<Page["getByRole"]>) {
+  const input = palette(page).getByRole("textbox");
+  const id = await option.getAttribute("id");
+  for (let i = 0; i < 10 && (await input.getAttribute("aria-activedescendant")) !== id; i++) {
+    await page.keyboard.press("ArrowDown");
+  }
+  await expect(input).toHaveAttribute("aria-activedescendant", id!);
+}
+
 async function addCard(page: Page, columnName: string, title: string) {
   const col = column(page, columnName);
   await col.getByRole("button", { name: "Add card" }).click();
@@ -183,6 +193,10 @@ test("card actions for the open card: move, assign to me, priority", async ({ pa
   await expect(palette(page).getByRole("option", { name: "Set priority: Critical" })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(palette(page)).toHaveCount(0);
+  // Focus is back in the card panel, so Escape closes it.
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]')?.getAttribute("aria-label") ?? null))
+    .toBe("Open card");
 
   await page.keyboard.press("Escape");
   await expect(page).toHaveURL(/\/tasks\/[^/]+$/);
@@ -204,7 +218,7 @@ test("right arrow on a card result shows its actions, Escape goes back", async (
   await input.fill(`arrow card ${stamp}`);
   await expect(palette(page).getByRole("option").first()).toContainText(title);
   await expect(palette(page).getByText("shows the actions of the highlighted card")).toBeVisible();
-  await page.keyboard.press("ArrowDown");
+  await highlight(page, palette(page).getByRole("option", { name: new RegExp(title) }));
   await page.keyboard.press("ArrowRight");
   const scoped = palette(page).getByRole("textbox", { name: `Actions for ${title}` });
   await expect(scoped).toBeFocused();
@@ -218,8 +232,7 @@ test("right arrow on a card result shows its actions, Escape goes back", async (
   await expect(search).toBeFocused();
 
   await search.fill(`arrow card ${stamp}`);
-  await expect(palette(page).getByRole("option").first()).toContainText(title);
-  await page.keyboard.press("ArrowDown");
+  await highlight(page, palette(page).getByRole("option", { name: new RegExp(title) }));
   await page.keyboard.press("ArrowRight");
   await expect(scoped).toBeFocused();
   await scoped.pressSequentially("done");

@@ -402,7 +402,8 @@ function ChecklistRow({
         ref={dueRef}
         type="button"
         onClick={() => setDueOpen(true)}
-        aria-label={due ? `${dueTitle}: ${formatDate(new Date(item.dueDate!), locale)}` : dueTitle}
+        // The visible text ("Tomorrow") is part of the name, as WCAG 2.5.3 asks.
+        aria-label={due ? `${dueTitle}: ${due.label}, ${formatDate(new Date(item.dueDate!), locale)}` : dueTitle}
         title={due ? formatDate(new Date(item.dueDate!), locale) : dueTitle}
         className={cn(
           control,
@@ -445,7 +446,8 @@ function ChecklistRow({
         ]}
         trigger={
           item.assignee ? (
-            <Avatar src={item.assignee.avatarUrl} name={assigneeName} size={22} />
+            // The trigger's label names the person; the initials are decoration.
+            <Avatar src={item.assignee.avatarUrl} name={assigneeName} size={22} decorative />
           ) : (
             <UserPlus size={14} aria-hidden />
           )

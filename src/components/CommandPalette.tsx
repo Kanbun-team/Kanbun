@@ -136,6 +136,27 @@ export default function CommandPalette() {
     };
   }, []);
 
+  // React Aria gives focus back to the element focused before the palette
+  // opened. When a palette action re-rendered the page, that element can be
+  // gone: focus then goes to the open card panel (so Escape still closes it)
+  // instead of being lost on the page body.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    const timer = setTimeout(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body && document.contains(active)) return;
+      const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"]');
+      dialogs[dialogs.length - 1]?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [open]);
+
   return (
     <>
       <ModalOverlay
