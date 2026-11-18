@@ -816,5 +816,22 @@
   "exportBoardBody": "JSON keeps everything on the board and can be imported again as a new board. CSV lists the cards for spreadsheets.",
   "exportJson": "Download JSON",
   "exportJsonHistory": "JSON with card history",
-  "exportCsv": "Download CSV"
+  "exportCsv": "Download CSV",
+  "offlineBanner": "Offline: showing data from {time}",
+  "offlineBannerNoTime": "Offline: showing the last saved data",
+  "offlinePendingOne": "1 change waiting to sync",
+  "offlinePendingMany": "{count} changes waiting to sync",
+  "offlineSyncing": "Syncing changes ({count})",
+  "offlineUnavailable": "You are offline. This cannot be saved until you reconnect.",
+  "offlineCardUnavailable": "Card details are not available offline.",
+  "offlineCommentHint": "You are offline. Your comment stays here until you can post it.",
+  "syncDone": "All offline changes are synced.",
+  "syncFailed": "{count} changes could not be synced and were discarded: {list}",
+  "pwaUpdateAvailable": "A new version of Kanbun is available.",
+  "pwaReload": "Reload",
+  "offlinePageTitle": "You are offline",
+  "offlinePageBody": "This page was not saved for offline use. Boards you opened before are still available.",
+  "logoutPendingTitle": "Log out with unsynced changes?",
+  "logoutPendingBody": "{count} changes made offline have not reached the server yet. Logging out discards them.",
+  "networkError": "Could not reach the server. Nothing was saved."
 }

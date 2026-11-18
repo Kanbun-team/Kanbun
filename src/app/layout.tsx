@@ -15,7 +15,8 @@ export const metadata: Metadata = {
     icon: [
       { url: "/icons/icon-192.svg", type: "image/svg+xml" },
     ],
-    apple: [{ url: "/icons/icon-192.svg" }],
+    // iOS ignores SVG touch icons.
+    apple: [{ url: "/icons/kanbun-180.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ActionResult } from "@/lib/action-result";
 import { useUi, type ConfirmOptions } from "./UiProvider";
 import { useUndo } from "./useUndo";
+import { blockedOffline, sendOrWarn } from "./offline";
 
 type FormProps = Omit<ComponentProps<"form">, "action" | "onSubmit">;
 
@@ -38,9 +39,13 @@ export default function ActionForm({
   // The confirm dialog must open outside the transition: React commits state
   // updates made inside an async transition only when the transition ends.
   async function submit(fd: FormData) {
+    // Offline the form keeps what was typed; only board card edits are queued.
+    if (blockedOffline(ui)) return;
     if (confirm && !(await ui.confirm(confirm))) return;
     startTransition(async () => {
-      const result = ui.report(await action(fd));
+      const raw = await sendOrWarn(ui, () => action(fd));
+      if (!raw) return;
+      const result = ui.report(raw);
       if (!result.ok) return;
       if (resetOnSuccess) ref.current?.reset();
       if (redirectTo) router.push(redirectTo);

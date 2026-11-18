@@ -76,6 +76,9 @@ export default async function BoardPage({
     select: { id: true, name: true },
   });
 
+  // Lets the board tell this data apart from a newer offline snapshot.
+  const renderedAt = new Date().toISOString();
+
   const dto: ColumnDTO[] = board.columns.map((c) => ({
     id: c.id,
     name: c.name,
@@ -156,6 +159,7 @@ export default async function BoardPage({
         boardTags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
         savedFilters={savedFilters}
         templates={templates}
+        renderedAt={renderedAt}
       />
     </div>
   );

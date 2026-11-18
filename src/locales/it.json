@@ -816,5 +816,22 @@
   "exportBoardBody": "Il JSON conserva tutto il contenuto della bacheca e può essere reimportato come nuova bacheca. Il CSV elenca le schede per i fogli di calcolo.",
   "exportJson": "Scarica JSON",
   "exportJsonHistory": "JSON con cronologia delle schede",
-  "exportCsv": "Scarica CSV"
+  "exportCsv": "Scarica CSV",
+  "offlineBanner": "Offline: dati salvati {time}",
+  "offlineBannerNoTime": "Offline: vengono mostrati gli ultimi dati salvati",
+  "offlinePendingOne": "1 modifica in attesa di sincronizzazione",
+  "offlinePendingMany": "{count} modifiche in attesa di sincronizzazione",
+  "offlineSyncing": "Sincronizzazione delle modifiche ({count})",
+  "offlineUnavailable": "Sei offline. Non è possibile salvare finché non torni online.",
+  "offlineCardUnavailable": "I dettagli della card non sono disponibili offline.",
+  "offlineCommentHint": "Sei offline. Il commento resta qui finché non potrai pubblicarlo.",
+  "syncDone": "Tutte le modifiche offline sono state sincronizzate.",
+  "syncFailed": "{count} modifiche non sono state sincronizzate e sono state scartate: {list}",
+  "pwaUpdateAvailable": "È disponibile una nuova versione di Kanbun.",
+  "pwaReload": "Ricarica",
+  "offlinePageTitle": "Sei offline",
+  "offlinePageBody": "Questa pagina non è stata salvata per l'uso offline. Le bacheche aperte in precedenza sono ancora disponibili.",
+  "logoutPendingTitle": "Uscire con modifiche non sincronizzate?",
+  "logoutPendingBody": "{count} modifiche fatte offline non sono ancora arrivate al server. Uscendo verranno scartate.",
+  "networkError": "Impossibile raggiungere il server. Non è stato salvato nulla."
 }

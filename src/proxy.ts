@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // /setup is the first-run wizard; it checks for itself whether it may run.
-const PUBLIC_PATHS = ["/login", "/setup", "/api/auth"];
+// /offline is the service worker's fallback page (no user data).
+const PUBLIC_PATHS = ["/login", "/setup", "/api/auth", "/offline"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -25,9 +26,10 @@ export function proxy(req: NextRequest) {
 // (and capped at 10 MB) by the proxy; those routes check the session themselves.
 // api/v1 (the REST API) is left out because it never uses the session: every
 // route authenticates its bearer token (src/server/api/http.ts) and answers
-// 401 in JSON instead of redirecting to the login page.
+// 401 in JSON instead of redirecting to the login page. sw.js is the service
+// worker script, which the browser re-checks even when signed out.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|api/auth|api/attachments|api/import|api/v1/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons|api/auth|api/attachments|api/import|api/v1/).*)",
   ],
 };

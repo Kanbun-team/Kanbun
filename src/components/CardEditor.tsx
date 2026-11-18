@@ -7,6 +7,7 @@ import { buttonClass, iconButtonClass } from "./ui/button";
 import Avatar from "./Avatar";
 import Combobox from "./ui/Combobox";
 import { useUi } from "./ui/UiProvider";
+import { blockedOffline, sendOrWarn } from "./ui/offline";
 import { cn, isPast } from "@/lib/utils";
 import { useSyncedState } from "@/lib/use-synced-state";
 import { PALETTE } from "@/lib/palette";
@@ -38,11 +39,13 @@ export function CardTitleEditor({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialTitle);
   const router = useRouter();
+  const ui = useUi();
   if (editing) {
     return (
       <form
         action={async (fd) => {
-          await updateCardAction(fd);
+          // Offline or connection lost: stay in the editor, the text is kept.
+          if (!(await sendOrWarn(ui, () => updateCardAction(fd)))) return;
           setEditing(false);
           router.refresh();
         }}
@@ -87,11 +90,13 @@ export function CardDescriptionEditor({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialDescription);
   const router = useRouter();
+  const ui = useUi();
   if (editing) {
     return (
       <form
         action={async (fd) => {
-          await updateCardAction(fd);
+          // Offline or connection lost: stay in the editor, the text is kept.
+          if (!(await sendOrWarn(ui, () => updateCardAction(fd)))) return;
           setEditing(false);
           router.refresh();
         }}
@@ -146,17 +151,19 @@ export function CardPriorityEditor({
   locale: Locale;
 }) {
   const router = useRouter();
+  const ui = useUi();
   const [pending, startTransition] = useTransition();
   const [value, setValue] = useSyncedState(initialPriority);
 
   function pick(p: string) {
-    if (p === value) return;
+    if (p === value || blockedOffline(ui)) return;
+    const before = value;
     setValue(p); // optimistic
     startTransition(async () => {
       const fd = new FormData();
       fd.set("cardId", cardId);
       fd.set("priority", p);
-      await updateCardAction(fd);
+      if (!(await sendOrWarn(ui, () => updateCardAction(fd)))) return setValue(before);
       router.refresh();
     });
   }
@@ -197,16 +204,19 @@ export function CardDeadlineEditor({
   locale: Locale;
 }) {
   const router = useRouter();
+  const ui = useUi();
   const [pending, startTransition] = useTransition();
   const [value, setValue] = useSyncedState(initialDeadline ? initialDeadline.slice(0, 10) : "");
 
   function save(next: string) {
+    if (blockedOffline(ui)) return;
+    const before = value;
     setValue(next); // optimistic
     startTransition(async () => {
       const fd = new FormData();
       fd.set("cardId", cardId);
       fd.set("deadline", next);
-      await updateCardAction(fd);
+      if (!(await sendOrWarn(ui, () => updateCardAction(fd)))) return setValue(before);
       router.refresh();
     });
   }
@@ -256,16 +266,19 @@ export function CardCover({
   locale: Locale;
 }) {
   const router = useRouter();
+  const ui = useUi();
   const [pending, startTransition] = useTransition();
   const [value, setValue] = useSyncedState(initialColor);
 
   function pick(color: string | null) {
+    if (blockedOffline(ui)) return;
+    const before = value;
     setValue(color); // optimistic
     startTransition(async () => {
       const fd = new FormData();
       fd.set("cardId", cardId);
       fd.set("coverColor", color ?? "");
-      await updateCardAction(fd);
+      if (!(await sendOrWarn(ui, () => updateCardAction(fd)))) return setValue(before);
       router.refresh();
     });
   }
@@ -323,12 +336,14 @@ export function CardAssignees({
   );
 
   function toggle(userId: string) {
+    if (blockedOffline(ui)) return;
     startTransition(async () => {
       toggleOptimistic(userId);
       const fd = new FormData();
       fd.set("cardId", cardId);
       fd.set("userId", userId);
-      ui.report(await toggleAssigneeAction(fd));
+      const result = await sendOrWarn(ui, () => toggleAssigneeAction(fd));
+      if (result) ui.report(result);
       router.refresh();
     });
   }

@@ -11,7 +11,14 @@ import type { PresenceViewer } from "@/lib/presence";
 type Listener = {
   onBoard?: () => void;
   onPresence?: () => void;
+  /** The stream (re)connected. */
+  onOpen?: () => void;
+  /** The stream went stale or recovered (see useBoardStreamStale). */
+  onStatus?: () => void;
 };
+
+/** How long the stream may be down before the board says it is offline. */
+export const STALE_AFTER_MS = 10_000;
 
 type Stream = {
   source: EventSource;
@@ -23,6 +30,9 @@ type Stream = {
   sentCardId: string | null;
   flushTimer?: ReturnType<typeof setTimeout>;
   closeTimer?: ReturnType<typeof setTimeout>;
+  /** Disconnected for longer than STALE_AFTER_MS. */
+  stale: boolean;
+  staleTimer?: ReturnType<typeof setTimeout>;
 };
 
 const EMPTY: PresenceViewer[] = [];
@@ -60,13 +70,38 @@ function scheduleFlush(boardId: string, stream: Stream) {
 function open(boardId: string): Stream {
   const connId = newConnId();
   const source = new EventSource(`/api/boards/${boardId}/events?conn=${encodeURIComponent(connId)}`);
-  const stream: Stream = { source, connId, listeners: new Set(), viewers: EMPTY, cardId: null, sentCardId: null };
+  const stream: Stream = {
+    source,
+    connId,
+    listeners: new Set(),
+    viewers: EMPTY,
+    cardId: null,
+    sentCardId: null,
+    stale: false,
+  };
+  const setStale = (stale: boolean) => {
+    if (stream.stale === stale) return;
+    stream.stale = stale;
+    for (const l of stream.listeners) l.onStatus?.();
+  };
+  // EventSource retries by itself; a drop that lasts is reported as stale.
+  source.addEventListener("error", () => {
+    if (stream.staleTimer) return;
+    stream.staleTimer = setTimeout(() => {
+      stream.staleTimer = undefined;
+      if (stream.source.readyState !== EventSource.OPEN) setStale(true);
+    }, STALE_AFTER_MS);
+  });
   // The server registers the connection before it answers, so by the time the
   // stream is open it is safe to say which card we are on. A reconnect starts
   // a fresh registration with no card, so always re-send.
   source.addEventListener("open", () => {
     stream.sentCardId = null;
     if (stream.cardId) postCard(boardId, stream);
+    if (stream.staleTimer) clearTimeout(stream.staleTimer);
+    stream.staleTimer = undefined;
+    setStale(false);
+    for (const l of stream.listeners) l.onOpen?.();
   });
   source.addEventListener("board", () => {
     for (const l of stream.listeners) l.onBoard?.();
@@ -96,6 +131,7 @@ export function subscribeBoardStream(boardId: string, listener: Listener): () =>
     stream.closeTimer = setTimeout(() => {
       if (stream.listeners.size > 0) return;
       if (stream.flushTimer) clearTimeout(stream.flushTimer);
+      if (stream.staleTimer) clearTimeout(stream.staleTimer);
       stream.source.close();
       if (streams.get(boardId) === stream) streams.delete(boardId);
     }, 1000);
@@ -125,6 +161,19 @@ export function useBoardViewers(boardId: string): PresenceViewer[] {
     subscribe,
     () => streams.get(boardId)?.viewers ?? EMPTY,
     () => EMPTY
+  );
+}
+
+/** True while the board's live stream has been disconnected for a while. */
+export function useBoardStreamStale(boardId: string): boolean {
+  const subscribe = useCallback(
+    (notify: () => void) => subscribeBoardStream(boardId, { onStatus: notify }),
+    [boardId]
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => streams.get(boardId)?.stale ?? false,
+    () => false
   );
 }
 

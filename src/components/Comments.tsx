@@ -14,6 +14,8 @@ import type { MentionCandidate } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 import { useUi } from "./ui/UiProvider";
 import { buttonClass } from "./ui/button";
+import { useOnline } from "@/lib/use-online";
+import { sendOrWarn } from "./ui/offline";
 
 export interface CommentItem {
   id: string;
@@ -58,6 +60,7 @@ export default function Comments({
   const ui = useUi();
   const [pending, startTransition] = useTransition();
   const [body, setBody] = useState("");
+  const online = useOnline();
   const [commentsOnly, setCommentsOnly] = useState(false);
 
   const entries: TimelineEntry[] = [
@@ -126,7 +129,9 @@ export default function Comments({
       </ol>
       <form
         action={async (fd) => {
-          if (ui.report(await addCommentAction(fd)).ok) {
+          // Offline or connection lost: the draft stays in the box.
+          const result = await sendOrWarn(ui, () => addCommentAction(fd));
+          if (result && ui.report(result).ok) {
             setBody("");
             router.refresh();
           }
@@ -146,7 +151,16 @@ export default function Comments({
           aria-label={t("cardWriteComment", locale)}
           placeholder={t("cardWriteComment", locale)}
         />
-        <button className={buttonClass("primary")}>{t("cardPostComment", locale)}</button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className={buttonClass("primary")} disabled={!online} aria-describedby={online ? undefined : `offline-${cardId}`}>
+            {t("cardPostComment", locale)}
+          </button>
+          {!online && (
+            <p id={`offline-${cardId}`} className="text-sm text-ink-muted">
+              {t("offlineCommentHint", locale)}
+            </p>
+          )}
+        </div>
       </form>
     </div>
   );
