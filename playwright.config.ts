@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // End-to-end tests run against a production build on a fresh demo database
 // (scripts/e2e-serve.sh). Tests share that database, so they run serially.
-const PORT = 3456;
+const PORT = Number(process.env.E2E_PORT ?? 3456);
 
 export default defineConfig({
   testDir: "./e2e",
