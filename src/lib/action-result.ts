@@ -14,6 +14,9 @@ export const ERROR_CODES = [
   "crossBoard",
   "noColumns",
   "restoreBoardFirst",
+  "invalidCode",
+  "tooManyAttempts",
+  "lastSignInMethod",
   "unknown",
 ] as const;
 

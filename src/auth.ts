@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { CredentialsSignin } from "next-auth";
 import type {} from "next-auth/jwt";
 import type { Session } from "next-auth";
 import { redirect } from "next/navigation";
@@ -8,6 +9,10 @@ import { prisma } from "@/lib/db-local";
 import { z } from "zod";
 import { ActionError } from "@/lib/action-result";
 import { clientIp, isLoginBlocked, recordLoginFailure, recordLoginSuccess } from "@/lib/rate-limit";
+import { hasUsablePassword } from "@/lib/password";
+import { SSO_PROVIDER_ID, passwordLoginAllowed, ssoConfig } from "@/lib/sso";
+import { verifySecondFactor } from "@/server/two-factor";
+import { handleSsoSignIn, resolveSsoUser } from "@/server/sso";
 
 declare module "next-auth" {
   interface Session {
@@ -49,7 +54,23 @@ declare module "next-auth/jwt" {
 const credSchema = z.object({
   username: z.string().min(1).max(64),
   password: z.string().min(1).max(256),
+  // Two-factor code or recovery code, sent on the second login step.
+  code: z.string().max(64).optional(),
 });
+
+/**
+ * Thrown by authorize when the password was right but a second factor is
+ * needed ("totp_required") or the code was wrong ("totp_invalid"). The login
+ * action reads `code` to show the code step.
+ */
+export class SecondFactorError extends CredentialsSignin {
+  constructor(code: "totp_required" | "totp_invalid") {
+    super();
+    this.code = code;
+  }
+}
+
+const sso = ssoConfig();
 
 export const { handlers, auth, signIn, signOut, unstable_update: refreshSession } = NextAuth({
   trustHost: true,
@@ -72,6 +93,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
       credentials: {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
+        code: { label: "Code", type: "text" },
       },
       async authorize(raw, request) {
         const parsed = credSchema.safeParse(raw);
@@ -81,11 +103,16 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         const ip = clientIp(request?.headers);
         if (isLoginBlocked(ip, username)) return null;
         const user = await prisma.user.findUnique({ where: { username } });
-        const ok = user ? await bcrypt.compare(password, user.passwordHash) : false;
+        const ok = user && hasUsablePassword(user.passwordHash) ? await bcrypt.compare(password, user.passwordHash) : false;
         if (!user || !ok || user.deactivatedAt) {
           recordLoginFailure(ip, username);
           return null;
         }
+        // Single sign-on and two-factor checks (src/lib/sso.ts, src/server/two-factor.ts).
+        if (!passwordLoginAllowed(user.role, sso)) return null;
+        const second = await verifySecondFactor(user, parsed.data.code);
+        if (second === "invalid") recordLoginFailure(ip, username);
+        if (second !== "ok") throw new SecondFactorError(second === "required" ? "totp_required" : "totp_invalid");
         recordLoginSuccess(ip, username);
         return {
           id: user.id,
@@ -99,10 +126,41 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         };
       },
     }),
+    ...(sso
+      ? [
+          {
+            id: SSO_PROVIDER_ID,
+            name: sso.name,
+            type: "oidc" as const,
+            issuer: sso.issuer,
+            clientId: sso.clientId,
+            clientSecret: sso.clientSecret,
+            authorization: { params: { scope: sso.scopes } },
+            checks: ["pkce", "state"] as ("pkce" | "state")[],
+            // Read claims from the userinfo endpoint (after validating the ID
+            // token): IdPs put groups and email_verified there more reliably.
+            idToken: false,
+          },
+        ]
+      : []),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async signIn({ account, profile }) {
+      if (account?.provider !== SSO_PROVIDER_ID) return true;
+      return handleSsoSignIn(profile as Record<string, unknown> | undefined, async () => {
+        const current = (await auth()) as Session | null;
+        return current?.user?.id ?? null;
+      });
+    },
+    async jwt({ token, user, account, profile }) {
+      if (user && account?.provider === SSO_PROVIDER_ID) {
+        // `user` is the IdP profile here; map its subject to the linked Kanbun user.
+        const subject = (typeof profile?.sub === "string" && profile.sub) || account.providerAccountId;
+        const linked = await resolveSsoUser(subject);
+        if (!linked) return null;
+        token.id = linked.id;
+        token.sessionVersion = linked.sessionVersion;
+      } else if (user) {
         token.id = user.id;
         token.sessionVersion = user.sessionVersion ?? 0;
       }

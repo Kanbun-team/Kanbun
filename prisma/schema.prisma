@@ -30,6 +30,13 @@ model User {
   // Daily email summary of unread notifications, off by default.
   digestEnabled    Boolean  @default(false)
   digestSentAt     DateTime?
+  // Two-factor authentication (TOTP, src/lib/totp.ts). The secret is
+  // AES-256-GCM encrypted with a key derived from AUTH_SECRET. A secret
+  // without totpEnabledAt is a setup that was started but not confirmed.
+  totpSecret       String?
+  totpEnabledAt    DateTime?
+  // Last accepted time step, so a code can not be used twice.
+  totpLastStep     Int?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -52,6 +59,35 @@ model User {
   attachments       CardAttachment[]     @relation("AttachmentUploader")
   cardTemplates     CardTemplate[]       @relation("CardTemplateCreator")
   cardRecurrences   CardRecurrence[]     @relation("CardRecurrenceCreator")
+  identities        UserIdentity[]
+  recoveryCodes     TotpRecoveryCode[]
+}
+
+// A single sign-on (OIDC) identity linked to a user: provider is the Auth.js
+// provider id, subject the IdP's stable `sub` claim.
+model UserIdentity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String
+  subject   String
+  email     String?
+  createdAt DateTime @default(now())
+
+  @@unique([provider, subject])
+  @@index([userId])
+}
+
+// Single-use 2FA recovery codes, stored as keyed hashes.
+model TotpRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Board {

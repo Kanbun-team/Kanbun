@@ -21,6 +21,15 @@ export type AuditAction =
   | "board.memberAdd"
   | "board.memberRemove"
   | "board.memberRole"
+  | "sso.login"
+  | "sso.link"
+  | "sso.unlink"
+  | "2fa.enable"
+  | "2fa.disable"
+  | "2fa.reset"
+  | "2fa.failure"
+  | "2fa.recoveryCodes"
+  | "recoveryCode.used"
   | (string & {});
 
 export interface AuditInput {
