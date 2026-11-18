@@ -3,6 +3,7 @@ import {
   NOTIFICATION_TYPES,
   isDueSoon,
   notificationText,
+  parseNotificationData,
   parsePrefs,
   planDeliveries,
   serializePrefs,
@@ -127,5 +128,29 @@ describe("notificationText", () => {
       'Deadline approaching: "Fix login"'
     );
     expect(notificationText({ ...base, type: "mention" }, "de")).toContain("Ada");
+  });
+
+  it("uses the stored extra text", () => {
+    const base = { actorName: "Ada", cardTitle: "Fix login" };
+    expect(notificationText({ ...base, type: "moved", data: { column: "Done" } }, "en")).toBe('Ada moved "Fix login" to "Done"');
+    expect(notificationText({ ...base, type: "moved", data: { column: "Gotowe" } }, "pl")).toBe(
+      'Ada przeniósł(a) "Fix login" do kolumny "Gotowe"'
+    );
+    expect(
+      notificationText({ actorName: "Ada", cardTitle: "Website", type: "newCard", data: { count: "5", board: "Website" } }, "en")
+    ).toBe('Ada added 5 cards to "Website"');
+    expect(
+      notificationText({ actorName: "Ada", cardTitle: "Website", type: "newCard", data: { count: "5", board: "Website" } }, "pl")
+    ).toBe('Ada dodał(a) 5 kart do tablicy "Website"');
+    expect(notificationText({ ...base, type: "subtaskAssigned", data: { item: "Write tests" } }, "en")).toBe(
+      'Ada assigned you "Write tests" on "Fix login"'
+    );
+    expect(notificationText({ ...base, type: "subtaskAssigned" }, "en")).toBe('Ada assigned you a checklist item on "Fix login"');
+  });
+
+  it("ignores bad stored data", () => {
+    expect(parseNotificationData("nope")).toEqual({});
+    expect(parseNotificationData('{"column": 3, "board": "B", "x": "y"}')).toEqual({ board: "B" });
+    expect(parseNotificationData(null)).toEqual({});
   });
 });

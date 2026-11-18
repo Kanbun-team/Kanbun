@@ -5,7 +5,7 @@
 
 import { prisma } from "@/lib/db-local";
 import { isLocale, t, tn, type Locale } from "@/lib/i18n";
-import { notificationText } from "@/lib/notification-prefs";
+import { notificationText, parseNotificationData } from "@/lib/notification-prefs";
 import { cardUrl } from "@/lib/notifications";
 import { appBaseUrl, emailEnabled, escapeHtml, htmlLayout, queueEmail, type EmailMessage } from "@/server/email";
 
@@ -20,11 +20,12 @@ export interface DigestItem {
   actorName: string | null;
   cardId: string | null;
   boardId: string | null;
+  data?: string | null;
 }
 
 export function buildDigestEmail(to: string, items: DigestItem[], locale: Locale): EmailMessage {
   const shown = items.slice(0, MAX_ITEMS);
-  const lines = shown.map((n) => ({ text: notificationText(n, locale), url: cardUrl(n.boardId, n.cardId) }));
+  const lines = shown.map((n) => ({ text: notificationText({ ...n, data: parseNotificationData(n.data) }, locale), url: cardUrl(n.boardId, n.cardId) }));
   const subject = tn("digestSubject", items.length, locale);
   const more = items.length > shown.length ? t("digestMore", locale).replace("{count}", String(items.length - shown.length)) : "";
   const inbox = `${appBaseUrl()}/tasks`;
@@ -64,7 +65,7 @@ export async function runDigest(now: Date = new Date()): Promise<number> {
     const items = await prisma.notification.findMany({
       where: { userId: u.id, read: false, createdAt: { gt: since, lte: now } },
       orderBy: { createdAt: "desc" },
-      select: { type: true, cardTitle: true, actorName: true, cardId: true, boardId: true },
+      select: { type: true, cardTitle: true, actorName: true, cardId: true, boardId: true, data: true },
     });
     await prisma.user.update({ where: { id: u.id }, data: { digestSentAt: now } });
     if (items.length === 0 || !u.email) continue;

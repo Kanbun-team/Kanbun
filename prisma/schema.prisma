@@ -324,6 +324,9 @@ model Notification {
   boardId   String?
   actorId   String?
   actorName String?
+  // JSON object of extra text for the message, e.g. {"column":"Done"} for a
+  // move or {"count":"5","board":"Website"} for cards added together.
+  data      String?
 
   user User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 

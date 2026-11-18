@@ -401,7 +401,7 @@ export async function updateCard(ctx: ApiContext, cardId: string, body: unknown)
   for (const id of addUsers) {
     await notify({ recipientId: id, type: "assigned", cardId, cardTitle: title, boardId, actorId: userId, actorName: actorName(ctx) });
   }
-  if (toColumn) await notifyMoved({ cardId, cardTitle: title, boardId, actorId: userId, actorName: actorName(ctx) });
+  if (toColumn) await notifyMoved({ cardId, cardTitle: title, boardId, actorId: userId, actorName: actorName(ctx), toColumnName: toColumn.name });
 
   refresh(boardId, cardId);
   const changes = changedFields(activity);

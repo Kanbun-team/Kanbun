@@ -56,13 +56,18 @@ export async function notifyComment(event: NotifyEvent & { cardId: string; board
   await dispatchNotifications(event, [...mentioned.map((u) => u.id).map(as("mention")), ...watchers.map(as("comment"))]);
 }
 
-/** A card moved to another column: tell its watchers. */
-export async function notifyMoved(event: NotifyEvent & { cardId: string; boardId: string }) {
+/** A card moved to another column: tell its watchers, naming the destination. */
+export async function notifyMoved(event: NotifyEvent & { cardId: string; boardId: string; toColumnName: string }) {
+  const { toColumnName, ...rest } = event;
   const watchers = await cardWatcherIds(event.cardId, event.boardId);
-  await dispatchNotifications(event, watchers.map(as("moved")));
+  await dispatchNotifications({ ...rest, data: { column: toColumnName } }, watchers.map(as("moved")));
 }
 
-/** New cards on a board: tell the board's watchers, one notification per card. */
+/**
+ * New cards on a board: tell the board's watchers. One card gets a
+ * notification about that card; several created together (a pasted list)
+ * get one notification for all of them, linking to the board.
+ */
 export async function notifyNewCards(
   boardId: string,
   cards: { id: string; title: string }[],
@@ -71,10 +76,29 @@ export async function notifyNewCards(
   if (cards.length === 0) return;
   const watchers = await boardWatcherIds(boardId);
   if (watchers.length === 0) return;
-  for (const c of cards) {
-    await dispatchNotifications(
-      { cardId: c.id, cardTitle: c.title, boardId, actorId: actor.id, actorName: actor.name },
-      watchers.map(as("newCard"))
-    );
+  const recipients = watchers.map(as("newCard"));
+  if (cards.length === 1) {
+    const [c] = cards;
+    await dispatchNotifications({ cardId: c.id, cardTitle: c.title, boardId, actorId: actor.id, actorName: actor.name }, recipients);
+    return;
   }
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { name: true } });
+  const name = board?.name ?? "";
+  await dispatchNotifications(
+    {
+      cardId: null,
+      cardTitle: name,
+      boardId,
+      actorId: actor.id,
+      actorName: actor.name,
+      data: { count: String(cards.length), board: name },
+    },
+    recipients
+  );
+}
+
+/** A checklist item was assigned to someone else: tell them. */
+export async function notifySubtaskAssigned(event: NotifyEvent & { cardId: string; boardId: string; recipientId: string; item: string }) {
+  const { recipientId, item, ...rest } = event;
+  await dispatchNotifications({ ...rest, data: { item } }, [{ userId: recipientId, type: "subtaskAssigned" }]);
 }

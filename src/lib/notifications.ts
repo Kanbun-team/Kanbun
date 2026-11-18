@@ -9,9 +9,11 @@ import { publishUser } from "@/lib/realtime";
 import { t, isLocale, type Locale } from "@/lib/i18n";
 import {
   notificationText,
+  parseNotificationData,
   parsePrefs,
   planDeliveries,
   type Candidate,
+  type NotificationData,
   type NotificationPrefs,
   type NotificationType,
 } from "@/lib/notification-prefs";
@@ -27,6 +29,8 @@ export interface NotifyInput {
   boardId?: string | null;
   actorId?: string | null;
   actorName?: string | null;
+  /** Extra message text: destination column, number of cards, checklist item. */
+  data?: NotificationData | null;
 }
 
 /** What happened, without the recipients. */
@@ -34,11 +38,12 @@ export type NotifyEvent = Omit<NotifyInput, "recipientId" | "type">;
 
 export function cardUrl(boardId: string | null | undefined, cardId: string | null | undefined): string {
   const base = appBaseUrl();
-  return boardId && cardId ? `${base}/tasks/${boardId}/cards/${cardId}` : `${base}/tasks`;
+  if (boardId && cardId) return `${base}/tasks/${boardId}/cards/${cardId}`;
+  return boardId ? `${base}/tasks/${boardId}` : `${base}/tasks`;
 }
 
 function notificationEmail(to: string, locale: Locale, event: NotifyEvent, type: NotificationType) {
-  const message = notificationText({ type, actorName: event.actorName, cardTitle: event.cardTitle }, locale);
+  const message = notificationText({ type, actorName: event.actorName, cardTitle: event.cardTitle, data: event.data }, locale);
   const link = cardUrl(event.boardId, event.cardId);
   const settings = `${appBaseUrl()}/settings`;
   return {
@@ -92,6 +97,7 @@ async function deliver(event: NotifyEvent, candidates: Candidate[]): Promise<voi
       boardId: event.boardId ?? null,
       actorId: event.actorId ?? null,
       actorName: event.actorName ?? null,
+      data: event.data && Object.keys(event.data).length ? JSON.stringify(event.data) : null,
     })),
   });
   const mail = emailEnabled();
@@ -112,11 +118,11 @@ export async function notify(input: NotifyInput): Promise<void> {
 export async function notifyMany(inputs: NotifyInput[]): Promise<void> {
   const groups = new Map<string, { event: NotifyEvent; candidates: Candidate[] }>();
   for (const i of inputs) {
-    const key = JSON.stringify([i.cardId ?? null, i.boardId ?? null, i.actorId ?? null, i.cardTitle]);
+    const key = JSON.stringify([i.cardId ?? null, i.boardId ?? null, i.actorId ?? null, i.cardTitle, i.data ?? null]);
     let g = groups.get(key);
     if (!g) {
       g = {
-        event: { cardTitle: i.cardTitle, cardId: i.cardId, boardId: i.boardId, actorId: i.actorId, actorName: i.actorName },
+        event: { cardTitle: i.cardTitle, cardId: i.cardId, boardId: i.boardId, actorId: i.actorId, actorName: i.actorName, data: i.data },
         candidates: [],
       };
       groups.set(key, g);
@@ -150,6 +156,7 @@ export interface NotificationView {
   cardTitle: string;
   boardId: string | null;
   actorName: string | null;
+  data: NotificationData;
 }
 
 export async function getNotifications(
@@ -173,6 +180,7 @@ export async function getNotifications(
       cardTitle: r.cardTitle,
       boardId: r.boardId,
       actorName: r.actorName,
+      data: parseNotificationData(r.data),
     })),
     unread,
   };

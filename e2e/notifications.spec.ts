@@ -71,8 +71,33 @@ test("a board watcher hears about new cards", async ({ page, browser }) => {
   await backlog.getByPlaceholder("Title").press("Enter");
   await expect(card(page, "Backlog", title)).toBeVisible();
 
-  const list = await openBell(piotr);
+  let list = await openBell(piotr);
   await expect(list.getByText(`Ada Admin added "${title}"`)).toBeVisible();
+
+  // A pasted list of cards: one notification for all of them.
+  const stamp = Date.now();
+  await backlog.getByRole("button", { name: "Add card" }).click();
+  await backlog.getByPlaceholder("Title").fill([1, 2, 3, 4, 5].map((i) => `Pasted ${i} ${stamp}`).join("\n"));
+  await backlog.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(card(page, "Backlog", `Pasted 5 ${stamp}`)).toBeVisible();
+  list = await openBell(piotr);
+  await expect(list.getByText('Ada Admin added 5 cards to "Website relaunch"')).toHaveCount(1);
+  await expect(list.getByText(new RegExp(`added "Pasted \\d ${stamp}"`))).toHaveCount(0);
+  await list.getByRole("link", { name: 'Ada Admin added 5 cards to "Website relaunch"' }).click();
+  await expect(piotr).toHaveURL(/\/tasks\/[^/]+$/);
+  await expect(card(piotr, "Backlog", `Pasted 1 ${stamp}`)).toBeVisible();
+
+  // Piotr moves Ada's card: Ada (watching it as its creator) hears where it went.
+  await card(piotr, "Backlog", title).getByRole("button", { name: /Actions for/ }).click();
+  await piotr.getByRole("menuitem", { name: "Move to" }).click();
+  const dialog = piotr.getByRole("dialog");
+  const select = dialog.getByLabel("Column");
+  const review = await select.locator("option", { hasText: "Review" }).textContent();
+  await select.selectOption({ label: review ?? "" });
+  await dialog.getByRole("button", { name: "Move card" }).click();
+  await expect(card(piotr, "Review", title)).toBeVisible();
+  const adaList = await openBell(page);
+  await expect(adaList.getByText(`Piotr Zieliński moved "${title}" to "Review"`)).toBeVisible();
 
   // Stop watching again so other specs see the board as before.
   await openDemoBoard(piotr);

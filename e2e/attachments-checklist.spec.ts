@@ -121,7 +121,7 @@ test("uploads need a session", async ({ browser }) => {
   await context.close();
 });
 
-test("checklist items get an assignee and a due date, reorder by keyboard and become cards", async ({ page }) => {
+test("checklist items get an assignee and a due date, reorder by keyboard and become cards", async ({ page, browser }) => {
   const stamp = Date.now();
   const title = `Checklist ${stamp}`;
   const panel = await newCard(page, title);
@@ -136,6 +136,14 @@ test("checklist items get an assignee and a due date, reorder by keyboard and be
   await page.getByRole("searchbox", { name: "Search members" }).pressSequentially("jul");
   await page.keyboard.press("Enter");
   await expect(panel.getByRole("button", { name: `Assignee for ${b}: Julia Kowalczyk` })).toBeVisible();
+  // Julia hears about it, naming the item.
+  const julia = await browser.newPage();
+  await loginAs(julia, "julia");
+  await julia.getByRole("button", { name: "Notifications" }).click();
+  await expect(
+    julia.getByRole("list", { name: "Notifications" }).getByText(`Ada Admin assigned you "${b}" on "${title}"`)
+  ).toBeVisible();
+  await julia.close();
   await panel.getByRole("button", { name: `Due date for ${b}` }).click();
   await page.getByRole("dialog", { name: `Due date for ${b}` }).getByRole("button", { name: /Tomorrow/ }).click();
   await expect(panel.locator("[data-subtask-id]").filter({ hasText: b })).toContainText("Tomorrow");

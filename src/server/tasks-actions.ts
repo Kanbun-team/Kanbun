@@ -772,6 +772,7 @@ export async function moveCardAction(input: {
         boardId: card.column.boardId,
         actorId: user.id,
         actorName: user.displayName ?? user.username,
+        toColumnName: toCol.name,
       });
     }
     revalidatePath(`/tasks/${card.column.boardId}`);
