@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-18
+
+Closes the gaps listed after v1.0.
+
+### Added
+
+- Card details are readable offline: cards you opened, and a compact copy of every card on boards you opened, are kept in the browser. Title, priority, deadline, assignees, tags, checklist ticks and new comments made offline are queued and sync on reconnect ([docs/OFFLINE.md](docs/OFFLINE.md)).
+- S3-compatible storage for attachments (AWS S3, MinIO, Cloudflare R2, Backblaze B2) with `ATTACHMENTS_S3_*` settings and `npm run attachments:to-s3` to copy existing files.
+
+### Changed
+
+- Webhook deliveries are stored in the database and sent by a background job, so a restart or another instance picks up pending ones. Delivery is at least once; use the `X-Kanbun-Delivery` id to skip duplicates.
+- Picking up a card and clearing a filter on large boards are about twice as fast ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
+- German uses informal "du" throughout, Italian says "card" everywhere, and Polish pronouns are lowercase mid-sentence.
+
+### Fixed
+
+- nodemailer is upgraded to version 10; `npm audit` reports no vulnerabilities.
+- The board's page title comes back after closing the card panel.
+- Focus stays on a saved filter after renaming it.
+- `npm run db:pg:migration` names new PostgreSQL migrations so they always sort after existing ones.
+
+### Upgrade notes
+
+- New webhook columns are added automatically on start; existing deliveries are kept as history.
+
 ## [1.0.0] - 2026-11-18
 
 Phase 5 of the [roadmap](docs/ROADMAP.md): the platform release. Kanbun is now considered stable.
@@ -245,7 +271,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.4.0...v0.5.0

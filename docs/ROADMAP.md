@@ -88,7 +88,9 @@ Shipped in v1.0.0, together with a security review, a performance and Lighthouse
 5. **Offline-tolerant PWA.** Done: boards readable offline, queued board edits sync on reconnect.
 6. **Admin audit log.** Done, with filters, CSV download and retention.
 
-Still open after v1.0: webhook deliveries waiting in the queue are lost on restart; attachments on several instances need a shared folder (no S3); the nodemailer advisory waits for a next-auth release that supports nodemailer 10.
+Closed in v1.1.0: card details readable offline, a durable webhook queue, S3-compatible attachment storage, nodemailer 10, faster drag start and filter clear on large boards, consistent German, Italian and Polish copy.
+
+Still open: S3 needs static access keys (no instance roles or session tokens); on a 500-card board, clearing a filter takes about 128ms at 2x CPU throttling (80ms unthrottled), above the 100ms target, mostly browser layout of the cards that reappear.
 
 ## Quality bar for every release
 

@@ -9,6 +9,24 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-18",
+    title: { en: "Version 1.1", it: "Versione 1.1", pl: "Wersja 1.1", de: "Version 1.1" },
+    items: [
+      {
+        en: "Open cards offline too: details stay readable, and checklist ticks and comments sync when you are back online.",
+        it: "Apri le card anche offline: i dettagli restano leggibili e spunte della checklist e commenti si sincronizzano quando torni online.",
+        pl: "Otwieraj karty także offline: szczegóły są dostępne, a odhaczenia na liście i komentarze synchronizują się po powrocie sieci.",
+        de: "Öffne Karten auch offline: Details bleiben lesbar, und Checklisten-Häkchen und Kommentare werden synchronisiert, sobald du wieder online bist.",
+      },
+      {
+        en: "Dragging cards and clearing filters on big boards is about twice as fast.",
+        it: "Trascinare le card e azzerare i filtri sulle bacheche grandi è circa due volte più veloce.",
+        pl: "Przeciąganie kart i czyszczenie filtrów na dużych tablicach jest około dwa razy szybsze.",
+        de: "Karten ziehen und Filter zurücksetzen ist auf großen Boards etwa doppelt so schnell.",
+      },
+    ],
+  },
+  {
+    date: "2026-11-18",
     title: { en: "Version 1.0", it: "Versione 1.0", pl: "Wersja 1.0", de: "Version 1.0" },
     items: [
       {
