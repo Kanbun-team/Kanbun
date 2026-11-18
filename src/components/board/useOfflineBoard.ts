@@ -6,26 +6,29 @@
 // - `run`: sends a card edit, or queues it in the outbox when offline (or
 //   when earlier edits are still waiting, so the order is kept);
 // - `guard`: for edits that can not be queued, says "you are offline";
+// - opening a card offline: the stored details in a read-only panel
+//   (OfflineCardSheet) instead of the server-rendered card panel;
 // - whether to show the offline banner.
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { errorMessage, useUi } from "@/components/ui/UiProvider";
 import { blockedOffline } from "@/components/ui/offline";
 import { markBoardRefreshed, subscribeBoardStream, useBoardStreamStale } from "@/lib/board-stream";
-import { t, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 import {
   clearApplied,
   ensureUser,
   getOfflineState,
   loadSnapshot,
   pendingFor,
+  prefetchBoardCards,
+  queueEdit,
   saveSnapshot,
-  addEntry,
   requestSync,
   useOfflineState,
 } from "@/lib/offline-store";
-import { applyOutbox, newId, referencesTempId, type OutboxOp, type RunResult } from "@/lib/outbox";
+import { applyOutbox, referencesTempId, type OutboxOp, type RunResult } from "@/lib/outbox";
 import { isOnline, useOnline } from "@/lib/use-online";
 import { runOutboxOp } from "./offline-runner";
 import type { ColumnDTO } from "./types";
@@ -70,28 +73,39 @@ export function useOfflineBoard({
     clearApplied();
   }, [userId, boardId, serverColumns, renderedAt]);
 
+  // Lightweight details of every card, for reading cards offline that were
+  // never opened (throttled in prefetchBoardCards).
+  useEffect(() => {
+    if (!renderedAt) return;
+    ensureUser(userId);
+    prefetchBoardCards(boardId);
+  }, [userId, boardId, renderedAt]);
+
   // The live stream reconnecting is as good a sign as the "online" event.
   useEffect(
     () => subscribeBoardStream(boardId, { onOpen: requestSync }),
     [boardId]
   );
 
-  // Card details are not stored offline: stay on the board instead of
-  // landing on the offline page.
+  // Offline, a card opens from its stored details (OfflineCardSheet) instead
+  // of navigating to the server-rendered panel.
+  const [offlineCardId, setOfflineCardId] = useState<string | null>(null);
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (isOnline()) return;
       const link = (e.target as Element | null)?.closest?.("a[href]");
       if (!link) return;
       const href = link.getAttribute("href") ?? "";
-      if (!href.startsWith(`/tasks/${boardId}/cards/`)) return;
+      const prefix = `/tasks/${boardId}/cards/`;
+      if (!href.startsWith(prefix)) return;
       e.preventDefault();
       e.stopPropagation();
-      ui.toast({ message: t("offlineCardUnavailable", locale) });
+      const cardId = href.slice(prefix.length).split(/[/?#]/)[0];
+      if (cardId) setOfflineCardId(decodeURIComponent(cardId));
     }
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [boardId, locale, ui]);
+  }, [boardId]);
 
   const snapshot = state.snapshots[boardId];
   const useSnapshot = !!snapshot && (!renderedAt || snapshot.renderedAt > renderedAt);
@@ -104,8 +118,7 @@ export function useOfflineBoard({
   }, [base, state.applied, state.entries, state.idMap, boardId]);
 
   function queue(op: OutboxOp, label: string): RunOutcome {
-    addEntry({ id: newId(), boardId, createdAt: Date.now(), label, op });
-    if (isOnline()) requestSync();
+    queueEdit(boardId, op, label);
     return { ok: true, queued: true };
   }
 
@@ -135,10 +148,10 @@ export function useOfflineBoard({
     return !blockedOffline(ui);
   }
 
-  /** Card details need the server: false (with a toast) while offline. */
-  function canOpenCard(): boolean {
+  /** True when the card can open online; offline it opens from stored details instead. */
+  function canOpenCard(cardId: string): boolean {
     if (isOnline()) return true;
-    ui.toast({ message: t("offlineCardUnavailable", locale) });
+    setOfflineCardId(cardId);
     return false;
   }
 
@@ -147,6 +160,9 @@ export function useOfflineBoard({
     run,
     guard,
     canOpenCard,
+    /** The card shown from stored details (offline), or null. */
+    offlineCardId,
+    closeOfflineCard: () => setOfflineCardId(null),
     online,
     /** Show the offline banner. */
     showOffline: !online || streamStale,

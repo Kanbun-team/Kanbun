@@ -166,7 +166,7 @@ export default function Comments({
   );
 }
 
-function ActivityRow({ entry, locale }: { entry: ActivityItem; locale: Locale }) {
+export function ActivityRow({ entry, locale }: { entry: ActivityItem; locale: Locale }) {
   const [before, after] = describeActivity(entry.type, entry.data, locale);
   const actor = entry.actor ? entry.actor.displayName ?? entry.actor.username : t("deletedUser", locale);
   return (
@@ -185,7 +185,7 @@ function ActivityRow({ entry, locale }: { entry: ActivityItem; locale: Locale })
   );
 }
 
-function CommentRow({
+export function CommentRow({
   comment: c,
   locale,
   mentionable,

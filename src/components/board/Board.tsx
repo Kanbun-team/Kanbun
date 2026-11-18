@@ -42,6 +42,7 @@ import {
 import { TEMP_PREFIX, newId, splitTitles, type CardFields } from "@/lib/outbox";
 import { useOfflineBoard } from "./useOfflineBoard";
 import OfflineBanner from "./OfflineBanner";
+import OfflineCardSheet from "@/components/card/OfflineCardSheet";
 import { createCardFromTemplateAction, saveCardAsTemplateAction } from "@/server/template-actions";
 import { useUi } from "@/components/ui/UiProvider";
 import { useUndo } from "@/components/ui/useUndo";
@@ -356,7 +357,7 @@ export default function Board({
 
   const latestCardHandlers: CardMenuHandlers = {
     open: (card) => {
-      if (offline.canOpenCard()) router.push(`/tasks/${boardId}/cards/${card.id}`, { scroll: false });
+      if (offline.canOpenCard(card.id)) router.push(`/tasks/${boardId}/cards/${card.id}`, { scroll: false });
     },
     moveTo: (card) => setMovingCard(card),
     toggleAssignee: (card, user) => {
@@ -922,8 +923,28 @@ export default function Board({
         onMove={(card, columnId, position) => moveCard(card, columnId, position)}
       />
       <ShortcutsDialog open={shortcutsOpen} locale={locale} onClose={() => setShortcutsOpen(false)} />
+      {offline.offlineCardId && (
+        <OfflineCardSheet
+          boardId={boardId}
+          cardId={offline.offlineCardId}
+          userId={currentUserId}
+          locale={locale}
+          fallback={offlineFallback(offline.offlineCardId)}
+          onClose={offline.closeOfflineCard}
+        />
+      )}
     </div>
   );
+
+  function offlineFallback(cardId: string) {
+    for (const c of columns) {
+      const found = c.cards.find((cc) => cc.id === cardId);
+      if (found) {
+        return { card: found, boardId, columnName: c.name, members, tags: boardTags, renderedAt: offline.dataTime };
+      }
+    }
+    return undefined;
+  }
 }
 
 function AddColumnForm({ boardId, locale, guard }: { boardId: string; locale: Locale; guard: () => boolean }) {

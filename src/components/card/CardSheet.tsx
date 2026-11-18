@@ -10,19 +10,24 @@ import { iconButtonClass } from "@/components/ui/button";
 // Side panel for a card opened from the board: the URL is the card's URL, but
 // the board stays mounted underneath with its scroll position and filters.
 // Full height sheet on phones, 640px panel from the right on larger screens.
+// With `onClose` it is a plain dialog over the board (the offline card view),
+// without the "open as page" link.
 export default function CardSheet({
   href,
   boardHref,
   locale,
   children,
+  onClose,
 }: {
-  href: string;
+  href?: string;
   boardHref: string;
   locale: Locale;
   children: ReactNode;
+  onClose?: () => void;
 }) {
   const router = useRouter();
   function close() {
+    if (onClose) return onClose();
     // Back restores the board URL (and history) when we came from it.
     if (window.history.length > 1) router.back();
     else router.push(boardHref, { scroll: false });
@@ -38,9 +43,11 @@ export default function CardSheet({
         <Dialog aria-label={t("cardOpen", locale)} className="flex flex-col h-full min-h-0 outline-none focus-visible:outline-none">
           <div className="flex items-center justify-end gap-1 px-3 py-2 border-b border-line bg-surface safe-top">
             {/* A plain link (full load) so the card opens as a page, not in the panel again. */}
-            <a href={href} className={iconButtonClass()} aria-label={t("panelOpenPage", locale)} title={t("panelOpenPage", locale)}>
-              <Maximize2 size={16} aria-hidden />
-            </a>
+            {href && (
+              <a href={href} className={iconButtonClass()} aria-label={t("panelOpenPage", locale)} title={t("panelOpenPage", locale)}>
+                <Maximize2 size={16} aria-hidden />
+              </a>
+            )}
             <button type="button" onClick={close} className={iconButtonClass()} aria-label={t("close", locale)} title={t("close", locale)}>
               <X size={18} aria-hidden />
             </button>

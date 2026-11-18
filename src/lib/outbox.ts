@@ -9,7 +9,11 @@
 //   actions the online path uses. Last write wins.
 // - Repeated edits of the same field on the same card collapse into one entry;
 //   assignee and tag operations carry the desired state (on/off), so only the
-//   latest one per card and person/tag is kept.
+//   latest one per card and person/tag is kept. Checklist toggles carry the
+//   desired state too (done or not), so only the latest per item is kept.
+// - Comments written offline are never merged: each one is sent once, in
+//   order. They get a temporary id (COMMENT_PREFIX) so the card view can show
+//   them as pending until they are sent.
 // - Cards created offline get a temporary id (TEMP_PREFIX). Replaying the
 //   creation maps it to the real id, and later entries use the real id.
 // - An entry the server rejects (card deleted, no access) is dropped and
@@ -18,6 +22,8 @@
 import type { CardDTO, ColumnDTO, MemberOption, TagOption } from "@/components/board/types";
 
 export const TEMP_PREFIX = "tmp_";
+/** Temporary id of a comment written offline. */
+export const COMMENT_PREFIX = "tmpc_";
 
 export interface CardFields {
   title?: string;
@@ -33,7 +39,9 @@ export type OutboxOp =
   | { kind: "update"; cardId: string; fields: CardFields }
   | { kind: "assignee"; cardId: string; user: MemberOption; on: boolean }
   | { kind: "tag"; cardId: string; tag: TagOption; on: boolean }
-  | { kind: "addCards"; columnId: string; titles: string[]; tempIds: string[] };
+  | { kind: "addCards"; columnId: string; titles: string[]; tempIds: string[] }
+  | { kind: "subtask"; cardId: string; subtaskId: string; done: boolean }
+  | { kind: "comment"; cardId: string; tempId: string; body: string };
 
 export interface OutboxEntry {
   id: string;
@@ -99,11 +107,12 @@ export function enqueue(entries: OutboxEntry[], entry: OutboxEntry, lockedId?: s
     }
     return [...entries, entry];
   }
-  if (op.kind === "assignee" || op.kind === "tag") {
+  if (op.kind === "assignee" || op.kind === "tag" || op.kind === "subtask") {
     const kept = entries.filter((prev) => {
       if (prev.id === lockedId || prev.op.kind !== op.kind || prev.op.cardId !== op.cardId) return true;
       if (op.kind === "assignee" && prev.op.kind === "assignee") return prev.op.user.id !== op.user.id;
       if (op.kind === "tag" && prev.op.kind === "tag") return prev.op.tag.id !== op.tag.id;
+      if (op.kind === "subtask" && prev.op.kind === "subtask") return prev.op.subtaskId !== op.subtaskId;
       return true;
     });
     return [...kept, entry];

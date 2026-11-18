@@ -5,9 +5,11 @@
 
 import {
   addCardAction,
+  addCommentAction,
   moveCardAction,
   toggleAssigneeAction,
   toggleCardTagAction,
+  toggleSubtaskAction,
   updateCardAction,
 } from "@/server/tasks-actions";
 import type { OutboxOp, RunResult } from "@/lib/outbox";
@@ -45,6 +47,14 @@ export async function runOutboxOp(op: OutboxOp): Promise<RunResult> {
     case "addCards": {
       const r = await addCardAction(form({ columnId: op.columnId, title: op.titles.join("\n") }));
       return r.ok ? { ok: true, createdIds: r.data.ids } : r;
+    }
+    case "subtask": {
+      const r = await toggleSubtaskAction(form({ subtaskId: op.subtaskId, done: op.done ? "1" : "0" }));
+      return r.ok ? { ok: true } : r;
+    }
+    case "comment": {
+      const r = await addCommentAction(form({ cardId: op.cardId, body: op.body }));
+      return r.ok ? { ok: true } : r;
     }
   }
 }
