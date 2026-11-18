@@ -306,6 +306,7 @@
   "homeOtherBoards": "Pozostałe tablice",
   "homeArchived": "Zarchiwizowane tablice",
   "homeCategoryEmpty": "Brak tablic. Przeciągnij tu tablicę lub dodaj nową.",
+  "homeCategoryAllPinned": "Tablice z tej kategorii są przypięte i widoczne w sekcji Przypięte.",
   "homeEmpty": "Tablice zawierają kolumny i karty. Zacznij od szablonu, np. Prosta lub Oprogramowanie, albo od pustej tablicy.",
 
   "required": "Wymagane",

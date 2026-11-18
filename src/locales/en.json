@@ -307,6 +307,7 @@
   "homeOtherBoards": "Other boards",
   "homeArchived": "Archived boards",
   "homeCategoryEmpty": "No boards here yet. Drag one in or add a new board.",
+  "homeCategoryAllPinned": "The boards of this category are pinned and shown under Pinned.",
   "homeEmpty": "Boards hold your columns and cards. Start from a template like Simple or Software, or a blank board.",
 
   "required": "Required",

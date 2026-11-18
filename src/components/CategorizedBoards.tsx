@@ -100,9 +100,12 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
 
   // Archived boards keep their category and position (the server orders
   // them together with active ones), but they are listed in their own
-  // collapsed section instead of the draggable grids.
+  // collapsed section instead of the draggable grids. Pinned boards are only
+  // shown in the Pinned section above, never twice; they still count for
+  // positions, so a drop lands next to the right neighbour.
   const sections = useMemo(() => {
-    const active = boards.filter((b) => !b.archived);
+    const shown = boards.filter((b) => !b.pinned);
+    const active = shown.filter((b) => !b.archived);
     const general = active
       .filter((b) => !b.categoryId || !categories.some((c) => c.id === b.categoryId))
       .sort((a, b) => a.position - b.position);
@@ -116,8 +119,14 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
     for (const [k, list] of byCat) {
       byCat.set(k, list.sort((a, b) => a.position - b.position));
     }
-    const archived = boards.filter((b) => b.archived);
-    return { general, byCat, archived };
+    const archived = shown.filter((b) => b.archived);
+    const pinnedIn = new Map<string | null, number>();
+    for (const b of boards) {
+      if (!b.pinned || b.archived) continue;
+      const key = b.categoryId && byCat.has(b.categoryId) ? b.categoryId : null;
+      pinnedIn.set(key, (pinnedIn.get(key) ?? 0) + 1);
+    }
+    return { general, byCat, archived, pinnedIn };
   }, [boards, categories]);
 
   function commitMove(boardId: string, toCategoryId: string | null, position: number) {
@@ -279,7 +288,7 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
         })}
         {list.length === 0 && (
           <li className="col-span-full rounded-panel border border-dashed border-line-strong px-4 py-5 text-sm text-ink-muted text-center">
-            {t("homeCategoryEmpty", locale)}
+            {sections.pinnedIn.get(categoryId) ? t("homeCategoryAllPinned", locale) : t("homeCategoryEmpty", locale)}
           </li>
         )}
       </ul>

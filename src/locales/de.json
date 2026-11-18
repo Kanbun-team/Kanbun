@@ -307,6 +307,7 @@
   "homeOtherBoards": "Weitere Boards",
   "homeArchived": "Archivierte Boards",
   "homeCategoryEmpty": "Noch keine Boards. Ziehen Sie eines hierher oder legen Sie ein neues an.",
+  "homeCategoryAllPinned": "Die Boards dieser Kategorie sind angeheftet und stehen unter Angeheftet.",
   "homeEmpty": "Boards enthalten Spalten und Karten. Beginnen Sie mit einer Vorlage wie Einfach oder Software oder mit einem leeren Board.",
 
   "required": "Erforderlich",

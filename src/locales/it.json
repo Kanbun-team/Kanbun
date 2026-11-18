@@ -307,6 +307,7 @@
   "homeOtherBoards": "Altre bacheche",
   "homeArchived": "Bacheche archiviate",
   "homeCategoryEmpty": "Ancora nessuna bacheca. Trascinane una qui o aggiungine una nuova.",
+  "homeCategoryAllPinned": "Le bacheche di questa categoria sono fissate e compaiono in Fissate.",
   "homeEmpty": "Le bacheche contengono colonne e card. Parti da un modello come Semplice o Software, oppure da una bacheca vuota.",
 
   "required": "Obbligatorio",
