@@ -21,6 +21,11 @@ export type AuditAction =
   | "board.memberAdd"
   | "board.memberRemove"
   | "board.memberRole"
+  | "import.board"
+  | "import.csv"
+  | "export.board"
+  | "export.full"
+  | "backup.download"
   | (string & {});
 
 export interface AuditInput {

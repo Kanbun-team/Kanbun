@@ -37,6 +37,8 @@
 - Card templates (title, description, priority, tags, checklist) and repeating cards ("Every Monday", "Monthly on the 1st") per board.
 - First-run setup in the browser and built-in board templates (Simple, Software, Personal).
 - Deactivate users instead of deleting them: they can no longer sign in, but their work stays.
+- Import boards from Trello or Kanbun JSON, import cards from CSV with a preview, export a board as JSON or CSV, and (admins) export everything or download a one-click backup. See [docs/IMPORT-EXPORT.md](docs/IMPORT-EXPORT.md).
+- Admin audit log of sign-ins, user and role changes, board deletions, membership changes, imports, exports and backups, with filters and CSV download.
 - Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run.
 - Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
 - Mobile responsive with hamburger drawer. PWA manifest + safe-area insets.
@@ -88,7 +90,32 @@ docker compose up -d --build
 
 Then open the app in your browser (`http://localhost:3000` by default). The first visit shows the setup screen: create the admin account and your first board. Setup is only available while the database has no users.
 
-Data persists in the `kanbun-data` volume at `/data/kanbun.db`. Card attachments are stored next to the database in `/data/attachments`, so the same volume keeps them; back up the whole `/data` folder, not only the database file.
+Data persists in the `kanbun-data` volume at `/data/kanbun.db`. Card attachments are stored next to the database in `/data/attachments`, so the same volume keeps them; back up the whole `/data` folder, not only the database file (or use the one-click backup below).
+
+## Backup and restore
+
+Admins can download a backup from **Admin > Backup and export > Download backup**. It is a `.tar.gz` with:
+
+- `kanbun.db`: a consistent snapshot of the SQLite database, made with `VACUUM INTO` while Kanbun keeps running,
+- `attachments/`: every attachment file,
+- `backup.json`: the Kanbun version and the time of the backup.
+
+The download is recorded in the audit log. It only works with the built-in SQLite database; with another database engine, back up with that engine's tools (for PostgreSQL, `pg_dump`) and copy the attachments folder.
+
+To restore a backup into the Docker setup:
+
+```bash
+docker compose stop kanbun
+mkdir restore && tar -xzf kanbun-backup-<date>.tar.gz -C restore
+# copy the files into the kanbun-data volume, replacing what is there
+docker run --rm -v kanbun_kanbun-data:/data -v "$PWD/restore":/restore alpine \
+  sh -c 'rm -rf /data/kanbun.db /data/kanbun.db-journal /data/kanbun.db-wal /data/kanbun.db-shm /data/attachments && cp -a /restore/kanbun.db /restore/attachments /data/'
+docker compose start kanbun
+```
+
+(The volume is usually named `<project>_kanbun-data`; `docker volume ls` shows it.) Without Docker, stop Kanbun, replace the database file named in `DATABASE_URL` and the attachments folder (`ATTACHMENTS_DIR`, or `attachments` next to the database) with the ones from the archive, and start it again. Migrations run on start, so a backup from an older version is upgraded automatically; do not restore a backup into an older version than the one that made it.
+
+Boards can also be moved between instances with the JSON export and import, see [docs/IMPORT-EXPORT.md](docs/IMPORT-EXPORT.md).
 
 ## Admin from the command line (optional)
 
@@ -112,6 +139,8 @@ You will be prompted for username, display name, and password. The script create
 - `SMTP_FROM` - sender for notification emails, e.g. `Kanbun <kanbun@example.com>`
 - `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`)
 - `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
+- `IMPORT_MAX_MB` - optional size limit for imported files (Trello, Kanbun JSON, CSV) in megabytes, default `20`
+- `AUDIT_RETENTION_DAYS` - how long audit log entries are kept, default `365`; `0` keeps them forever
 - `TZ` - time zone for repeating card schedules, e.g. `Europe/Warsaw` (the server clock otherwise)
 
 ### Notifications
@@ -155,6 +184,7 @@ scripts/
 - Server actions return typed results (`{ ok, error }`, see `src/lib/action-result.ts`); the UI turns error codes into translated toasts.
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
 - Sessions are JWTs, but the user is re-read from the database on every request, so deactivating or deleting a user, changing a role, or resetting a password applies immediately.
+- The admin audit log (`AuditLog`, `/admin/audit`) records security-relevant events through `audit()` in `src/server/audit.ts`. Failed sign-ins record the username that was tried, never the password. Old entries are purged by the `audit-purge` background job.
 - Failed logins are rate limited in memory per IP and username. Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). This is single-process by design; running multiple instances would need an external broker.
 
