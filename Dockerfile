@@ -17,7 +17,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV KANBUN_BUILD_SHA=$KANBUN_BUILD_SHA
 ENV KANBUN_BUILD_DATE=$KANBUN_BUILD_DATE
 ENV KANBUN_REPO_URL=$KANBUN_REPO_URL
-RUN npx prisma generate && npm run build
+# Generates both Prisma clients (SQLite and PostgreSQL), so this one image
+# runs on either database, chosen by DATABASE_URL at startup.
+RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
@@ -31,6 +33,9 @@ COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/scripts ./scripts
+# The maintenance scripts (create-admin, sqlite-to-postgres) share the
+# database client setup with the app.
+COPY --from=build /app/src/lib/db-local.ts /app/src/lib/db-provider.ts ./src/lib/
 EXPOSE 3000
 VOLUME ["/data"]
 CMD ["npm", "run", "start"]

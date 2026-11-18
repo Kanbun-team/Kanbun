@@ -1,6 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 import { ZodError } from "zod";
-import { Prisma } from "@prisma/client";
+import { isKnownRequestError } from "@/lib/db-local";
 import { ActionError, type ActionResult, type ErrorCode } from "@/lib/action-result";
 
 // Runs an action body and turns every failure into a typed result. Navigation
@@ -17,7 +17,7 @@ export async function safeAction<T>(fn: () => Promise<T>): Promise<ActionResult<
 function toErrorCode(err: unknown): ErrorCode {
   if (err instanceof ActionError) return err.code;
   if (err instanceof ZodError) return "invalid";
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+  if (isKnownRequestError(err)) {
     if (err.code === "P2025") return "notFound";
     if (err.code === "P2002") return "invalid";
   }

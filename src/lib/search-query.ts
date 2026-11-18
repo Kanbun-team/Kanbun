@@ -39,6 +39,19 @@ export function buildFtsQuery(input: string): string | null {
   return terms.map((term) => `"${term.replace(/"/g, '""')}"*`).join(" ");
 }
 
+/** Builds a PostgreSQL to_tsquery() expression with the same meaning as
+ * buildFtsQuery: every term required, each matched as a prefix. Terms are
+ * folded like the indexed text (no diacritics, ł as l) and quoted as tsquery
+ * literals. Returns null when there is nothing to search for. Passed as a bound
+ * parameter, never concatenated into SQL. */
+export function buildTsQuery(input: string): string | null {
+  const terms = searchTerms(input)
+    .map((term) => foldText(term).replace(/[^\p{L}\p{N}]+/gu, ""))
+    .filter(Boolean);
+  if (terms.length === 0) return null;
+  return terms.map((term) => `'${term.replace(/'/g, "''")}':*`).join(" & ");
+}
+
 /** Lowercase, without diacritics (also ł, which has no Unicode decomposition),
  * for matching names on the client and for board names on the server. */
 export function foldText(text: string): string {

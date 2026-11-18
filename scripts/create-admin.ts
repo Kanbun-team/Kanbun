@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/lib/db-local";
 import bcrypt from "bcryptjs";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-
-const prisma = new PrismaClient();
 
 async function ask(rl: ReturnType<typeof createInterface>, q: string, fallback?: string) {
   const answer = (await rl.question(q)).trim();
