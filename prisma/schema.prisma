@@ -52,6 +52,8 @@ model User {
   attachments       CardAttachment[]     @relation("AttachmentUploader")
   cardTemplates     CardTemplate[]       @relation("CardTemplateCreator")
   cardRecurrences   CardRecurrence[]     @relation("CardRecurrenceCreator")
+  apiTokens         ApiToken[]
+  webhooks          Webhook[]            @relation("WebhookCreator")
 }
 
 model Board {
@@ -80,6 +82,7 @@ model Board {
   savedFilters SavedFilter[]
   cardTemplates CardTemplate[]
   cardRecurrences CardRecurrence[]
+  webhooks Webhook[]
 }
 
 model BoardCategory {
@@ -483,4 +486,69 @@ model AuditLog {
   @@index([createdAt])
   @@index([action, createdAt])
   @@index([actorId, createdAt])
+}
+
+// Personal access token for the REST API (/api/v1). Only the SHA-256 hash of
+// the token is stored; `prefix` is its first characters, shown in the UI so a
+// user can tell tokens apart. `scopes` is "read" or "write" (write includes
+// read). A token acts with its user's permissions and stops working when the
+// user is deactivated, the token is revoked or it expires.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String    @unique
+  prefix     String
+  scopes     String    @default("read")
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// Outgoing webhook of a board, managed by its owners. `events` is a JSON array
+// of event names (see src/lib/webhooks.ts). `secret` signs every delivery
+// (HMAC-SHA256). `failureCount` counts consecutive failed deliveries; the
+// webhook is switched off when it reaches the limit. Part of the board trash
+// snapshot (its deliveries are not).
+model Webhook {
+  id              String    @id @default(cuid())
+  boardId         String
+  url             String
+  secret          String
+  events          String    @default("[]")
+  active          Boolean   @default(true)
+  createdById     String?
+  // HTTP status of the last delivery; 0 when no response came back.
+  lastStatus      Int?
+  lastDeliveredAt DateTime?
+  failureCount    Int       @default(0)
+  createdAt       DateTime  @default(now())
+
+  board      Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy  User?             @relation("WebhookCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  deliveries WebhookDelivery[]
+
+  @@index([boardId])
+}
+
+// Recent deliveries of a webhook: a short history, pruned on insert.
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  event      String
+  success    Boolean  @default(false)
+  statusCode Int?
+  durationMs Int?
+  error      String?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
 }

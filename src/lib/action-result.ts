@@ -14,6 +14,8 @@ export const ERROR_CODES = [
   "crossBoard",
   "noColumns",
   "restoreBoardFirst",
+  "limitReached",
+  "webhookUrl",
   "unknown",
 ] as const;
 

@@ -35,6 +35,7 @@
 - Notifications for assignments, @mentions, blocked cards and watched cards and boards, each set to in-app, in-app + email (optional SMTP) or off, with an optional daily digest.
 - Trash with undo: deleted cards, columns and boards can be restored for 30 days.
 - Card templates (title, description, priority, tags, checklist) and repeating cards ("Every Monday", "Monthly on the 1st") per board.
+- REST API with personal access tokens (read or read and write, optional expiry), an OpenAPI 3.1 description, and signed outgoing webhooks per board. See [docs/API.md](docs/API.md).
 - First-run setup in the browser and built-in board templates (Simple, Software, Personal).
 - Deactivate users instead of deleting them: they can no longer sign in, but their work stays.
 - Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run.
@@ -113,6 +114,8 @@ You will be prompted for username, display name, and password. The script create
 - `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`)
 - `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
 - `TZ` - time zone for repeating card schedules, e.g. `Europe/Warsaw` (the server clock otherwise)
+- `API_RATE_LIMIT` - optional, REST API requests per token per minute, default `120`
+- `WEBHOOK_ALLOW_PRIVATE` - set to `1` to let webhooks post to private, loopback and link-local addresses (for receivers on your own network). Off by default, so a board owner can not make the server call internal services.
 
 ### Notifications
 
@@ -127,6 +130,7 @@ src/
   app/
     (app)/             authenticated routes
     api/auth/...       Auth.js handlers
+    api/v1/...         REST API (docs/API.md, docs/openapi.json)
     api/session/...    heartbeat
     login/             English-only login screen
     setup/             first-run setup (admin account, first board)

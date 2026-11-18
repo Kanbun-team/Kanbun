@@ -35,7 +35,8 @@ export default defineConfig({
       url: `http://localhost:${PORT}/login`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { PORT: String(PORT) },
+      // Webhook tests post to a receiver on localhost.
+      env: { PORT: String(PORT), WEBHOOK_ALLOW_PRIVATE: "1" },
     },
     {
       command: "sh scripts/e2e-serve.sh",

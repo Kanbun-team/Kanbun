@@ -10,6 +10,7 @@ import { ActionError } from "@/lib/action-result";
 import { checklistFromText } from "@/lib/card-templates";
 import { nextOccurrence, toRule } from "@/lib/recurrence";
 import { createCardFromTemplate } from "@/server/card-templates";
+import { emitBoardEvent } from "@/server/webhooks";
 import { notifyNewCards } from "@/server/watchers";
 
 async function actorName(userId: string): Promise<string> {
@@ -173,6 +174,7 @@ export async function createCardFromTemplateAction(input: { templateId: string; 
     await notifyNewCards(column.boardId, [card], { id: access.userId, name: await actorName(access.userId) });
     revalidatePath(`/tasks/${column.boardId}`);
     publishBoard(column.boardId);
+    emitBoardEvent(column.boardId, "card.created", { cardId: card.id, actorId: access.userId });
     return { cardId: card.id };
   });
 }

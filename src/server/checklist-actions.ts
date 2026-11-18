@@ -8,6 +8,7 @@ import { loadBoardAccess } from "@/server/board-access";
 import { safeAction } from "@/server/safe-action";
 import { logActivity } from "@/server/activity";
 import { publishBoard } from "@/lib/realtime";
+import { emitBoardEvent } from "@/server/webhooks";
 
 // Checklists 2.0: per-item assignee and due date, reordering and turning an
 // item into a card of its own. Adding, ticking, renaming and deleting items
@@ -144,6 +145,7 @@ export async function convertSubtaskToCardAction(subtaskId: string) {
       return created;
     });
     refresh(boardId, parent.id);
+    emitBoardEvent(boardId, "card.created", { cardId: card.id, actorId: access.userId });
     return { cardId: card.id, boardId };
   });
 }
