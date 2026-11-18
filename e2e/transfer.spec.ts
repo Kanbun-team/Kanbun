@@ -130,6 +130,12 @@ test("admin backup downloads a non-empty archive", async ({ page }) => {
   await page.goto("/admin/data");
   await expect(page.getByRole("heading", { name: "Backup", exact: true })).toBeVisible();
   expect(await axeViolations(page)).toEqual([]);
+  if (process.env.E2E_POSTGRES_URL) {
+    // One-click backup is SQLite only; on PostgreSQL the page points to pg_dump.
+    await expect(page.getByText(/pg_dump/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download backup" })).toHaveCount(0);
+    return;
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
