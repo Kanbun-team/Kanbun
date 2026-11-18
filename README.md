@@ -145,8 +145,9 @@ You will be prompted for username, display name, and password. The script create
 - `AUDIT_RETENTION_DAYS` - how long audit log entries are kept, default `365`; `0` keeps them forever
 - `TZ` - time zone for repeating card schedules, e.g. `Europe/Warsaw` (the server clock otherwise)
 - `API_RATE_LIMIT` - optional, REST API requests per token per minute, default `120`
+- `TRUSTED_PROXIES` - number of reverse proxies in front of Kanbun that append to `X-Forwarded-For`, default `1`. The client address for rate limits and the audit log is read that many entries from the right, so clients can not choose it. Set `2` behind a CDN plus nginx, for example. See [SECURITY.md](SECURITY.md)
 - `WEBHOOK_ALLOW_PRIVATE` - set to `1` to let webhooks post to private, loopback and link-local addresses (for receivers on your own network). Off by default, so a board owner can not make the server call internal services.
-- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_NAME` - optional single sign-on with an OpenID Connect provider (Authentik, Keycloak, Google Workspace, ...). Further options: `OIDC_SCOPES`, `OIDC_ALLOW_SIGNUP`, `OIDC_ADMIN_GROUP`, `OIDC_MATCH_USERNAME`, `OIDC_DISABLE_PASSWORD`. See [docs/SSO.md](docs/SSO.md).
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_NAME` - optional single sign-on with an OpenID Connect provider (Authentik, Keycloak, Google Workspace, ...). Further options: `OIDC_SCOPES`, `OIDC_ALLOW_SIGNUP`, `OIDC_ADMIN_GROUP`, `OIDC_MATCH_USERNAME`, `OIDC_MATCH_EMAIL`, `OIDC_DISABLE_PASSWORD`. See [docs/SSO.md](docs/SSO.md).
 
 ### Single sign-on and two-factor authentication
 
@@ -199,7 +200,8 @@ scripts/
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
 - Sessions are JWTs, but the user is re-read from the database on every request, so deactivating or deleting a user, changing a role, or resetting a password applies immediately.
 - The admin audit log (`AuditLog`, `/admin/audit`) records security-relevant events through `audit()` in `src/server/audit.ts`. Failed sign-ins record the username that was tried, never the password. Old entries are purged by the `audit-purge` background job.
-- Failed logins are rate limited per IP and username (in memory, or in Redis when `REDIS_URL` is set). Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
+- Failed logins are rate limited per IP and username, and per username across all addresses (in memory, or in Redis when `REDIS_URL` is set). The client IP is the entry `TRUSTED_PROXIES` positions from the right of `X-Forwarded-For`, so put Kanbun behind a reverse proxy that appends to it. The security model and an operator hardening checklist are in [SECURITY.md](SECURITY.md).
+- Pages are served with a nonce-based Content-Security-Policy (`src/lib/csp.ts`, set in `src/proxy.ts`); other security headers are in `next.config.mjs`.
 - Offline support needs HTTPS (or localhost) and an uncached `/sw.js`; see [docs/OFFLINE.md](docs/OFFLINE.md) for what is stored in the browser and when it is deleted.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). In process by default; with `REDIS_URL` events go through Redis pub/sub so every instance delivers them ([docs/SCALING.md](docs/SCALING.md)).
 
@@ -221,6 +223,10 @@ export default {
   init: async () => { /* register routes, server actions, jobs, etc. */ },
 };
 ```
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report a vulnerability (privately, through GitHub security advisories), the security model and a hardening checklist for operators.
 
 ## License
 
