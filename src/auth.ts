@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db-local";
 import { z } from "zod";
 import { ActionError } from "@/lib/action-result";
 import { clientIp, isLoginBlocked, recordLoginFailure, recordLoginSuccess } from "@/lib/rate-limit";
+import { audit } from "@/server/audit";
 
 declare module "next-auth" {
   interface Session {
@@ -79,14 +80,34 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         const username = parsed.data.username.toLowerCase();
         const { password } = parsed.data;
         const ip = clientIp(request?.headers);
+        const auditIp = ip === "unknown" ? null : ip;
+        // Failed attempts record the username that was tried, never the password.
+        const failed = (reason: string, actor?: { id: string; name: string } | null) =>
+          audit({
+            action: "login.failure",
+            actor: actor ?? null,
+            target: { type: "user", id: actor?.id ?? null, name: username },
+            details: { username, reason },
+            ip: auditIp,
+          });
+        // Blocked attempts are not recorded one by one: the failures that led
+        // to the block are, and a flood must not be able to fill the log.
         if (isLoginBlocked(ip, username)) return null;
         const user = await prisma.user.findUnique({ where: { username } });
         const ok = user ? await bcrypt.compare(password, user.passwordHash) : false;
         if (!user || !ok || user.deactivatedAt) {
           recordLoginFailure(ip, username);
+          const reason = !user ? "unknownUser" : !ok ? "badPassword" : "deactivated";
+          await failed(reason, user ? { id: user.id, name: user.username } : null);
           return null;
         }
         recordLoginSuccess(ip, username);
+        await audit({
+          action: "login.success",
+          actor: { id: user.id, name: user.username },
+          target: { type: "user", id: user.id, name: user.username },
+          ip: auditIp,
+        });
         return {
           id: user.id,
           username: user.username,

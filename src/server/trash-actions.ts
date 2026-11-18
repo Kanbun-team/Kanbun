@@ -8,6 +8,7 @@ import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 import { safeAction } from "@/server/safe-action";
 import { boardSnapshotOwners, restoreTrashItem } from "@/server/trash";
 import { publishBoard, publishBoardList } from "@/lib/realtime";
+import { audit } from "@/server/audit";
 
 // Who may restore: cards need board membership, columns need board management
 // (the same rights it took to delete them), boards need an admin or one of
@@ -28,6 +29,13 @@ export async function restoreTrashAction(trashId: string) {
       if (item.kind === "column" && !canManageBoard(access)) throw new ActionError("forbidden");
     }
     const boardId = await restoreTrashItem(item);
+    if (item.kind === "board") {
+      await audit({
+        action: "board.restore",
+        actor: { id: user.id, name: user.username },
+        target: { type: "board", id: boardId, name: item.label },
+      });
+    }
     revalidatePath("/tasks");
     revalidatePath(`/tasks/${boardId}`);
     revalidatePath("/trash");

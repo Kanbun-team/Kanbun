@@ -15,6 +15,13 @@ import { logActivity, type ActivityEntry } from "@/server/activity";
 import { notifyComment, notifyMoved, notifyNewCards, watchCard } from "@/server/watchers";
 import { getLocale } from "@/lib/get-locale";
 import { BOARD_TEMPLATE_IDS, boardTemplateContent } from "@/lib/board-templates";
+import { audit } from "@/server/audit";
+
+/** The signed-in user as an audit actor (only called on rare, audited actions). */
+async function auditActor() {
+  const me = await requireUser();
+  return { id: me.id, name: me.username };
+}
 
 // -----------------------------
 // Boards
@@ -269,7 +276,14 @@ export async function deleteBoardAction(formData: FormData) {
     const boardId = String(formData.get("boardId") ?? "");
     const access = await loadBoardAccess(boardId);
     if (!canManageBoard(access)) throw new ActionError("forbidden");
+    const board = await prisma.board.findUnique({ where: { id: boardId }, select: { name: true } });
     const trashId = await trashBoard(boardId, access.userId);
+    await audit({
+      action: "board.delete",
+      actor: await auditActor(),
+      target: { type: "board", id: boardId, name: board?.name ?? null },
+      details: { trashId },
+    });
     revalidatePath("/tasks");
     revalidatePath("/trash");
     publishBoard(boardId);
@@ -281,6 +295,11 @@ export async function deleteBoardAction(formData: FormData) {
 // -----------------------------
 // Members
 // -----------------------------
+
+async function boardName(boardId: string): Promise<string | null> {
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { name: true } });
+  return board?.name ?? null;
+}
 
 const memberAddSchema = z.object({
   boardId: z.string().min(1),
@@ -299,11 +318,23 @@ export async function addBoardMemberAction(formData: FormData) {
       where: { username: data.username.toLowerCase() },
     });
     if (!target || target.deactivatedAt) throw new ActionError("userNotFound");
+    const existing = await prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId: data.boardId, userId: target.id } },
+      select: { role: true },
+    });
     await prisma.boardMember.upsert({
       where: { boardId_userId: { boardId: data.boardId, userId: target.id } },
       update: {},
       create: { boardId: data.boardId, userId: target.id, role: "member" },
     });
+    if (!existing) {
+      await audit({
+        action: "board.memberAdd",
+        actor: await auditActor(),
+        target: { type: "board", id: data.boardId, name: await boardName(data.boardId) },
+        details: { user: target.username, role: "member" },
+      });
+    }
     revalidatePath(`/tasks/${data.boardId}/settings`);
     publishBoardList();
   });
@@ -324,10 +355,23 @@ export async function updateBoardMemberAction(formData: FormData) {
     });
     const access = await loadBoardAccess(data.boardId);
     if (!canManageBoard(access)) throw new ActionError("forbidden");
-    await prisma.boardMember.update({
+    const before = await prisma.boardMember.findUnique({
+      where: { boardId_userId: { boardId: data.boardId, userId: data.userId } },
+      select: { role: true },
+    });
+    const updated = await prisma.boardMember.update({
       where: { boardId_userId: { boardId: data.boardId, userId: data.userId } },
       data: { role: data.role },
+      select: { user: { select: { username: true } } },
     });
+    if (before && before.role !== data.role) {
+      await audit({
+        action: "board.memberRole",
+        actor: await auditActor(),
+        target: { type: "board", id: data.boardId, name: await boardName(data.boardId) },
+        details: { user: updated.user.username, from: before.role, to: data.role },
+      });
+    }
     revalidatePath(`/tasks/${data.boardId}/settings`);
   });
 }
@@ -338,8 +382,15 @@ export async function removeBoardMemberAction(formData: FormData) {
     const userId = String(formData.get("userId") ?? "");
     const access = await loadBoardAccess(boardId);
     if (!canManageBoard(access)) throw new ActionError("forbidden");
-    await prisma.boardMember.delete({
+    const removed = await prisma.boardMember.delete({
       where: { boardId_userId: { boardId, userId } },
+      select: { role: true, user: { select: { username: true } } },
+    });
+    await audit({
+      action: "board.memberRemove",
+      actor: await auditActor(),
+      target: { type: "board", id: boardId, name: await boardName(boardId) },
+      details: { user: removed.user.username, role: removed.role },
     });
     revalidatePath(`/tasks/${boardId}/settings`);
     publishBoardList();

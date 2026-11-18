@@ -1,6 +1,7 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
+import { audit } from "@/server/audit";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { safeRedirect } from "@/lib/utils";
@@ -31,6 +32,15 @@ export async function loginAction(
 }
 
 export async function logoutAction() {
+  const session = await auth().catch(() => null);
+  const user = session?.user;
+  if (user?.id) {
+    await audit({
+      action: "logout",
+      actor: { id: user.id, name: user.username },
+      target: { type: "user", id: user.id, name: user.username },
+    });
+  }
   await signOut({ redirect: false });
   redirect("/login");
 }
