@@ -151,6 +151,23 @@ export function getViewingCard(boardId: string): string | null {
   return streams.get(boardId)?.cardId ?? null;
 }
 
+// When this tab last asked the server for fresh board data (router.refresh()).
+// A live "board changed" event that arrived before that refresh started is
+// already covered by it, so the board can skip its own refetch. This keeps an
+// edit from refetching the whole board twice (once after the action, once for
+// the event the action itself published).
+const refreshedAt = new Map<string, number>();
+
+/** Call right before router.refresh() for this board. */
+export function markBoardRefreshed(boardId: string) {
+  refreshedAt.set(boardId, performance.now());
+}
+
+/** Whether a refresh started at or after `since` (a performance.now() time). */
+export function refreshedSince(boardId: string, since: number): boolean {
+  return (refreshedAt.get(boardId) ?? -Infinity) >= since;
+}
+
 /** Everyone currently on the board (including this user), live. */
 export function useBoardViewers(boardId: string): PresenceViewer[] {
   const subscribe = useCallback(

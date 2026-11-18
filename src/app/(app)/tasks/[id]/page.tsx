@@ -8,7 +8,7 @@ import Board from "@/components/board/Board";
 import { BoardPresence } from "@/components/presence/Presence";
 import WatchButton from "@/components/WatchButton";
 import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
-import { parseFilters } from "@/lib/board-filters";
+import { parseFilters } from "@/lib/board-filters-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -35,20 +35,28 @@ export default async function BoardPage({
       },
       tags: { orderBy: { position: "asc" }, select: { id: true, name: true, color: true } },
       watchers: { where: { userId: access.userId }, select: { userId: true } },
+      // Only what the card face needs (see docs/PERFORMANCE.md).
       columns: {
         orderBy: { position: "asc" },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          position: true,
+          wipLimit: true,
           cards: {
             orderBy: { position: "asc" },
-            include: {
+            select: {
+              id: true,
+              title: true,
+              priority: true,
+              coverColor: true,
+              deadline: true,
+              position: true,
               assignees: {
-                include: {
-                  user: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
-                },
+                select: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
               },
-              tags: { include: { tag: true } },
-              subtasks: { select: { done: true } },
-              _count: { select: { comments: true, blockedBy: true, attachments: true } },
+              tags: { select: { tagId: true } },
+              _count: { select: { subtasks: true, comments: true, blockedBy: true, attachments: true } },
             },
           },
         },
@@ -76,6 +84,24 @@ export default async function BoardPage({
     select: { id: true, name: true },
   });
 
+  // Checklist progress for every card in one grouped query.
+  const doneRows = await prisma.taskSubtask.groupBy({
+    by: ["cardId"],
+    where: { done: true, card: { column: { boardId: id } } },
+    _count: { _all: true },
+  });
+  const subtasksDone = new Map(doneRows.map((r) => [r.cardId, r._count._all]));
+
+  // One object per person and per tag, shared by every card that uses it, so
+  // the serialized page (and every live refresh) does not repeat them.
+  const tagById = new Map(board.tags.map((tg) => [tg.id, { id: tg.id, name: tg.name, color: tg.color }]));
+  const people = new Map<string, { id: string; displayName: string | null; username: string; avatarUrl: string | null }>();
+  const person = (u: { id: string; displayName: string | null; username: string; avatarUrl: string | null }) => {
+    let p = people.get(u.id);
+    if (!p) people.set(u.id, (p = { id: u.id, displayName: u.displayName, username: u.username, avatarUrl: u.avatarUrl }));
+    return p;
+  };
+
   // Lets the board tell this data apart from a newer offline snapshot.
   const renderedAt = new Date().toISOString();
 
@@ -91,19 +117,10 @@ export default async function BoardPage({
       coverColor: card.coverColor,
       deadline: card.deadline ? card.deadline.toISOString() : null,
       position: card.position,
-      assignees: card.assignees.map((a) => ({
-        id: a.user.id,
-        displayName: a.user.displayName,
-        username: a.user.username,
-        avatarUrl: a.user.avatarUrl,
-      })),
-      tags: card.tags.map((tt) => ({
-        id: tt.tag.id,
-        name: tt.tag.name,
-        color: tt.tag.color,
-      })),
-      subtasksTotal: card.subtasks.length,
-      subtasksDone: card.subtasks.filter((s) => s.done).length,
+      assignees: card.assignees.map((a) => person(a.user)),
+      tags: card.tags.flatMap((tt) => tagById.get(tt.tagId) ?? []),
+      subtasksTotal: card._count.subtasks,
+      subtasksDone: subtasksDone.get(card.id) ?? 0,
       commentsCount: card._count.comments,
       blockedByCount: card._count.blockedBy,
       attachmentsCount: card._count.attachments,
@@ -150,13 +167,8 @@ export default async function BoardPage({
         locale={locale}
         canManage={canManageBoard(access)}
         currentUserId={access.userId}
-        members={board.members.map((m) => ({
-          id: m.user.id,
-          displayName: m.user.displayName,
-          username: m.user.username,
-          avatarUrl: m.user.avatarUrl,
-        }))}
-        boardTags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
+        members={board.members.map((m) => person(m.user))}
+        boardTags={[...tagById.values()]}
         savedFilters={savedFilters}
         templates={templates}
         renderedAt={renderedAt}

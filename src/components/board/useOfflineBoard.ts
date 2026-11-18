@@ -12,7 +12,7 @@ import { useEffect, useMemo } from "react";
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { errorMessage, useUi } from "@/components/ui/UiProvider";
 import { blockedOffline } from "@/components/ui/offline";
-import { subscribeBoardStream, useBoardStreamStale } from "@/lib/board-stream";
+import { markBoardRefreshed, subscribeBoardStream, useBoardStreamStale } from "@/lib/board-stream";
 import { t, type Locale } from "@/lib/i18n";
 import {
   clearApplied,
@@ -125,6 +125,7 @@ export function useOfflineBoard({
     }
     if (!result.ok) ui.toast({ message: errorMessage(result.error, locale), tone: "error" });
     // On failure the refresh rolls the optimistic change back.
+    markBoardRefreshed(boardId);
     router.refresh();
     return { ok: result.ok, queued: false, createdIds: result.ok ? result.createdIds : undefined };
   }
