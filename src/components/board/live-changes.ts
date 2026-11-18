@@ -17,7 +17,8 @@ type CardState = { rect: DOMRect; columnId: string; index: number; title: string
 export type CardSnapshot = Map<string, CardState>;
 
 function cardElements(root: HTMLElement) {
-  return root.querySelectorAll<HTMLElement>("[data-card-id]");
+  // Cards hidden by a filter are left out: they have no place on screen.
+  return root.querySelectorAll<HTMLElement>("[data-card-id]:not([hidden])");
 }
 
 function positions(columns: ColumnDTO[]) {

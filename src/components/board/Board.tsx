@@ -13,14 +13,17 @@ import {
   getFirstCollision,
   pointerWithin,
   rectIntersection,
+  useDndContext,
   useSensor,
   useSensors,
+  type Active,
   type Announcements,
   type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
   type KeyboardCoordinateGetter,
+  type KeyboardSensorProps,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -87,13 +90,56 @@ const VIEW_ICONS = { board: Columns3, list: List, calendar: CalendarDays } as co
 const VIEW_LABELS = { board: "viewBoard", list: "viewList", calendar: "viewCalendar" } as const;
 
 const COLLAPSE_EVENT = "kanbun:collapsed";
+// Cards that do not match the filter stay in the page, hidden (see Column).
+const VISIBLE_CARD = "[data-card-id]:not([hidden])";
 const NO_TEMPLATES: TemplateOption[] = [];
 
-// Sensor options live outside the component: new option objects on every
-// render would give every sortable card new listeners and defeat memoization.
+// Sensor options must keep their identity (Board creates them once): new
+// option objects would give every sortable card new listeners and defeat
+// memoization.
 const MOUSE_OPTIONS = { activationConstraint: { distance: 6 } };
 // Long-press on touch, so swiping still scrolls the board.
 const TOUCH_OPTIONS = { activationConstraint: { delay: 250, tolerance: 8 } };
+
+// Drag and drop is off while a filter hides cards. The sensors refuse to
+// start a drag then, instead of every card being disabled: switching all
+// cards' drag and drop state off and on re-renders each of them, which made
+// clearing a filter slow on large boards (docs/PERFORMANCE.md).
+type Handler = (event: unknown, options: { blocked?: () => boolean }, context: unknown) => boolean | undefined;
+function gated<T extends readonly { eventName: string; handler: unknown }[]>(activators: T): T {
+  return activators.map(({ eventName, handler }) => ({
+    eventName,
+    handler: ((event, options, context) => !options.blocked?.() && (handler as Handler)(event, options, context) === true) as Handler,
+  })) as unknown as T;
+}
+class BoardMouseSensor extends MouseSensor {
+  static activators = gated(MouseSensor.activators);
+}
+class BoardTouchSensor extends TouchSensor {
+  static activators = gated(TouchSensor.activators);
+}
+class BoardKeyboardSensor extends KeyboardSensor {
+  static activators = gated(KeyboardSensor.activators);
+
+  constructor(props: KeyboardSensorProps) {
+    super(props);
+    // dnd-kit listens for keys only from the next task on, so that the Space
+    // that started the drag is not seen again. A pick up is now fast enough
+    // for an arrow key to arrive before that and be lost, so arrow keys in
+    // that gap are handed to the sensor here. Space and Escape are left alone:
+    // ending the drag this early would let dnd-kit's late listener act on a
+    // finished drag.
+    const doc = (props.event.target as Node | null)?.ownerDocument ?? document;
+    const sensor = this as unknown as { handleKeyDown(event: KeyboardEvent): void };
+    const early = (event: KeyboardEvent) => {
+      if (!event.code.startsWith("Arrow")) return;
+      event.stopImmediatePropagation();
+      sensor.handleKeyDown(event);
+    };
+    doc.addEventListener("keydown", early, true);
+    setTimeout(() => doc.removeEventListener("keydown", early, true));
+  }
+}
 
 // Keyboard dragging: Left/Right jump a card to the neighbouring column,
 // Up/Down reorder within the column (dnd-kit's default getter only looks at
@@ -119,6 +165,8 @@ const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
   if (current < 0 || !target) return undefined;
   return { x: target.left + 8, y: target.top + 44 };
 };
+
+const DROP_ANIMATION = { duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" };
 
 // Space lifts and drops; Enter is left to the link so it opens the card.
 const KEYBOARD_OPTIONS = {
@@ -162,6 +210,24 @@ function useCollapsedColumns(boardId: string) {
     window.dispatchEvent(new Event(COLLAPSE_EVENT));
   }
   return [collapsed, toggle] as const;
+}
+
+/**
+ * Where a card dragged over a column (not over one of its cards) goes: before
+ * the first card whose middle is below the dragged card's middle. Only the
+ * cards of columns the drag has reached are drop targets (see Column), so the
+ * first time a drag enters a column it is over the column itself.
+ */
+function insertIndex(columnId: string, active: Active): number {
+  const cards = document.querySelectorAll(`[data-column-id="${columnId}"] ${VISIBLE_CARD}`);
+  const rect = active.rect.current.translated;
+  if (!rect) return cards.length;
+  const middle = rect.top + rect.height / 2;
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    if (middle < r.top + r.height / 2) return i;
+  }
+  return cards.length;
 }
 
 function containerOf(columns: ColumnDTO[], id: UniqueIdentifier): string | null {
@@ -216,9 +282,10 @@ export default function Board({
   const boardScroller = useRef<HTMLDivElement>(null);
   const [visibleColumnIndex, setVisibleColumnIndex] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [addingColumnId, setAddingColumnId] = useState<string | null>(null);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  // The column whose cards are drop targets before a drag starts (see Column).
+  const [armedColumnId, setArmedColumnId] = useState<string | null>(null);
   const [movingCard, setMovingCard] = useState<CardDTO | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [collapsed, toggleCollapsed] = useCollapsedColumns(boardId);
@@ -468,6 +535,7 @@ export default function Board({
       updateCard(card, { title });
     },
     setEditing: setEditingCardId,
+    arm: setArmedColumnId,
     prefetchCard: (card) => {
       if (!card.id.startsWith(TEMP_PREFIX)) router.prefetch(`/tasks/${boardId}/cards/${card.id}`);
     },
@@ -476,10 +544,16 @@ export default function Board({
 
   // ---------- Drag and drop ----------
 
+  const dndGate = useStableHandlers({ blocked: () => filtering });
+  const [sensorOptions] = useState(() => ({
+    mouse: { ...MOUSE_OPTIONS, blocked: dndGate.blocked },
+    touch: { ...TOUCH_OPTIONS, blocked: dndGate.blocked },
+    keyboard: { ...KEYBOARD_OPTIONS, blocked: dndGate.blocked },
+  }));
   const sensors = useSensors(
-    useSensor(MouseSensor, MOUSE_OPTIONS),
-    useSensor(TouchSensor, TOUCH_OPTIONS),
-    useSensor(KeyboardSensor, KEYBOARD_OPTIONS)
+    useSensor(BoardMouseSensor, sensorOptions.mouse),
+    useSensor(BoardTouchSensor, sensorOptions.touch),
+    useSensor(BoardKeyboardSensor, sensorOptions.keyboard)
   );
 
   const collisionDetection: CollisionDetection = (args) => {
@@ -489,15 +563,20 @@ export default function Board({
         droppableContainers: args.droppableContainers.filter((c) => isColumnKey(String(c.id))),
       });
     }
-    const hits = pointerWithin(args);
-    const collisions = hits.length > 0 ? hits : rectIntersection(args);
+    // Find the column first, then the closest card in it. Testing all 500
+    // cards on every pointer move is slow: each of dnd-kit's rects reads the
+    // scroll position of all its scrollable ancestors per coordinate.
+    const columnArgs = { ...args, droppableContainers: args.droppableContainers.filter((c) => isColumnKey(String(c.id))) };
+    const hits = pointerWithin(columnArgs);
+    const collisions = hits.length > 0 ? hits : rectIntersection(columnArgs);
     const overId = getFirstCollision(collisions, "id");
-    if (overId != null && isColumnKey(String(overId))) {
+    if (overId != null) {
       const column = columns.find((c) => columnKey(c.id) === overId);
       if (column && column.cards.length > 0) {
+        const ids = new Set(column.cards.map((card) => card.id));
         const inner = closestCenter({
           ...args,
-          droppableContainers: args.droppableContainers.filter((c) => column.cards.some((card) => card.id === c.id)),
+          droppableContainers: args.droppableContainers.filter((c) => ids.has(String(c.id))),
         });
         if (inner.length > 0) return inner;
       }
@@ -511,8 +590,9 @@ export default function Board({
     const index = isColumnKey(id)
       ? columns.findIndex((c) => columnKey(c.id) === id)
       : columns.find((c) => c.id === columnId)?.cards.findIndex((c) => c.id === id) ?? -1;
+    // No state here: the overlay reads the active item itself (DragPreview),
+    // so a pick up does not re-render the whole board.
     dragStart.current = { snapshot: columns, columnId, index };
-    setActiveId(id);
   }
 
   function onDragOver({ active, over }: DragOverEvent) {
@@ -522,12 +602,11 @@ export default function Board({
     if (!from || !to || from === to) return;
     const target = columns.find((c) => c.id === to)!;
     const overIndex = target.cards.findIndex((c) => c.id === over.id);
-    setColumns((prev) => moveCardLocally(prev, String(active.id), to, overIndex < 0 ? target.cards.length : overIndex));
+    setColumns((prev) => moveCardLocally(prev, String(active.id), to, overIndex < 0 ? insertIndex(to, active) : overIndex));
   }
 
   function finishDrag() {
     dragStart.current = null;
-    setActiveId(null);
     if (refreshPending.current) {
       refreshPending.current = false;
       markBoardRefreshed(boardId);
@@ -581,14 +660,16 @@ export default function Board({
     if (isColumnKey(key)) return columns.find((c) => columnKey(c.id) === key)?.name ?? "";
     return allCards.find((c) => c.id === key)?.title ?? "";
   };
-  const placeOf = (id: UniqueIdentifier, overId: UniqueIdentifier) => {
+  const placeOf = (active: Active, overId: UniqueIdentifier) => {
     const columnId = containerOf(columns, overId);
     const column = columns.find((c) => c.id === columnId);
     if (!column) return null;
-    const i = column.cards.findIndex((c) => c.id === String(overId));
-    const own = column.cards.some((c) => c.id === String(id));
-    const count = column.cards.length + (own ? 0 : 1);
-    return { column: column.name, position: i < 0 ? count : i + 1, count };
+    const own = column.cards.findIndex((c) => c.id === String(active.id));
+    // Over a card: its place. Over the column itself: where the card is (or
+    // would go, see insertIndex).
+    let i = column.cards.findIndex((c) => c.id === String(overId));
+    if (i < 0) i = own >= 0 ? own : insertIndex(column.id, active);
+    return { column: column.name, position: i + 1, count: column.cards.length + (own >= 0 ? 0 : 1) };
   };
   const announcements: Announcements = {
     onDragStart: ({ active }) =>
@@ -601,7 +682,7 @@ export default function Board({
         const i = columns.findIndex((c) => c.id === containerOf(columns, over.id));
         return tr("dndColumnOver", { name: titleOf(active.id), position: i + 1, count: columns.length });
       }
-      const place = placeOf(active.id, over.id);
+      const place = placeOf(active, over.id);
       return place ? tr("dndOver", { title: titleOf(active.id), ...place }) : undefined;
     },
     onDragEnd: ({ active, over }) => {
@@ -610,7 +691,7 @@ export default function Board({
         const i = columns.findIndex((c) => c.id === containerOf(columns, over.id));
         return tr("dndColumnDropped", { name: titleOf(active.id), position: i + 1, count: columns.length });
       }
-      const place = placeOf(active.id, over.id);
+      const place = placeOf(active, over.id);
       return place ? tr("dndDropped", { title: titleOf(active.id), ...place }) : undefined;
     },
     onDragCancel: ({ active }) => tr("dndCancelled", { title: titleOf(active.id) }),
@@ -661,13 +742,13 @@ export default function Board({
         if (!cardEl) {
           if (key === "j" || key === "ArrowDown") {
             e.preventDefault();
-            focusCard(document.querySelector("[data-card-id]"));
+            focusCard(document.querySelector(VISIBLE_CARD));
           }
           return;
         }
         e.preventDefault();
         const colEl = cardEl.closest("[data-column-id]")!;
-        const cards = [...colEl.querySelectorAll("[data-card-id]")];
+        const cards = [...colEl.querySelectorAll(VISIBLE_CARD)];
         const i = cards.indexOf(cardEl);
         if (key === "j" || key === "ArrowDown") focusCard(cards[i + 1]);
         else if (key === "k" || key === "ArrowUp") focusCard(cards[i - 1]);
@@ -675,7 +756,7 @@ export default function Board({
           const ci = columnsEls.indexOf(colEl);
           const step = key === "h" || key === "ArrowLeft" ? -1 : 1;
           for (let c = ci + step; c >= 0 && c < columnsEls.length; c += step) {
-            const next = columnsEls[c].querySelectorAll("[data-card-id]");
+            const next = columnsEls[c].querySelectorAll(VISIBLE_CARD);
             if (next.length) {
               focusCard(next[Math.min(i, next.length - 1)]);
               break;
@@ -688,15 +769,11 @@ export default function Board({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const activeCard = activeId && !isColumnKey(activeId) ? allCards.find((c) => c.id === activeId) : null;
-  const activeColumn = activeId && isColumnKey(activeId) ? columns.find((c) => columnKey(c.id) === activeId) : null;
-
   const shared = useMemo(
     () => ({
       boardId,
       locale,
       canManage,
-      dndDisabled: filtering,
       members,
       boardTags,
       templates,
@@ -704,7 +781,7 @@ export default function Board({
       cardHandlers,
       columnHandlers,
     }),
-    [boardId, locale, canManage, filtering, members, boardTags, templates, currentUserId, cardHandlers, columnHandlers]
+    [boardId, locale, canManage, members, boardTags, templates, currentUserId, cardHandlers, columnHandlers]
   );
 
   const showAddBar = view === "board" && !filtering && columns.length > 0;
@@ -842,7 +919,10 @@ export default function Board({
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
             onDragCancel={onDragCancel}
-            accessibility={{ announcements, screenReaderInstructions: { draggable: t("dndInstructions", locale) } }}
+            accessibility={{
+              announcements,
+              screenReaderInstructions: { draggable: t(filtering ? "dndInstructionsFiltered" : "dndInstructions", locale) },
+            }}
           >
             <div
               ref={boardScroller}
@@ -860,24 +940,15 @@ export default function Board({
                     collapsed={collapsed.has(col.id) && !filtering}
                     adding={addingColumnId === col.id}
                     editingCardId={editingCardId}
+                    armed={armedColumnId === col.id}
+                    dndDisabled={filtering}
                     shared={shared}
                   />
                 ))}
               </SortableContext>
               {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} guard={offline.guard} />}
             </div>
-            <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
-              {activeCard ? (
-                <div className="relative overflow-hidden rounded-card bg-raised border border-line-strong shadow-float px-3 pt-2.5 pb-2.5 rotate-[1.5deg] cursor-grabbing w-[85vw] sm:w-[16.5rem]">
-                  <CardFace card={activeCard} locale={locale} />
-                </div>
-              ) : activeColumn ? (
-                <div className="w-72 rounded-panel bg-surface border border-line-strong shadow-float px-3 py-2 font-semibold cursor-grabbing">
-                  {activeColumn.name}
-                  <span className="ml-2 text-sm text-ink-muted tabular-nums">{activeColumn.cards.length}</span>
-                </div>
-              ) : null}
-            </DragOverlay>
+            <DragPreview columns={columns} locale={locale} />
           </DndContext>
         </>
       )}
@@ -922,6 +993,34 @@ export default function Board({
         onMove={(card, columnId, position) => moveCard(card, columnId, position)}
       />
       <ShortcutsDialog open={shortcutsOpen} locale={locale} onClose={() => setShortcutsOpen(false)} />
+    </div>
+  );
+}
+
+// The card or column under the pointer while dragging. It reads the active
+// item from dnd-kit, so only this small component re-renders on pick up.
+function DragPreview({ columns, locale }: { columns: ColumnDTO[]; locale: Locale }) {
+  const { active } = useDndContext();
+  const id = active ? String(active.id) : null;
+  const activeColumn = id && isColumnKey(id) ? columns.find((c) => columnKey(c.id) === id) : null;
+  const activeCard = id && !activeColumn ? columns.flatMap((c) => c.cards).find((c) => c.id === id) : null;
+  return (
+    // A stable wrapper: inserting the overlay straight into the space-y
+    // container would restyle the whole board (sibling selectors) on every
+    // pick up.
+    <div className="contents">
+      <DragOverlay dropAnimation={DROP_ANIMATION}>
+        {activeCard ? (
+          <div className="relative overflow-hidden rounded-card bg-raised border border-line-strong shadow-float px-3 pt-2.5 pb-2.5 rotate-[1.5deg] cursor-grabbing w-[85vw] sm:w-[16.5rem]">
+            <CardFace card={activeCard} locale={locale} />
+          </div>
+        ) : activeColumn ? (
+          <div className="w-72 rounded-panel bg-surface border border-line-strong shadow-float px-3 py-2 font-semibold cursor-grabbing">
+            {activeColumn.name}
+            <span className="ml-2 text-sm text-ink-muted tabular-nums">{activeColumn.cards.length}</span>
+          </div>
+        ) : null}
+      </DragOverlay>
     </div>
   );
 }
