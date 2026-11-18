@@ -66,6 +66,13 @@ html, body {
   min-height: 100%;
 }
 
+/* Keep room for the scrollbar (on systems where it takes space), so the page
+   does not jump sideways when a loading skeleton is replaced by content
+   taller than the window. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   font-size: 0.875rem;
   line-height: 1.25rem;

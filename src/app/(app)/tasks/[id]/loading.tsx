@@ -2,7 +2,9 @@ import { Skeleton } from "@/components/Skeleton";
 
 export default function Loading() {
   return (
-    <div className="space-y-4">
+    // data-wide like the board page, so the layout does not change width
+    // when the board replaces this skeleton.
+    <div className="space-y-4" data-wide>
       <Skeleton className="h-7 w-48" />
       <div className="flex gap-4 overflow-hidden">
         {Array.from({ length: 3 }).map((_, i) => (

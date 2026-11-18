@@ -187,6 +187,8 @@ scripts/
   create-admin.ts      optional CLI to create or reset an admin
   db.mjs               generate clients / migrate for the database in DATABASE_URL
   sqlite-to-postgres.ts copy a SQLite install into PostgreSQL
+  seed-large.ts        a 500-card board for performance testing (npm run seed:large)
+  perf-board.ts        measures that board on a production build
 ```
 
 ## Notes
@@ -203,6 +205,7 @@ scripts/
 - Failed logins are rate limited per IP and username, and per username across all addresses (in memory, or in Redis when `REDIS_URL` is set). The client IP is the entry `TRUSTED_PROXIES` positions from the right of `X-Forwarded-For`, so put Kanbun behind a reverse proxy that appends to it. The security model and an operator hardening checklist are in [SECURITY.md](SECURITY.md).
 - Pages are served with a nonce-based Content-Security-Policy (`src/lib/csp.ts`, set in `src/proxy.ts`); other security headers are in `next.config.mjs`.
 - Offline support needs HTTPS (or localhost) and an uncached `/sw.js`; see [docs/OFFLINE.md](docs/OFFLINE.md) for what is stored in the browser and when it is deleted.
+- Performance: the 500-card board budget, how to measure it and the rules that keep the board fast (memoized columns and cards, stable handlers) are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). `E2E_PERF=1 npx playwright test e2e/perf.spec.ts` runs the performance guard.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). In process by default; with `REDIS_URL` events go through Redis pub/sub so every instance delivers them ([docs/SCALING.md](docs/SCALING.md)).
 
 ## Pro modules (optional)

@@ -11,7 +11,7 @@ import {
   sortRows,
   type ListRow,
 } from "@/lib/board-views";
-import { parseFilters } from "@/lib/board-filters";
+import { parseFilters } from "@/lib/board-filters-schema";
 import type { CardDTO } from "@/components/board/types";
 
 function card(id: string, over: Partial<CardDTO> = {}): CardDTO {

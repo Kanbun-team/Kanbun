@@ -53,7 +53,7 @@ export function CardTags({ cardId, boardTags, selectedTagIds, locale }: CardTags
           style={chipStyle(tag.color) as CSSProperties}
         >
           {tag.name}
-          <span aria-hidden="true">&times;</span>
+          <X size={12} aria-hidden />
         </button>
       ))}
       <Combobox

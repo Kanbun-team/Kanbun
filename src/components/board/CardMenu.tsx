@@ -1,7 +1,8 @@
 "use client";
 
 import Avatar from "@/components/Avatar";
-import { MenuButton, MenuItem, MenuSeparator, Submenu } from "@/components/ui/Menu";
+import { MoreHorizontal } from "lucide-react";
+import { MenuButton, MenuItem, MenuSeparator, Submenu, menuButtonClass } from "@/components/ui/Menu";
 import { PALETTE } from "@/lib/palette";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { t, type Locale } from "@/lib/i18n";
@@ -31,6 +32,9 @@ export default function CardMenu({
   canManage = false,
   isOpen,
   onOpenChange,
+  active = true,
+  onActivate,
+  autoFocus,
 }: {
   card: CardDTO;
   members: MemberOption[];
@@ -42,81 +46,124 @@ export default function CardMenu({
   canManage?: boolean;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * False renders a plain stand-in button (same look and name) instead of the
+   * React Aria menu, which is costly times hundreds of cards. The card makes
+   * it active when the pointer or focus comes near; `onActivate(true)` means
+   * the stand-in itself got focus, so the real button takes it over.
+   */
+  active?: boolean;
+  onActivate?: (focus: boolean) => void;
+  autoFocus?: boolean;
 }) {
+  const label = t("cardActions", locale).replace("{title}", card.title);
+  if (!active) {
+    return (
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="true"
+        aria-expanded={false}
+        className={cn(menuButtonClass, "bg-raised/90")}
+        onFocus={() => onActivate?.(true)}
+        // A mouse opens it on press, like React Aria does, so the real menu
+        // takes over before the click ends. Keyboard and touch use the click.
+        onMouseDown={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          if (e.pointerType !== "mouse" || e.button !== 0) return;
+          onActivate?.(false);
+          onOpenChange?.(true);
+        }}
+        onClick={() => {
+          onActivate?.(false);
+          onOpenChange?.(true);
+        }}
+      >
+        <MoreHorizontal size={16} aria-hidden />
+      </button>
+    );
+  }
   const assigned = new Set(card.assignees.map((a) => a.id));
   const tagged = new Set(card.tags.map((tg) => tg.id));
   const me = members.find((m) => m.id === currentUserId);
 
   return (
     <MenuButton
-      label={t("cardActions", locale).replace("{title}", card.title)}
+      label={label}
+      autoFocus={autoFocus}
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       className="bg-raised/90"
     >
-      <MenuItem onAction={() => handlers.open(card)}>{t("cardOpen", locale)}</MenuItem>
-      <MenuItem onAction={() => handlers.moveTo(card)}>{t("cardMoveTo", locale)}</MenuItem>
-      <MenuItem onAction={() => handlers.setDeadline(card)}>{t("cardSetDeadline", locale)}</MenuItem>
-      {me && (
-        <MenuItem onAction={() => handlers.toggleAssignee(card, me)}>
-          {assigned.has(me.id) ? t("cardUnassignMe", locale) : t("cardAssignMe", locale)}
-        </MenuItem>
+      {/* A board has hundreds of these menus: only build the items while
+          the menu is open (it is always controlled from the card). */}
+      {isOpen !== false && (
+        <>
+          <MenuItem onAction={() => handlers.open(card)}>{t("cardOpen", locale)}</MenuItem>
+          <MenuItem onAction={() => handlers.moveTo(card)}>{t("cardMoveTo", locale)}</MenuItem>
+          <MenuItem onAction={() => handlers.setDeadline(card)}>{t("cardSetDeadline", locale)}</MenuItem>
+          {me && (
+            <MenuItem onAction={() => handlers.toggleAssignee(card, me)}>
+              {assigned.has(me.id) ? t("cardUnassignMe", locale) : t("cardAssignMe", locale)}
+            </MenuItem>
+          )}
+          <MenuSeparator />
+          <Submenu label={t("cardAssignees", locale)}>
+            {members.length === 0 ? (
+              <MenuItem isDisabled>{t("noResults", locale)}</MenuItem>
+            ) : (
+              members.map((u) => (
+                <MenuItem
+                  key={u.id}
+                  textValue={u.displayName ?? u.username}
+                  checked={assigned.has(u.id)}
+                  onAction={() => handlers.toggleAssignee(card, u)}
+                >
+                  <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={20} />
+                  <span className="truncate">{u.displayName ?? u.username}</span>
+                </MenuItem>
+              ))
+            )}
+          </Submenu>
+          <Submenu label={t("cardTags", locale)}>
+            {boardTags.length === 0 ? (
+              <MenuItem isDisabled>{t("noResults", locale)}</MenuItem>
+            ) : (
+              boardTags.map((tg) => (
+                <MenuItem key={tg.id} textValue={tg.name} checked={tagged.has(tg.id)} onAction={() => handlers.toggleTag(card, tg)}>
+                  <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ background: tg.color }} />
+                  <span className="truncate">{tg.name}</span>
+                </MenuItem>
+              ))
+            )}
+          </Submenu>
+          <Submenu label={t("cardPriority", locale)}>
+            {PRIORITIES.map((p) => (
+              <MenuItem key={p} textValue={priorityLabel(p, locale)} checked={card.priority === p} onAction={() => handlers.setPriority(card, p)}>
+                <span aria-hidden className={cn("w-2.5 h-2.5 rounded-full shrink-0", priorityClass(p))} />
+                {priorityLabel(p, locale)}
+              </MenuItem>
+            ))}
+          </Submenu>
+          <Submenu label={t("cardCover", locale)}>
+            <MenuItem textValue={t("none", locale)} checked={!card.coverColor} onAction={() => handlers.setCover(card, null)}>
+              <span aria-hidden className="w-3 h-3 rounded-full shrink-0 border border-dashed border-line-strong" />
+              {t("none", locale)}
+            </MenuItem>
+            {PALETTE.map((c) => (
+              <MenuItem key={c} textValue={c} checked={card.coverColor?.toLowerCase() === c} onAction={() => handlers.setCover(card, c)}>
+                <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ background: c }} />
+                <span className="text-sm text-ink-muted">{c.toUpperCase()}</span>
+              </MenuItem>
+            ))}
+          </Submenu>
+          {canManage && <MenuItem onAction={() => handlers.saveAsTemplate(card)}>{t("cardSaveAsTemplate", locale)}</MenuItem>}
+          <MenuSeparator />
+          <MenuItem danger onAction={() => handlers.remove(card)}>
+            {t("cardDelete", locale)}
+          </MenuItem>
+        </>
       )}
-      <MenuSeparator />
-      <Submenu label={t("cardAssignees", locale)}>
-        {members.length === 0 ? (
-          <MenuItem isDisabled>{t("noResults", locale)}</MenuItem>
-        ) : (
-          members.map((u) => (
-            <MenuItem
-              key={u.id}
-              textValue={u.displayName ?? u.username}
-              checked={assigned.has(u.id)}
-              onAction={() => handlers.toggleAssignee(card, u)}
-            >
-              <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={20} />
-              <span className="truncate">{u.displayName ?? u.username}</span>
-            </MenuItem>
-          ))
-        )}
-      </Submenu>
-      <Submenu label={t("cardTags", locale)}>
-        {boardTags.length === 0 ? (
-          <MenuItem isDisabled>{t("noResults", locale)}</MenuItem>
-        ) : (
-          boardTags.map((tg) => (
-            <MenuItem key={tg.id} textValue={tg.name} checked={tagged.has(tg.id)} onAction={() => handlers.toggleTag(card, tg)}>
-              <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ background: tg.color }} />
-              <span className="truncate">{tg.name}</span>
-            </MenuItem>
-          ))
-        )}
-      </Submenu>
-      <Submenu label={t("cardPriority", locale)}>
-        {PRIORITIES.map((p) => (
-          <MenuItem key={p} textValue={priorityLabel(p, locale)} checked={card.priority === p} onAction={() => handlers.setPriority(card, p)}>
-            <span aria-hidden className={cn("w-2.5 h-2.5 rounded-full shrink-0", priorityClass(p))} />
-            {priorityLabel(p, locale)}
-          </MenuItem>
-        ))}
-      </Submenu>
-      <Submenu label={t("cardCover", locale)}>
-        <MenuItem textValue={t("none", locale)} checked={!card.coverColor} onAction={() => handlers.setCover(card, null)}>
-          <span aria-hidden className="w-3 h-3 rounded-full shrink-0 border border-dashed border-line-strong" />
-          {t("none", locale)}
-        </MenuItem>
-        {PALETTE.map((c) => (
-          <MenuItem key={c} textValue={c} checked={card.coverColor?.toLowerCase() === c} onAction={() => handlers.setCover(card, c)}>
-            <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ background: c }} />
-            <span className="text-sm text-ink-muted">{c.toUpperCase()}</span>
-          </MenuItem>
-        ))}
-      </Submenu>
-      {canManage && <MenuItem onAction={() => handlers.saveAsTemplate(card)}>{t("cardSaveAsTemplate", locale)}</MenuItem>}
-      <MenuSeparator />
-      <MenuItem danger onAction={() => handlers.remove(card)}>
-        {t("cardDelete", locale)}
-      </MenuItem>
     </MenuButton>
   );
 }
