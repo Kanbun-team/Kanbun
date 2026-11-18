@@ -135,6 +135,8 @@
   "savedFilterDeleteTitle": "Eliminare il filtro salvato \"{name}\"?",
   "savedFilterDeleteBody": "Verrà rimosso per tutti in questa bacheca. Le card non cambiano.",
   "savedFilterDeleted": "Filtro eliminato",
+  "savedFilterRename": "Rinomina il filtro {name}",
+  "savedFilterRenamed": "Filtro rinominato in \"{name}\"",
   "cardSetDeadline": "Imposta scadenza",
   "datePickerTitle": "Scadenza per {title}",
   "dateToday": "Oggi",

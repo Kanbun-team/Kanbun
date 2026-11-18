@@ -135,6 +135,8 @@
   "savedFilterDeleteTitle": "Gespeicherten Filter „{name}“ löschen?",
   "savedFilterDeleteBody": "Er wird für alle auf diesem Board entfernt. Karten bleiben unverändert.",
   "savedFilterDeleted": "Filter gelöscht",
+  "savedFilterRename": "Filter {name} umbenennen",
+  "savedFilterRenamed": "Filter in „{name}“ umbenannt",
   "cardSetDeadline": "Frist festlegen",
   "datePickerTitle": "Frist für {title}",
   "dateToday": "Heute",

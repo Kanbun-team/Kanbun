@@ -97,13 +97,25 @@ test.describe("board views", () => {
     await expect(page.getByRole("link", { name: /Responsive navigation/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Hero section illustrations/ })).toHaveCount(0);
 
-    await page.getByRole("button", { name: `Delete filter ${name}` }).click();
+    // Rename: Escape cancels, Enter saves, focus returns to the rename button.
+    const renamed = `${name} renamed`;
+    await page.getByRole("button", { name: `Rename filter ${name}` }).click();
+    await page.getByLabel("Filter name").press("Escape");
+    await expect(page.getByRole("button", { name: `Rename filter ${name}` })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.getByLabel("Filter name").fill(renamed);
+    await page.getByLabel("Filter name").press("Enter");
+    await expect(toast(page)).toContainText(`Filter renamed to "${renamed}"`);
+    await expect(page.getByRole("button", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: `Rename filter ${renamed}` })).toBeFocused();
+
+    await page.getByRole("button", { name: `Delete filter ${renamed}` }).click();
     const confirm = page.getByRole("alertdialog").or(page.getByRole("dialog"));
     await confirm.getByRole("button", { name: "Delete" }).click();
     await expect(toast(page)).toContainText("Filter deleted");
     await page.reload();
     await page.getByRole("button", { name: /^Filter/ }).click();
-    await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: renamed, exact: true })).toHaveCount(0);
   });
 
   test("set a deadline with the d shortcut", async ({ page }) => {

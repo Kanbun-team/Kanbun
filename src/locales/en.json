@@ -135,6 +135,8 @@
   "savedFilterDeleteTitle": "Delete the saved filter \"{name}\"?",
   "savedFilterDeleteBody": "It is removed for everyone on this board. Cards are not affected.",
   "savedFilterDeleted": "Filter deleted",
+  "savedFilterRename": "Rename filter {name}",
+  "savedFilterRenamed": "Filter renamed to \"{name}\"",
   "cardSetDeadline": "Set deadline",
   "datePickerTitle": "Deadline for {title}",
   "dateToday": "Today",

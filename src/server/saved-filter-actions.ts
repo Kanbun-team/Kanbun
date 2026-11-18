@@ -10,7 +10,8 @@ import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 import { safeAction } from "@/server/safe-action";
 
 // Saved filters are named board filters shared with everyone on the board.
-// Any member can save one; the creator and board managers can delete it.
+// Any member can save one; the creator and board managers can rename or
+// delete it.
 
 const MAX_PER_BOARD = 50;
 
@@ -50,6 +51,24 @@ export async function deleteSavedFilterAction(input: { id: string }) {
     const access = await loadBoardAccess(saved.boardId);
     if (saved.createdById !== access.userId && !canManageBoard(access)) throw new ActionError("forbidden");
     await prisma.savedFilter.delete({ where: { id } });
+    revalidatePath(`/tasks/${saved.boardId}`);
+    publishBoard(saved.boardId);
+  });
+}
+
+const renameSchema = z.object({
+  id: z.string().min(1),
+  name: createSchema.shape.name,
+});
+
+export async function renameSavedFilterAction(input: { id: string; name: string }) {
+  return safeAction(async () => {
+    const data = renameSchema.parse(input);
+    const saved = await prisma.savedFilter.findUnique({ where: { id: data.id }, select: { boardId: true, createdById: true } });
+    if (!saved) throw new ActionError("notFound");
+    const access = await loadBoardAccess(saved.boardId);
+    if (saved.createdById !== access.userId && !canManageBoard(access)) throw new ActionError("forbidden");
+    await prisma.savedFilter.update({ where: { id: data.id }, data: { name: data.name } });
     revalidatePath(`/tasks/${saved.boardId}`);
     publishBoard(saved.boardId);
   });

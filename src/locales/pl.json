@@ -134,6 +134,8 @@
   "savedFilterDeleteTitle": "Usunąć zapisany filtr „{name}”?",
   "savedFilterDeleteBody": "Zniknie dla wszystkich na tej tablicy. Karty pozostaną bez zmian.",
   "savedFilterDeleted": "Usunięto filtr",
+  "savedFilterRename": "Zmień nazwę filtra {name}",
+  "savedFilterRenamed": "Zmieniono nazwę filtra na „{name}”",
   "cardSetDeadline": "Ustaw termin",
   "datePickerTitle": "Termin dla {title}",
   "dateToday": "Dziś",
