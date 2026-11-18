@@ -790,6 +790,8 @@
   "auditPage": "Page {page} of {pages}",
   "backupTitle": "Backup",
   "backupBody": "Downloads a consistent copy of the database and every attachment as one .tar.gz file. Kanbun keeps running while it is made.",
+  "backupBodyS3": "Downloads a consistent copy of the database as one .tar.gz file. Kanbun keeps running while it is made.",
+  "backupAttachmentsS3": "Attachments are stored in the S3 bucket {bucket} and are not part of this backup (backup.json notes this). Back up the bucket with your storage provider's tools, for example versioning or replication.",
   "backupDownload": "Download backup",
   "backupRestoreHint": "To restore, stop Kanbun, replace kanbun.db and the attachments folder in the data volume with the ones from the archive, and start it again. The README has the exact steps.",
   "backupUnsupported": "One-click backup is only available with the built-in SQLite database. This instance uses another database: back it up with that database's own tools (for PostgreSQL, pg_dump) and copy the attachments folder.",

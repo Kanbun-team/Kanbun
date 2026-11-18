@@ -19,7 +19,7 @@ is only needed when you run several instances.
 | --- | --- | --- |
 | `DATABASE_URL` | `file:/data/kanbun.db` (SQLite) | `postgresql://...` |
 | `REDIS_URL` | unset | `redis://...` |
-| `ATTACHMENTS_DIR` | next to the SQLite file | a volume shared by every instance |
+| Attachments | `ATTACHMENTS_DIR`, next to the SQLite file | a shared folder (`ATTACHMENTS_DIR`) or S3 (`ATTACHMENTS_S3_BUCKET`) |
 
 ## What each piece does
 
@@ -58,10 +58,16 @@ is back.
 
 Without `REDIS_URL` none of this is loaded and everything stays in process.
 
-**Attachments** are files on disk. Every instance must read and write the same
-directory: set `ATTACHMENTS_DIR` to a shared volume (a Docker volume on one
-host, NFS or a similar network file system across hosts). Object storage such as
-S3 is not supported.
+**Attachments** must be reachable from every instance: a shared folder or S3.
+
+- **Shared folder:** set `ATTACHMENTS_DIR` on every instance to the same
+  volume (a Docker volume on one host, NFS or a similar network file system
+  across hosts).
+- **S3-compatible object storage** (AWS S3, MinIO, Cloudflare R2, Backblaze
+  B2): set `ATTACHMENTS_S3_BUCKET` and its keys on every instance, see
+  [Attachments in S3](../README.md#attachments-in-s3). Nothing has to be
+  shared between hosts, and downloads still go through Kanbun's access checks.
+  `npm run attachments:to-s3` copies existing files into the bucket.
 
 ## Setup with Docker Compose
 
@@ -81,7 +87,8 @@ docker compose -f docker-compose.postgres.yml exec kanbun-1 npm run create-admin
 Notes for your own setup:
 
 - Every instance needs the same `AUTH_SECRET`, `NEXTAUTH_URL`, `DATABASE_URL`,
-  `REDIS_URL` and `ATTACHMENTS_DIR`.
+  `REDIS_URL` and attachment storage (`ATTACHMENTS_DIR`, or the
+  `ATTACHMENTS_S3_*` variables).
 - No sticky sessions are needed. The load balancer must not buffer responses
   of type `text/event-stream` (Caddy and Traefik do not; for nginx Kanbun sends
   `X-Accel-Buffering: no`) and should allow long-lived connections.
@@ -124,7 +131,8 @@ already has data.
    index fills itself while rows are inserted.
 6. Copy the attachments folder (by default `attachments/` next to the SQLite
    file, `/data/attachments` in Docker) to the directory you set as
-   `ATTACHMENTS_DIR`.
+   `ATTACHMENTS_DIR`, or into the bucket with `npm run attachments:to-s3` if
+   you use S3.
 7. Start Kanbun with the PostgreSQL `DATABASE_URL`.
 
 With Docker, run the script inside the Kanbun container, which has the SQLite

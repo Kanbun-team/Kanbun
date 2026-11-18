@@ -22,7 +22,8 @@
     "db:pg:baseline": "node scripts/gen-postgres-schema.mjs --baseline",
     "db:pg:migration": "node scripts/gen-postgres-schema.mjs --migration",
     "db:pg:check": "node scripts/gen-postgres-schema.mjs --check",
-    "db:sqlite-to-postgres": "tsx scripts/sqlite-to-postgres.ts"
+    "db:sqlite-to-postgres": "tsx scripts/sqlite-to-postgres.ts",
+    "attachments:to-s3": "tsx scripts/attachments-to-s3.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

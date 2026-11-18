@@ -51,4 +51,4 @@ Known limits:
 7. **Encourage two-factor authentication** for password accounts, admins first. Keep the number of admins small and deactivate accounts of people who leave.
 8. **Upgrade** to new releases promptly; read the changelog in `/whats-new`. Run `npm audit --omit=dev` if you build from source.
 9. **Limit request sizes at the proxy** to match `ATTACHMENT_MAX_MB` and `IMPORT_MAX_MB` (nginx: `client_max_body_size`), and keep the proxy's request buffering on.
-10. **Protect the data volume**: the SQLite database and attachments live in `/data` in Docker. Restrict who can read the host and its backups.
+10. **Protect the data volume**: the SQLite database and attachments live in `/data` in Docker. Restrict who can read the host and its backups. With attachments in S3, keep the bucket private (Kanbun never needs public access) and give the keys access to that bucket or prefix only.

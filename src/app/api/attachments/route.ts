@@ -95,7 +95,13 @@ export async function POST(req: NextRequest) {
   const fileName = sanitizeFileName(file.name);
   const storageKey = newStorageKey();
 
-  await saveAttachmentFile(storageKey, bytes);
+  try {
+    await saveAttachmentFile(storageKey, bytes);
+  } catch (err) {
+    // Disk full, or the object storage is unreachable or refuses the credentials.
+    console.error("[attachments] store", err);
+    return fail("unknown", 503);
+  }
   let attachment;
   try {
     attachment = await prisma.$transaction(async (tx) => {

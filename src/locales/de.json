@@ -790,6 +790,8 @@
   "auditPage": "Seite {page} von {pages}",
   "backupTitle": "Backup",
   "backupBody": "Lädt eine konsistente Kopie der Datenbank und aller Anhänge als eine .tar.gz-Datei herunter. Kanbun läuft währenddessen weiter.",
+  "backupBodyS3": "Lädt eine konsistente Kopie der Datenbank als eine .tar.gz-Datei herunter. Kanbun läuft währenddessen weiter.",
+  "backupAttachmentsS3": "Anhänge liegen im S3-Bucket {bucket} und sind nicht Teil dieses Backups (backup.json vermerkt das). Sichere den Bucket mit den Werkzeugen deines Speicheranbieters, zum Beispiel mit Versionierung oder Replikation.",
   "backupDownload": "Backup herunterladen",
   "backupRestoreHint": "Zum Wiederherstellen Kanbun stoppen, kanbun.db und den Ordner attachments im Datenvolume durch die aus dem Archiv ersetzen und wieder starten. Die genauen Schritte stehen in der README.",
   "backupUnsupported": "Das Backup mit einem Klick gibt es nur mit der eingebauten SQLite-Datenbank. Diese Instanz nutzt eine andere Datenbank: sichere sie mit deren eigenen Werkzeugen (bei PostgreSQL pg_dump) und kopiere den Anhang-Ordner.",
