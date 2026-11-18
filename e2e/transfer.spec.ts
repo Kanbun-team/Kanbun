@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
 import { axeViolations, column, loginAs } from "./helpers";
 
@@ -145,6 +146,22 @@ test("admin backup downloads a non-empty archive", async ({ page }) => {
   const bytes = readFileSync(await download.path());
   expect(bytes.length).toBeGreaterThan(1024);
   expect([bytes[0], bytes[1]]).toEqual([0x1f, 0x8b]); // gzip
+
+  // backup.json comes first: a 512-byte tar header, then the JSON.
+  const tar = gunzipSync(bytes);
+  expect(tar.subarray(0, 11).toString()).toBe("backup.json");
+  const size = parseInt(tar.subarray(124, 136).toString().replace(/\0.*$/, ""), 8);
+  const manifest = JSON.parse(tar.subarray(512, 512 + size).toString());
+  if (process.env.ATTACHMENTS_S3_BUCKET) {
+    // Files in S3 stay there: the manifest and the page say so.
+    expect(manifest.contents.attachments).toBeNull();
+    expect(manifest.attachmentStorage).toMatchObject({ type: "s3", included: false });
+    await expect(page.getByTestId("backup-s3-note")).toContainText(process.env.ATTACHMENTS_S3_BUCKET);
+  } else {
+    expect(manifest.contents.attachments).toBe("attachments/");
+    expect(manifest.attachmentStorage).toEqual({ type: "local" });
+    await expect(page.getByTestId("backup-s3-note")).toHaveCount(0);
+  }
 
   const full = await page.request.get("/api/admin/export");
   expect(full.status()).toBe(200);
