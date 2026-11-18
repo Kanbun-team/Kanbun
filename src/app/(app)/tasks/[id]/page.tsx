@@ -5,6 +5,7 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { loadBoardAccess, canManageBoard } from "@/server/board-access";
 import Board from "@/components/board/Board";
+import { BoardPresence } from "@/components/presence/Presence";
 import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
 import { parseFilters } from "@/lib/board-filters";
 
@@ -114,6 +115,7 @@ export default async function BoardPage({
           )}
         </div>
         <div className="flex items-center gap-2 text-sm">
+          <BoardPresence boardId={board.id} currentUserId={access.userId} locale={locale} />
           {board.archived && (
             <span className="px-2 py-0.5 rounded-control bg-ink/5 text-ink-muted">
               {t("boardArchived", locale)}

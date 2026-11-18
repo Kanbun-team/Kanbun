@@ -377,5 +377,12 @@
   "shortcutClose": "Chiudi il pannello della card o un menu",
   "shortcutNavigate": "Spostati tra card e colonne",
   "shortcutLift": "Prendi o rilascia la card selezionata",
-  "shortcutHelp": "Mostra questo elenco"
+  "shortcutHelp": "Mostra questo elenco",
+
+  "presenceBoardLabel": "Anche su questa bacheca: {names}",
+  "presenceMore": "altri {count}",
+  "presenceCardOne": "Anche {name} sta guardando questa scheda",
+  "presenceCardTwo": "Anche {a} e {b} stanno guardando questa scheda",
+  "presenceCardMany": "Anche {name} e altri {count} stanno guardando questa scheda",
+  "presenceCardFace": "Aperta da {names}"
 }

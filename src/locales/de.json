@@ -377,5 +377,12 @@
   "shortcutClose": "Kartenbereich oder Menü schließen",
   "shortcutNavigate": "Zwischen Karten und Spalten wechseln",
   "shortcutLift": "Ausgewählte Karte aufnehmen oder ablegen",
-  "shortcutHelp": "Diese Liste anzeigen"
+  "shortcutHelp": "Diese Liste anzeigen",
+
+  "presenceBoardLabel": "Ebenfalls auf diesem Board: {names}",
+  "presenceMore": "{count} weitere",
+  "presenceCardOne": "{name} sieht sich diese Karte auch an",
+  "presenceCardTwo": "{a} und {b} sehen sich diese Karte auch an",
+  "presenceCardMany": "{name} und {count} weitere sehen sich diese Karte auch an",
+  "presenceCardFace": "Geöffnet von {names}"
 }

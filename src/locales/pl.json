@@ -376,5 +376,12 @@
   "shortcutClose": "Zamknij panel karty lub menu",
   "shortcutNavigate": "Przechodź między kartami i kolumnami",
   "shortcutLift": "Podnieś lub upuść wybraną kartę",
-  "shortcutHelp": "Pokaż tę listę"
+  "shortcutHelp": "Pokaż tę listę",
+
+  "presenceBoardLabel": "Na tej tablicy są też: {names}",
+  "presenceMore": "jeszcze {count}",
+  "presenceCardOne": "{name} też ogląda tę kartę",
+  "presenceCardTwo": "{a} i {b} też oglądają tę kartę",
+  "presenceCardMany": "{name} i inne osoby ({count}) też oglądają tę kartę",
+  "presenceCardFace": "Otwarta przez: {names}"
 }

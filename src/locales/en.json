@@ -377,5 +377,12 @@
   "shortcutClose": "Close the card panel or a menu",
   "shortcutNavigate": "Move between cards and columns",
   "shortcutLift": "Pick up or drop the focused card",
-  "shortcutHelp": "Show this list"
+  "shortcutHelp": "Show this list",
+
+  "presenceBoardLabel": "Also on this board: {names}",
+  "presenceMore": "{count} more",
+  "presenceCardOne": "{name} is also viewing this card",
+  "presenceCardTwo": "{a} and {b} are also viewing this card",
+  "presenceCardMany": "{name} and {count} others are also viewing this card",
+  "presenceCardFace": "Open by {names}"
 }
