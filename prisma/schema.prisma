@@ -464,3 +464,23 @@ model CardRecurrence {
   @@index([templateId])
   @@index([columnId])
 }
+
+// Security-relevant events for the admin audit log (logins, role changes,
+// deletions, tokens, imports). No foreign key on purpose: entries outlive the
+// users and objects they mention. `details` is a JSON object.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorName  String?
+  action     String
+  targetType String?
+  targetId   String?
+  targetName String?
+  details    String   @default("{}")
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+}
