@@ -198,10 +198,16 @@ export async function adminResetPasswordAction(formData: FormData) {
       // Bumping sessionVersion signs the user out everywhere.
       data: { passwordHash, sessionVersion: { increment: 1 } },
     });
+    // A reset usually means the account may be compromised: revoke its API tokens too.
+    const revoked = await prisma.apiToken.updateMany({
+      where: { userId: target.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     await audit({
       action: "user.passwordReset",
       actor: actorOf(me),
       target: { type: "user", id: target.id, name: target.username },
+      details: { tokensRevoked: revoked.count },
     });
     revalidatePath("/admin/users");
   });

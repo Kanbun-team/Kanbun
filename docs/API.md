@@ -16,7 +16,7 @@ export TOKEN=kbn_...
 curl -H "Authorization: Bearer $TOKEN" "$KANBUN/api/v1/me"
 ```
 
-A token acts as its user, with the same permissions: it sees the boards the user is a member of (every board for admins), and board-owner actions (reordering or deleting columns) need a board owner or an admin. It stops working when it is revoked, when it expires, or when the user is deactivated. Mutations (`POST`, `PATCH`, `DELETE`) need a **Read and write** token; a read-only token gets `403 insufficient_scope`.
+A token acts as its user, with the same permissions: it sees the boards the user is a member of (every board for admins), and board-owner actions (reordering or deleting columns) need a board owner or an admin. It stops working when it is revoked, when it expires, when the user is deactivated, or when an admin resets the user's password (which revokes all of their tokens). Mutations (`POST`, `PATCH`, `DELETE`) need a **Read and write** token; a read-only token gets `403 insufficient_scope`.
 
 The API never reads the session cookie, so it is not exposed to cross-site request forgery, and it sends no CORS headers: call it from servers and scripts, not from web pages on other origins. Creating and revoking tokens is recorded in the audit log (`token.create`, `token.revoke`).
 
