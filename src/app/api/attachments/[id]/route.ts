@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db-local";
 import { loadBoardAccess } from "@/server/board-access";
 import { contentDisposition, isInlineImage } from "@/lib/attachments";
-import { readAttachmentFile } from "@/server/attachment-storage";
+import { AttachmentNotFoundError, openAttachmentFile } from "@/server/attachment-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 // Download or preview an attachment: GET /api/attachments/<id>, with
 // `?download=1` to force a download. Only raster images are served inline;
 // everything else (SVG and HTML included) is a download, and the response is
-// sandboxed with nosniff so nothing can run in the app's origin.
+// sandboxed with nosniff so nothing can run in the app's origin. The file is
+// streamed from the configured store (local disk or S3), never redirected to,
+// so access checks and headers stay the same for both.
 
 // Types a browser could render as a document if it ever ignored the
 // disposition; they are served as opaque bytes.
@@ -35,19 +37,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return new Response("Not found", { status: 404 });
   }
 
-  let bytes: Buffer;
+  let file: Awaited<ReturnType<typeof openAttachmentFile>>;
   try {
-    bytes = await readAttachmentFile(attachment.storageKey);
-  } catch {
+    file = await openAttachmentFile(attachment.storageKey);
+  } catch (err) {
+    if (!(err instanceof AttachmentNotFoundError)) console.error("[attachments] download", err);
     return new Response("Not found", { status: 404 });
   }
 
   const inline = isInlineImage(attachment.mimeType) && req.nextUrl.searchParams.get("download") !== "1";
   const type = ACTIVE_TYPES.test(attachment.mimeType) ? "application/octet-stream" : attachment.mimeType;
-  return new Response(new Uint8Array(bytes), {
+  return new Response(file.stream, {
     headers: {
       "Content-Type": type,
-      "Content-Length": String(bytes.byteLength),
+      ...(file.size !== null ? { "Content-Length": String(file.size) } : {}),
       "Content-Disposition": contentDisposition(attachment.fileName, inline),
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",

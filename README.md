@@ -26,7 +26,7 @@
 - Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).
 - Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh, with avatars of who is viewing the board and who has the same card open.
 - Checklists with an assignee and due date per item (reorder, convert to card), tags, comments, blocking dependencies, priorities, deadlines.
-- File and image attachments on cards, stored next to the database.
+- File and image attachments on cards, stored next to the database or in S3-compatible object storage.
 - Per-board membership with owner/member roles. Admin override.
 - User profiles with year-long activity heatmap, latest moves, latest comments.
 - Active and recent sessions per user, with web/mobile/desktop detection.
@@ -103,9 +103,11 @@ Admins can download a backup from **Admin > Backup and export > Download backup*
 
 - `kanbun.db`: a consistent snapshot of the SQLite database, made with `VACUUM INTO` while Kanbun keeps running,
 - `attachments/`: every attachment file,
-- `backup.json`: the Kanbun version and the time of the backup.
+- `backup.json`: the Kanbun version, the time of the backup and where attachments are stored.
 
 The download is recorded in the audit log. It only works with the built-in SQLite database; with another database engine, back up with that engine's tools (for PostgreSQL, `pg_dump`) and copy the attachments folder.
+
+With attachments in S3 (see [Attachments in S3](#attachments-in-s3)) the archive holds the database only: `backup.json` says the files are in S3 and not included (`"attachmentStorage": { "type": "s3", "included": false, ... }`), and the admin page shows the same note. Back up the bucket with your provider's tools (versioning, replication or a scheduled bucket copy).
 
 To restore a backup into the Docker setup:
 
@@ -143,7 +145,8 @@ You will be prompted for username, display name, and password. The script create
 - `NEXTAUTH_URL` - public URL of the app (also the base for links in emails; `AUTH_URL` works too)
 - `SMTP_URL` - optional, enables email notifications, e.g. `smtp://user:pass@smtp.example.com:587` (use `smtps://` for port 465). Without it email is off and the settings page says so.
 - `SMTP_FROM` - sender for notification emails, e.g. `Kanbun <kanbun@example.com>`
-- `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`). Set it with PostgreSQL, and point every instance at the same shared volume
+- `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`). Set it with PostgreSQL, and point every instance at the same shared volume, or use S3 instead
+- `ATTACHMENTS_S3_BUCKET` - optional: store attachments in this S3-compatible bucket instead of on disk (AWS S3, MinIO, Cloudflare R2, Backblaze B2). Needs `ATTACHMENTS_S3_ACCESS_KEY_ID` and `ATTACHMENTS_S3_SECRET_ACCESS_KEY`; further options `ATTACHMENTS_S3_REGION` (default `us-east-1`; `auto` for R2), `ATTACHMENTS_S3_ENDPOINT` (for anything but AWS, e.g. `http://minio:9000`), `ATTACHMENTS_S3_FORCE_PATH_STYLE` (`1` or `0`; defaults to on when an endpoint is set) and `ATTACHMENTS_S3_PREFIX` (a folder inside the bucket). See [Attachments in S3](#attachments-in-s3)
 - `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
 - `IMPORT_MAX_MB` - optional size limit for imported files (Trello, Kanbun JSON, CSV) in megabytes, default `20`
 - `AUDIT_RETENTION_DAYS` - how long audit log entries are kept, default `365`; `0` keeps them forever
@@ -152,6 +155,34 @@ You will be prompted for username, display name, and password. The script create
 - `TRUSTED_PROXIES` - number of reverse proxies in front of Kanbun that append to `X-Forwarded-For`, default `1`. The client address for rate limits and the audit log is read that many entries from the right, so clients can not choose it. Set `2` behind a CDN plus nginx, for example. See [SECURITY.md](SECURITY.md)
 - `WEBHOOK_ALLOW_PRIVATE` - set to `1` to let webhooks post to private, loopback and link-local addresses (for receivers on your own network). Off by default, so a board owner can not make the server call internal services.
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_NAME` - optional single sign-on with an OpenID Connect provider (Authentik, Keycloak, Google Workspace, ...). Further options: `OIDC_SCOPES`, `OIDC_ALLOW_SIGNUP`, `OIDC_ADMIN_GROUP`, `OIDC_MATCH_USERNAME`, `OIDC_MATCH_EMAIL`, `OIDC_DISABLE_PASSWORD`. See [docs/SSO.md](docs/SSO.md).
+
+### Attachments in S3
+
+By default attachment files live on the local disk. Set `ATTACHMENTS_S3_BUCKET` and the keys to keep them in an S3-compatible bucket instead, which is the easiest way to share them between several instances ([docs/SCALING.md](docs/SCALING.md)). The bucket stays private: downloads still go through Kanbun, which checks board access and streams the file with the same headers as from disk, so no public bucket policy or presigned URLs are needed.
+
+```bash
+# AWS S3
+ATTACHMENTS_S3_BUCKET=kanbun-attachments
+ATTACHMENTS_S3_REGION=eu-central-1
+ATTACHMENTS_S3_ACCESS_KEY_ID=AKIA...
+ATTACHMENTS_S3_SECRET_ACCESS_KEY=...
+# MinIO: add the endpoint (path-style addressing is used automatically)
+ATTACHMENTS_S3_ENDPOINT=http://minio:9000
+# Cloudflare R2: ATTACHMENTS_S3_ENDPOINT=https://<account id>.r2.cloudflarestorage.com and ATTACHMENTS_S3_REGION=auto
+# Backblaze B2: ATTACHMENTS_S3_ENDPOINT=https://s3.<region>.backblazeb2.com and ATTACHMENTS_S3_REGION=<region>
+```
+
+The keys need `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on the bucket (or prefix), plus `s3:ListBucket` so a missing file answers 404 rather than 403. Kanbun signs requests with static keys (AWS Signature Version 4); instance roles and session tokens are not supported. A misconfigured bucket is reported in the log at startup.
+
+To move existing attachments from the disk to the bucket, set the `ATTACHMENTS_S3_*` variables and run, with Kanbun stopped or before switching:
+
+```bash
+npm run attachments:to-s3 -- --dry-run    # counts what it would copy
+npm run attachments:to-s3                 # copies; run again to resume, existing objects are skipped
+# Docker: docker compose run --rm -e ATTACHMENTS_S3_BUCKET=... kanbun npm run attachments:to-s3
+```
+
+`--from <folder>` picks another source folder (by default `ATTACHMENTS_DIR`, or `attachments` next to the SQLite database). The local files are left in place; delete them once Kanbun runs on S3 and downloads work.
 
 ### Single sign-on and two-factor authentication
 

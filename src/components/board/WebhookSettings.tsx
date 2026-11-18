@@ -24,7 +24,7 @@ export interface WebhookRow {
   deliveries: {
     id: string;
     event: string;
-    success: boolean;
+    status: "pending" | "success" | "failed";
     statusCode: number | null;
     durationMs: number | null;
     error: string | null;
@@ -32,6 +32,12 @@ export interface WebhookRow {
     createdAt: string;
   }[];
 }
+
+const DELIVERY_LABEL = {
+  pending: "webhookDeliveryPending",
+  success: "webhookDeliveryOk",
+  failed: "webhookDeliveryFailed",
+} as const satisfies Record<WebhookRow["deliveries"][number]["status"], DictKey>;
 
 const eventLabel = (event: string, locale: Locale) => t(`webhookEvent_${event.replace(".", "_")}` as DictKey, locale);
 
@@ -174,10 +180,16 @@ export default function WebhookSettings({
                               <RelativeTime iso={d.createdAt} locale={locale} />
                             </td>
                             <td className="py-1 pr-2 whitespace-nowrap">{eventLabel(d.event, locale)}</td>
-                            <td className={`py-1 pr-2 ${d.success ? "text-success" : "text-danger"}`}>
-                              {d.success ? t("webhookDeliveryOk", locale) : t("webhookDeliveryFailed", locale)}
+                            <td
+                              className={`py-1 pr-2 ${
+                                d.status === "success" ? "text-success" : d.status === "failed" ? "text-danger" : "text-ink-muted"
+                              }`}
+                            >
+                              {t(DELIVERY_LABEL[d.status], locale)}
                               {d.statusCode ? ` (HTTP ${d.statusCode})` : ""}
-                              {!d.success && d.error && <span className="block text-ink-muted break-words">{d.error}</span>}
+                              {d.status !== "success" && d.error && (
+                                <span className="block text-ink-muted break-words">{d.error}</span>
+                              )}
                             </td>
                             <td className="py-1 pr-2 whitespace-nowrap">{d.durationMs !== null ? `${d.durationMs} ms` : ""}</td>
                             <td className="py-1">{d.attempts}</td>

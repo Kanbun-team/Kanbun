@@ -579,19 +579,31 @@ model Webhook {
   @@index([boardId])
 }
 
-// Recent deliveries of a webhook: a short history, pruned on insert.
+// Webhook deliveries: the durable outbox and the "Recent deliveries" list.
+// A row starts `pending` with its signed body in `payload` and is sent by
+// src/server/webhooks.ts; it ends `success` or `failed` (payload cleared).
+// The id is the X-Kanbun-Delivery header. Finished rows are pruned to the
+// last WEBHOOK_HISTORY per webhook.
 model WebhookDelivery {
-  id         String   @id @default(cuid())
-  webhookId  String
-  event      String
-  success    Boolean  @default(false)
-  statusCode Int?
-  durationMs Int?
-  error      String?
-  attempts   Int      @default(0)
-  createdAt  DateTime @default(now())
+  id            String    @id @default(cuid())
+  webhookId     String
+  event         String
+  // pending | success | failed
+  status        String    @default("pending")
+  // The exact JSON body to send; null once the delivery is finished.
+  payload       String?
+  // When a pending delivery is due. A worker that claims it pushes this
+  // forward (a lease), so a crashed send is retried later.
+  nextAttemptAt DateTime?
+  success       Boolean   @default(false)
+  statusCode    Int?
+  durationMs    Int?
+  error         String?
+  attempts      Int       @default(0)
+  createdAt     DateTime  @default(now())
 
   webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@index([webhookId, createdAt])
+  @@index([status, nextAttemptAt])
 }

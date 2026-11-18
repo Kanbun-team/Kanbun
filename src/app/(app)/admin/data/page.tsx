@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { buttonClass } from "@/components/ui/button";
 import { isSqliteUrl } from "@/server/backup";
+import { attachmentStorage } from "@/server/attachment-storage";
 import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,18 @@ export default async function AdminDataPage() {
   if (user.role !== "admin") redirect("/tasks");
   const locale = await getLocale();
   const sqlite = isSqliteUrl();
+  let s3Bucket: string | null = null;
+  try {
+    const storage = attachmentStorage();
+    if (storage.kind === "s3") s3Bucket = storage.s3.bucket;
+  } catch {
+    // Misconfigured storage is reported at startup; the page still works.
+  }
+  const s3Note = s3Bucket && (
+    <p className="text-sm max-w-prose border-l-2 border-warning pl-3" data-testid="backup-s3-note">
+      {t("backupAttachmentsS3", locale).replace("{bucket}", s3Bucket)}
+    </p>
+  );
   const card = "bg-surface border border-line rounded-panel p-4 space-y-3";
 
   return (
@@ -29,7 +42,8 @@ export default async function AdminDataPage() {
         <h2 id="backup-title" className="text-md font-semibold">{t("backupTitle", locale)}</h2>
         {sqlite ? (
           <>
-            <p className="text-sm text-ink-muted max-w-prose">{t("backupBody", locale)}</p>
+            <p className="text-sm text-ink-muted max-w-prose">{t(s3Bucket ? "backupBodyS3" : "backupBody", locale)}</p>
+            {s3Note}
             <a href="/api/admin/backup" download className={buttonClass("primary", "md")}>
               <Archive size={16} aria-hidden />
               {t("backupDownload", locale)}
@@ -37,7 +51,10 @@ export default async function AdminDataPage() {
             <p className="text-sm text-ink-muted max-w-prose">{t("backupRestoreHint", locale)}</p>
           </>
         ) : (
-          <p className="text-sm text-ink-muted max-w-prose">{t("backupUnsupported", locale)}</p>
+          <>
+            <p className="text-sm text-ink-muted max-w-prose">{t("backupUnsupported", locale)}</p>
+            {s3Note}
+          </>
         )}
       </section>
 

@@ -187,10 +187,11 @@ app.listen(3000);
 
 ### Delivery, retries and failures
 
-- Deliveries are sent in the background from an in-process queue, so a slow receiver never slows down the person making the change. Queued deliveries are lost if the server restarts.
-- Each attempt times out after 10 seconds. A 2xx response counts as delivered; redirects are not followed. Failed attempts are retried up to 3 attempts in total (after 5 and 30 seconds); 4xx answers other than 408 and 429 are not retried.
+- Every delivery is stored in the database before it is sent (an outbox), then sent in the background, so a slow receiver never slows down the person making the change and a restart loses nothing: deliveries still waiting are sent when the server is back. With several instances, any instance can send a waiting delivery; each attempt is claimed in the database first, so only one instance sends it.
+- Delivery is **at least once**. If the server stops after the receiver got the request but before the answer was recorded, the attempt is made again about a minute later. Use `X-Kanbun-Delivery` (or `id` in the body), which stays the same on every attempt, to drop duplicates. Deliveries are not guaranteed to arrive in order; sort by `deliveredAt` if order matters.
+- Each attempt times out after 10 seconds. A 2xx response counts as delivered; redirects are not followed. Failed attempts are retried, 3 attempts in total: the second about 5 seconds after the first, the third about 30 seconds after the second. 4xx answers other than 408 and 429 are not retried. The **Send test** ping is tried once.
 - After 10 failed deliveries in a row the webhook is switched off. Turn it back on in board settings once the receiver is fixed.
-- Board settings list the last 20 deliveries per webhook with the result, status code, duration and attempts.
+- Board settings list the last 20 finished deliveries per webhook, and any still waiting, with the result, status code, duration and attempts.
 - Adding and deleting webhooks is recorded in the audit log (`webhook.create`, `webhook.delete`).
 
 ### Allowed addresses

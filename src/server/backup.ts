@@ -6,12 +6,14 @@ import { Readable, pipeline } from "node:stream";
 import { createGzip } from "node:zlib";
 import { prisma } from "@/lib/db-local";
 import { APP_VERSION } from "@/lib/version";
-import { attachmentsDir } from "@/server/attachment-storage";
+import { attachmentStorage, type StorageConfig } from "@/server/attachment-storage";
 
 // One-click backup for admins: a consistent SQLite snapshot (VACUUM INTO, safe
 // while the app keeps writing) plus the attachments folder, streamed as a
 // .tar.gz. The archive mirrors the /data volume: kanbun.db and attachments/.
-// Restore steps are in README.md ("Backup and restore").
+// With S3 attachment storage the files stay in the bucket: backup.json says
+// so and the archive holds the database only. Restore steps are in README.md
+// ("Backup and restore").
 
 /** True when the database is SQLite (the only engine this backup supports). */
 export function isSqliteUrl(url: string | undefined = process.env.DATABASE_URL): boolean {
@@ -106,6 +108,22 @@ async function* walk(dir: string, prefix: string): AsyncGenerator<TarEntry> {
   }
 }
 
+/** What backup.json says about attachments, for the configured storage. */
+export function attachmentsManifest(storage: StorageConfig) {
+  if (storage.kind === "local") return { attachments: "attachments/" as string | null, attachmentStorage: { type: "local" } };
+  return {
+    attachments: null,
+    attachmentStorage: {
+      type: "s3",
+      bucket: storage.s3.bucket,
+      prefix: storage.s3.prefix,
+      ...(storage.s3.endpoint ? { endpoint: storage.s3.endpoint } : {}),
+      included: false,
+      note: "Attachment files are stored in S3 and are not included in this backup. Back up the bucket with your storage provider's tools (versioning, replication or a bucket copy).",
+    },
+  };
+}
+
 export interface Backup {
   stream: ReadableStream<Uint8Array>;
   fileName: string;
@@ -123,6 +141,8 @@ export async function createBackup(): Promise<Backup> {
     await rm(dir, { recursive: true, force: true });
     throw err;
   }
+  const storage = attachmentStorage();
+  const { attachments, attachmentStorage: storageInfo } = attachmentsManifest(storage);
   const createdAt = new Date();
   const manifest = Buffer.from(
     JSON.stringify(
@@ -131,7 +151,8 @@ export async function createBackup(): Promise<Backup> {
         version: 1,
         app: { name: "Kanbun", version: APP_VERSION },
         createdAt: createdAt.toISOString(),
-        contents: { database: "kanbun.db", attachments: "attachments/" },
+        contents: { database: "kanbun.db", attachments },
+        attachmentStorage: storageInfo,
       },
       null,
       2
@@ -141,7 +162,7 @@ export async function createBackup(): Promise<Backup> {
   async function* entries(): AsyncGenerator<TarEntry> {
     yield { name: "backup.json", data: manifest };
     yield { name: "kanbun.db", file: snapshot };
-    yield* walk(attachmentsDir(), "attachments");
+    if (storage.kind === "local") yield* walk(storage.dir, "attachments");
   }
   async function* archive() {
     try {

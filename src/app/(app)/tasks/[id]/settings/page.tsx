@@ -9,7 +9,7 @@ import { buttonClass } from "@/components/ui/button";
 import TagChip from "@/components/ui/TagChip";
 import TemplateSettings from "@/components/board/TemplateSettings";
 import WebhookSettings from "@/components/board/WebhookSettings";
-import { WEBHOOK_EVENTS, WEBHOOK_FAILURE_LIMIT, parseEvents } from "@/lib/webhooks";
+import { WEBHOOK_EVENTS, WEBHOOK_FAILURE_LIMIT, WEBHOOK_HISTORY, parseEvents } from "@/lib/webhooks";
 import CsvImport from "@/components/transfer/CsvImport";
 import { Download } from "lucide-react";
 import { maxImportBytes } from "@/server/transfer/http";
@@ -68,7 +68,25 @@ export default async function BoardSettingsPage({
       },
       webhooks: {
         orderBy: { createdAt: "asc" },
-        include: { deliveries: { orderBy: { createdAt: "desc" } } },
+        include: {
+          // Pending deliveries and the finished history (pruned to
+          // WEBHOOK_HISTORY); capped in case a receiver is down for long.
+          deliveries: {
+            orderBy: { createdAt: "desc" },
+            take: WEBHOOK_HISTORY * 2,
+            select: {
+              id: true,
+              event: true,
+              status: true,
+              success: true,
+              statusCode: true,
+              durationMs: true,
+              error: true,
+              attempts: true,
+              createdAt: true,
+            },
+          },
+        },
       },
     },
   });
@@ -241,7 +259,7 @@ export default async function BoardSettingsPage({
           deliveries: w.deliveries.map((d) => ({
             id: d.id,
             event: d.event,
-            success: d.success,
+            status: d.status === "pending" ? "pending" : d.success ? "success" : "failed",
             statusCode: d.statusCode,
             durationMs: d.durationMs,
             error: d.error,
