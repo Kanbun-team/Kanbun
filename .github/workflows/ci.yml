@@ -41,3 +41,63 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+
+  postgres:
+    # The scale-out setup (docs/SCALING.md): PostgreSQL instead of SQLite and
+    # Redis for events, presence, rate limits and job locks, with the e2e suite
+    # run against two app instances sharing both.
+    name: PostgreSQL and Redis
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kanbun
+          POSTGRES_PASSWORD: kanbun
+          POSTGRES_DB: kanbun
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kanbun" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://kanbun:kanbun@localhost:5432/kanbun
+      AUTH_SECRET: ci-only-secret-not-used-anywhere-real-but-needs-to-exist
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Postgres schema is generated from prisma/schema.prisma
+        run: npm run db:pg:check
+      - run: npm run build
+      - name: Migrate PostgreSQL
+        run: node scripts/db.mjs deploy
+      - name: Postgres migrations match the schema
+        run: node scripts/gen-postgres-schema.mjs --check-db
+      - name: Unit tests (with Redis)
+        run: npm test
+        env:
+          TEST_REDIS_URL: redis://localhost:6379
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests on PostgreSQL, two instances sharing Redis
+        run: npm run test:e2e
+        env:
+          E2E_POSTGRES_URL: postgresql://kanbun:kanbun@localhost:5432/kanbun_e2e
+          REDIS_URL: redis://localhost:6379
+          E2E_SCALE_OUT: "1"
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-postgres
+          path: test-results/
+          retention-days: 7
