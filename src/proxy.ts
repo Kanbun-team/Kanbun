@@ -1,14 +1,35 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { buildCsp, createNonce } from "@/lib/csp";
 
 // /setup is the first-run wizard; it checks for itself whether it may run.
 // /offline is the service worker's fallback page (no user data).
 const PUBLIC_PATHS = ["/login", "/setup", "/api/auth", "/offline"];
 
+/**
+ * Passes the request on with a Content-Security-Policy carrying a fresh
+ * nonce (src/lib/csp.ts). Next.js reads the nonce from the request header and
+ * adds it to its scripts; the root layout reads `x-nonce` for its own one.
+ */
+function withCsp(req: NextRequest): NextResponse {
+  const nonce = createNonce();
+  const csp = buildCsp({
+    nonce,
+    dev: process.env.NODE_ENV === "development",
+    ssoIssuer: process.env.OIDC_ISSUER,
+  });
+  const headers = new Headers(req.headers);
+  headers.set("x-nonce", nonce);
+  headers.set("content-security-policy", csp);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
+}
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
+    return withCsp(req);
   }
   const sessionCookie =
     req.cookies.get("authjs.session-token")?.value ??
@@ -19,7 +40,7 @@ export function proxy(req: NextRequest) {
     url.searchParams.set("from", pathname);
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+  return withCsp(req);
 }
 
 // api/attachments and api/import are left out so uploads are not buffered

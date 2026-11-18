@@ -3,7 +3,7 @@ import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
 import "./globals.css";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { auth } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
 
@@ -60,7 +60,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, locale] = await Promise.all([resolveTheme(), getLocale()]);
+  const [theme, locale, requestHeaders] = await Promise.all([resolveTheme(), getLocale(), headers()]);
+  // Set by src/proxy.ts with the Content-Security-Policy of this request.
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
   return (
     <html
       lang={locale}
@@ -69,7 +71,7 @@ export default async function RootLayout({
       suppressHydrationWarning={theme === "system"}
     >
       <head>
-        {theme === "system" && <script dangerouslySetInnerHTML={{ __html: SYSTEM_THEME_SCRIPT }} />}
+        {theme === "system" && <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SYSTEM_THEME_SCRIPT }} />}
       </head>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
