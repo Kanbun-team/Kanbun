@@ -1,12 +1,23 @@
 // Server-only notification helpers. Do NOT import from client components: this
 // pulls in the Prisma client. The mutating server actions (mark read) live in
 // the actions module; these are plain async helpers called from other server
-// code.
+// code. Types, preferences and recipient resolution are in
+// notification-prefs.ts (pure, shared with the client).
 
 import { prisma } from "@/lib/db-local";
 import { publishUser } from "@/lib/realtime";
+import { t, isLocale, type Locale } from "@/lib/i18n";
+import {
+  notificationText,
+  parsePrefs,
+  planDeliveries,
+  type Candidate,
+  type NotificationPrefs,
+  type NotificationType,
+} from "@/lib/notification-prefs";
+import { appBaseUrl, emailEnabled, escapeHtml, htmlLayout, queueEmail } from "@/server/email";
 
-export type NotificationType = "assigned" | "mention" | "blocked";
+export type { NotificationType } from "@/lib/notification-prefs";
 
 export interface NotifyInput {
   recipientId: string;
@@ -18,25 +29,101 @@ export interface NotifyInput {
   actorName?: string | null;
 }
 
-export async function notify(input: NotifyInput): Promise<void> {
-  // Never notify someone about their own action.
-  if (input.actorId && input.actorId === input.recipientId) return;
-  await prisma.notification.create({
-    data: {
-      userId: input.recipientId,
-      type: input.type,
-      cardId: input.cardId ?? null,
-      cardTitle: input.cardTitle,
-      boardId: input.boardId ?? null,
-      actorId: input.actorId ?? null,
-      actorName: input.actorName ?? null,
-    },
-  });
-  publishUser(input.recipientId);
+/** What happened, without the recipients. */
+export type NotifyEvent = Omit<NotifyInput, "recipientId" | "type">;
+
+export function cardUrl(boardId: string | null | undefined, cardId: string | null | undefined): string {
+  const base = appBaseUrl();
+  return boardId && cardId ? `${base}/tasks/${boardId}/cards/${cardId}` : `${base}/tasks`;
 }
 
+function notificationEmail(to: string, locale: Locale, event: NotifyEvent, type: NotificationType) {
+  const message = notificationText({ type, actorName: event.actorName, cardTitle: event.cardTitle }, locale);
+  const link = cardUrl(event.boardId, event.cardId);
+  const settings = `${appBaseUrl()}/settings`;
+  return {
+    to,
+    subject: message,
+    text: `${message}\n\n${t("emailOpenCard", locale)}: ${link}\n\n${t("emailManagePrefs", locale)}: ${settings}\n`,
+    html: htmlLayout(
+      `<p>${escapeHtml(message)}</p>` +
+        `<p><a href="${escapeHtml(link)}">${escapeHtml(t("emailOpenCard", locale))}</a></p>` +
+        `<p style="font-size:13px"><a href="${escapeHtml(settings)}">${escapeHtml(t("emailManagePrefs", locale))}</a></p>`
+    ),
+  };
+}
+
+/**
+ * Delivers one event to its candidate recipients: at most one notification
+ * per person (the most specific type they have not switched off), never to
+ * the actor or to deactivated accounts, plus an email where the person asked
+ * for one. Email goes out in the background. Never throws: the action that
+ * caused the event has already been saved, so a failure here is only logged.
+ */
+export async function dispatchNotifications(event: NotifyEvent, candidates: Candidate[]): Promise<void> {
+  try {
+    await deliver(event, candidates);
+  } catch (err) {
+    console.error("[notifications] delivery failed", err);
+  }
+}
+
+async function deliver(event: NotifyEvent, candidates: Candidate[]): Promise<void> {
+  const ids = [...new Set(candidates.map((c) => c.userId))].filter((id) => id && id !== event.actorId);
+  if (ids.length === 0) return;
+  const users = await prisma.user.findMany({
+    where: { id: { in: ids }, deactivatedAt: null },
+    select: { id: true, email: true, locale: true, notificationPrefs: true },
+  });
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const prefs = new Map<string, NotificationPrefs>(users.map((u) => [u.id, parsePrefs(u.notificationPrefs)]));
+  const deliveries = planDeliveries(
+    candidates.filter((c) => byId.has(c.userId)),
+    event.actorId,
+    (id) => prefs.get(id)
+  );
+  if (deliveries.length === 0) return;
+  await prisma.notification.createMany({
+    data: deliveries.map((d) => ({
+      userId: d.userId,
+      type: d.type,
+      cardId: event.cardId ?? null,
+      cardTitle: event.cardTitle,
+      boardId: event.boardId ?? null,
+      actorId: event.actorId ?? null,
+      actorName: event.actorName ?? null,
+    })),
+  });
+  const mail = emailEnabled();
+  for (const d of deliveries) {
+    publishUser(d.userId);
+    const user = byId.get(d.userId);
+    if (mail && d.email && user?.email) {
+      queueEmail(notificationEmail(user.email, isLocale(user.locale) ? user.locale : "en", event, d.type));
+    }
+  }
+}
+
+export async function notify(input: NotifyInput): Promise<void> {
+  await notifyMany([input]);
+}
+
+/** Inputs about the same card and actor count as one event (deduplicated). */
 export async function notifyMany(inputs: NotifyInput[]): Promise<void> {
-  await Promise.all(inputs.map((i) => notify(i)));
+  const groups = new Map<string, { event: NotifyEvent; candidates: Candidate[] }>();
+  for (const i of inputs) {
+    const key = JSON.stringify([i.cardId ?? null, i.boardId ?? null, i.actorId ?? null, i.cardTitle]);
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        event: { cardTitle: i.cardTitle, cardId: i.cardId, boardId: i.boardId, actorId: i.actorId, actorName: i.actorName },
+        candidates: [],
+      };
+      groups.set(key, g);
+    }
+    g.candidates.push({ userId: i.recipientId, type: i.type });
+  }
+  for (const g of groups.values()) await dispatchNotifications(g.event, g.candidates);
 }
 
 /** Extract unique, lowercased @usernames from a comment body. */

@@ -43,6 +43,8 @@ interface CardSnapshot {
   }[];
   comments: { id: string; authorId: string | null; body: string; createdAt: string }[];
   blocks: { id: string; blockerId: string; blockedId: string; createdAt: string; createdById: string | null }[];
+  /** Missing in snapshots taken before watchers existed. */
+  watcherIds?: string[];
 }
 
 interface ColumnSnapshot {
@@ -67,6 +69,8 @@ interface BoardSnapshot {
   members: { userId: string; role: string; addedAt: string }[];
   tags: { id: string; name: string; color: string; position: number; createdAt: string }[];
   columns: ColumnSnapshot[];
+  /** Missing in snapshots taken before watchers existed. */
+  watcherIds?: string[];
 }
 
 const cardInclude = {
@@ -76,6 +80,7 @@ const cardInclude = {
   comments: true,
   blocking: true,
   blockedBy: true,
+  watchers: { select: { userId: true } },
 } satisfies Prisma.TaskCardInclude;
 
 type CardWithRelations = Prisma.TaskCardGetPayload<{ include: typeof cardInclude }>;
@@ -122,6 +127,7 @@ function snapshotCard(card: CardWithRelations): CardSnapshot {
       createdAt: c.createdAt.toISOString(),
     })),
     blocks: [...blocks.values()],
+    watcherIds: card.watchers.map((w) => w.userId),
   };
 }
 
@@ -190,6 +196,7 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
       include: {
         members: true,
         tags: true,
+        watchers: { select: { userId: true } },
         columns: {
           orderBy: { position: "asc" },
           include: { cards: { include: cardInclude, orderBy: { position: "asc" } } },
@@ -223,6 +230,7 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         wipLimit: c.wipLimit,
         cards: c.cards.map(snapshotCard),
       })),
+      watcherIds: board.watchers.map((w) => w.userId),
     };
     const item = await tx.trashItem.create({
       data: {
@@ -263,6 +271,7 @@ async function restoreCards(tx: Tx, cards: CardSnapshot[], columnFor: (card: Car
       ...c.subtasks.map((s) => s.completedById),
       ...c.comments.map((m) => m.authorId),
       ...c.blocks.map((b) => b.createdById),
+      ...(c.watcherIds ?? []),
     ]),
     (ids) => tx.user.findMany({ where: { id: { in: ids } }, select: { id: true } })
   );
@@ -286,6 +295,7 @@ async function restoreCards(tx: Tx, cards: CardSnapshot[], columnFor: (card: Car
         createdById: keepUser(c.createdById),
         assignees: { create: c.assigneeIds.filter((id) => users.has(id)).map((userId) => ({ userId })) },
         tags: { create: c.tagIds.filter((id) => tags.has(id)).map((tagId) => ({ tagId })) },
+        watchers: { create: (c.watcherIds ?? []).filter((id) => users.has(id)).map((userId) => ({ userId })) },
         subtasks: {
           create: c.subtasks.map((s) => ({
             id: s.id,
@@ -378,7 +388,7 @@ export async function restoreTrashItem(item: { id: string; kind: string; boardId
       const b = JSON.parse(item.payload) as BoardSnapshot;
       boardId = b.id;
       const users = await existingIds(
-        [b.createdById, ...b.members.map((m) => m.userId)],
+        [b.createdById, ...b.members.map((m) => m.userId), ...(b.watcherIds ?? [])],
         (ids) => tx.user.findMany({ where: { id: { in: ids } }, select: { id: true } })
       );
       const category = b.categoryId
@@ -403,6 +413,9 @@ export async function restoreTrashItem(item: { id: string; kind: string; boardId
             create: b.members
               .filter((m) => users.has(m.userId))
               .map((m) => ({ userId: m.userId, role: m.role, addedAt: new Date(m.addedAt) })),
+          },
+          watchers: {
+            create: (b.watcherIds ?? []).filter((id) => users.has(id)).map((userId) => ({ userId })),
           },
           tags: {
             create: b.tags.map((t) => ({

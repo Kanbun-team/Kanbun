@@ -8,7 +8,24 @@ export interface Job {
   run: () => Promise<void>;
 }
 
-const JOBS: Job[] = [];
+const JOBS: Job[] = [
+  {
+    name: "dueSoon",
+    everyMs: 15 * 60 * 1000,
+    run: async () => {
+      const { runDueSoon } = await import("./due-soon");
+      await runDueSoon();
+    },
+  },
+  {
+    name: "digest",
+    everyMs: 60 * 60 * 1000,
+    run: async () => {
+      const { runDigest } = await import("./digest");
+      await runDigest();
+    },
+  },
+];
 
 const globalForJobs = globalThis as unknown as { __kanbunJobsStarted?: boolean };
 

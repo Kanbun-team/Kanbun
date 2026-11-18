@@ -100,7 +100,15 @@ You will be prompted for username, display name, and password. The script create
 - `DATABASE_URL` - SQLite URL, e.g. `file:./dev.db` or `file:/data/kanbun.db`
 - `AUTH_SECRET` - long random string used to sign JWT cookies
 - `AUTH_TRUST_HOST` - set to `true` when behind a proxy
-- `NEXTAUTH_URL` - public URL of the app
+- `NEXTAUTH_URL` - public URL of the app (also the base for links in emails; `AUTH_URL` works too)
+- `SMTP_URL` - optional, enables email notifications, e.g. `smtp://user:pass@smtp.example.com:587` (use `smtps://` for port 465). Without it email is off and the settings page says so.
+- `SMTP_FROM` - sender for notification emails, e.g. `Kanbun <kanbun@example.com>`
+
+### Notifications
+
+People get notified when they are assigned, mentioned or their card gets blocked, and about cards and boards they watch: new comments, moves to another column and approaching deadlines (due today or tomorrow) for watched cards, new cards for watched boards. You watch a card automatically when you create it, comment on it or are assigned to it; the "Watch" button in the card and board header toggles it by hand. You are never notified about your own actions, and one event gives at most one notification per person (the most specific reason wins, e.g. a mention over a comment).
+
+In Settings, under "Notifications", each type is set to one of: **In-app** (default), **In-app + email** (email always comes with the in-app notification) or **Off**. Email needs `SMTP_URL` and an email address in your settings. The **Daily digest** (off by default) emails once a day a summary of new notifications you have not read. Emails are sent in the background; a failing SMTP server is logged and never blocks the action.
 
 ## Project layout
 

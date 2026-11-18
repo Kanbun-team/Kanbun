@@ -7,11 +7,12 @@ import { prisma } from "@/lib/db-local";
 import { auth, requireUser } from "@/auth";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
 import { publishBoard, publishBoardList, publishUser } from "@/lib/realtime";
-import { notify, notifyMany, parseMentions } from "@/lib/notifications";
+import { notify, notifyMany } from "@/lib/notifications";
 import { safeAction } from "@/server/safe-action";
 import { trashBoard, trashCard, trashColumn } from "@/server/trash";
 import { ActionError } from "@/lib/action-result";
 import { logActivity, type ActivityEntry } from "@/server/activity";
+import { notifyComment, notifyMoved, notifyNewCards, watchCard } from "@/server/watchers";
 
 // -----------------------------
 // Boards
@@ -496,11 +497,14 @@ export async function addCardAction(formData: FormData) {
       select: { position: true },
     });
     let position = (last?.position ?? -1) + 1;
+    const created: { id: string; title: string }[] = [];
     await prisma.$transaction(async (tx) => {
       for (const title of titles) {
         const card = await tx.taskCard.create({
           data: { columnId, title, position: position++, createdById: user.id },
         });
+        created.push({ id: card.id, title: card.title });
+        await watchCard(card.id, user.id, tx);
         await tx.taskCardMoveEvent.create({
           data: { cardId: card.id, cardTitle: card.title, boardId: col.boardId, toColumnName: col.name, userId: user.id },
         });
@@ -510,6 +514,7 @@ export async function addCardAction(formData: FormData) {
         );
       }
     });
+    await notifyNewCards(col.boardId, created, { id: user.id, name: user.displayName ?? user.username });
     revalidatePath(`/tasks/${col.boardId}`);
     publishBoard(col.boardId);
     return { count: titles.length };
@@ -704,6 +709,15 @@ export async function moveCardAction(input: {
       }
     });
 
+    if (card.columnId !== data.toColumnId) {
+      await notifyMoved({
+        cardId: data.cardId,
+        cardTitle: card.title,
+        boardId: card.column.boardId,
+        actorId: user.id,
+        actorName: user.displayName ?? user.username,
+      });
+    }
     revalidatePath(`/tasks/${card.column.boardId}`);
     publishBoard(card.column.boardId);
   });
@@ -760,6 +774,7 @@ export async function toggleAssigneeAction(formData: FormData) {
           data: { cardId: data.cardId, userId: data.userId },
         });
         await logActivity({ ...activityBase, type: "assigneeAdded", data: { name: targetName } }, tx);
+        await watchCard(data.cardId, data.userId, tx);
       });
       await notify({
         recipientId: data.userId,
@@ -993,33 +1008,22 @@ export async function addCommentAction(formData: FormData) {
     if (!card) throw new ActionError("notFound");
     const boardId = card.column.boardId;
     await loadBoardAccess(boardId);
-    await prisma.taskCardComment.create({
-      data: {
-        cardId,
-        authorId: user.id,
-        body: body.slice(0, 5000),
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.taskCardComment.create({
+        data: {
+          cardId,
+          authorId: user.id,
+          body: body.slice(0, 5000),
+        },
+      });
+      await watchCard(cardId, user.id, tx);
     });
 
-    // @mentions: notify mentioned users who are members of this board.
-    const usernames = parseMentions(body);
-    if (usernames.length > 0) {
-      const mentioned = await prisma.user.findMany({
-        where: { username: { in: usernames }, deactivatedAt: null, boards: { some: { boardId } } },
-        select: { id: true },
-      });
-      await notifyMany(
-        mentioned.map((u) => ({
-          recipientId: u.id,
-          type: "mention" as const,
-          cardId,
-          cardTitle: card.title,
-          boardId,
-          actorId: user.id,
-          actorName: user.displayName ?? user.username,
-        }))
-      );
-    }
+    // Mentioned board members get "mention", card watchers "comment" (once each).
+    await notifyComment(
+      { cardId, cardTitle: card.title, boardId, actorId: user.id, actorName: user.displayName ?? user.username },
+      body
+    );
 
     revalidatePath(`/tasks/${boardId}/cards/${cardId}`);
   });
