@@ -11,6 +11,7 @@ import { LOCALE_COOKIE } from "@/lib/get-locale";
 import { safeAction } from "@/server/safe-action";
 import { ActionError } from "@/lib/action-result";
 import { audit } from "@/server/audit";
+import { AVATAR_URL_MAX, safeAvatarUrl } from "@/lib/avatar";
 
 type SessionUser = { id: string; username: string };
 const actorOf = (u: SessionUser) => ({ id: u.id, name: u.username });
@@ -69,7 +70,7 @@ const profileSchema = z.object({
   avatarUrl: z
     .string()
     .trim()
-    .max(500)
+    .max(AVATAR_URL_MAX)
     .optional()
     .transform((v) => (v ? v : null)),
 });
@@ -81,6 +82,8 @@ export async function updateProfileAction(formData: FormData) {
       displayName: formData.get("displayName"),
       avatarUrl: formData.get("avatarUrl") ?? "",
     });
+    // Shown to everyone on the user's boards: https images only (src/lib/avatar.ts).
+    if (data.avatarUrl && !safeAvatarUrl(data.avatarUrl)) throw new ActionError("avatarUrl");
     await prisma.user.update({
       where: { id: user.id },
       data: { displayName: data.displayName, avatarUrl: data.avatarUrl },

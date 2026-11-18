@@ -686,6 +686,7 @@
   "webhookDeliveryFailed": "Fallito",
   "webhookDeliveriesCaption": "Consegne recenti di {url}",
   "error_limitReached": "Hai raggiunto il limite. Rimuovine prima uno.",
+  "error_avatarUrl": "L'avatar deve essere un indirizzo https di un'immagine.",
   "error_webhookUrl": "Usa un indirizzo http o https pubblico.",
   "audit_token_create": "Token API creato",
   "audit_token_revoke": "Token API revocato",

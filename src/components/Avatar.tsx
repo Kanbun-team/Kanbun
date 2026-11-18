@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { avatarColor } from "@/lib/palette";
+import { safeAvatarUrl } from "@/lib/avatar";
 
 interface AvatarProps {
   src?: string | null;
@@ -20,13 +21,15 @@ function initials(name?: string | null): string {
 const colorFor = avatarColor;
 
 export default function Avatar({
-  src,
+  src: rawSrc,
   name,
   size = 32,
   className,
   online,
 }: AvatarProps) {
   const dotSize = Math.max(8, Math.round(size * 0.28));
+  // Values saved before URLs were checked are ignored instead of loaded.
+  const src = safeAvatarUrl(rawSrc);
   return (
     <span
       className={cn("relative inline-block shrink-0 align-middle", className)}
