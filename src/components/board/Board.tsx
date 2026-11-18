@@ -28,7 +28,7 @@ import { CalendarDays, Columns3, Keyboard, List, Plus, Sparkles } from "lucide-r
 import { useSyncedState } from "@/lib/use-synced-state";
 import { getViewingCard, subscribeBoardStream } from "@/lib/board-stream";
 import { animateChanges, markLocalCards, snapshotCards, type CardSnapshot } from "./live-changes";
-import { t, type Locale } from "@/lib/i18n";
+import { t, tn, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   addColumnAction,
@@ -422,7 +422,7 @@ export default function Board({
       if (titles.length === 0) return false;
       const tempIds = titles.map(() => newId(TEMP_PREFIX));
       const result = await offline.run({ kind: "addCards", columnId: column.id, titles, tempIds }, titles.join(", "));
-      if (result.ok && titles.length > 1) ui.toast({ message: tr("cardsAdded", { count: titles.length }) });
+      if (result.ok && titles.length > 1) ui.toast({ message: tn("cardsAdded", titles.length, locale) });
       return result.ok;
     },
     addFromTemplate: async (column, template) => {

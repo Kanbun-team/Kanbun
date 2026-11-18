@@ -2,7 +2,7 @@
 
 import { CloudOff, RefreshCw } from "lucide-react";
 import RelativeTime from "@/components/ui/RelativeTime";
-import { t, type Locale } from "@/lib/i18n";
+import { t, tn, type Locale } from "@/lib/i18n";
 
 // "Offline: showing data from 5 minutes ago" and "2 changes waiting to sync".
 // The live region stays mounted so the change is announced.
@@ -21,10 +21,7 @@ export default function OfflineBanner({
 }) {
   const visible = showOffline || pending > 0;
   const [before, after] = t("offlineBanner", locale).split("{time}");
-  const pendingText =
-    pending === 1
-      ? t("offlinePendingOne", locale)
-      : t("offlinePendingMany", locale).replace("{count}", String(pending));
+  const pendingText = tn("offlinePending", pending, locale);
   return (
     <div role="status" aria-live="polite">
       {visible && (

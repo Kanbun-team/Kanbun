@@ -4,7 +4,7 @@
 // SMTP is not configured.
 
 import { prisma } from "@/lib/db-local";
-import { isLocale, t, type Locale } from "@/lib/i18n";
+import { isLocale, t, tn, type Locale } from "@/lib/i18n";
 import { notificationText } from "@/lib/notification-prefs";
 import { cardUrl } from "@/lib/notifications";
 import { appBaseUrl, emailEnabled, escapeHtml, htmlLayout, queueEmail, type EmailMessage } from "@/server/email";
@@ -25,7 +25,7 @@ export interface DigestItem {
 export function buildDigestEmail(to: string, items: DigestItem[], locale: Locale): EmailMessage {
   const shown = items.slice(0, MAX_ITEMS);
   const lines = shown.map((n) => ({ text: notificationText(n, locale), url: cardUrl(n.boardId, n.cardId) }));
-  const subject = t("digestSubject", locale).replace("{count}", String(items.length));
+  const subject = tn("digestSubject", items.length, locale);
   const more = items.length > shown.length ? t("digestMore", locale).replace("{count}", String(items.length - shown.length)) : "";
   const inbox = `${appBaseUrl()}/tasks`;
   const settings = `${appBaseUrl()}/settings`;

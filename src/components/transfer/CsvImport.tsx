@@ -3,7 +3,7 @@
 import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
-import { t, type DictKey, type Locale } from "@/lib/i18n";
+import { t, tn, type DictKey, type Locale } from "@/lib/i18n";
 import { priorityLabel } from "@/lib/labels";
 import { detectDelimiter, parseCsv, type Delimiter } from "@/lib/csv";
 import {
@@ -112,7 +112,7 @@ export default function CsvImport({ boardId, columns, tags, members, maxBytes, l
         setError(res);
         return;
       }
-      ui.toast({ message: fill(t("csvImported", locale), { count: res.cards }) });
+      ui.toast({ message: tn("csvImported", res.cards, locale) });
       reset();
       router.refresh();
     });
@@ -264,7 +264,7 @@ export default function CsvImport({ boardId, columns, tags, members, maxBytes, l
               className={buttonClass("primary", "md", "disabled:opacity-60")}
             >
               <Upload size={16} aria-hidden />
-              {fill(t("csvImportCards", locale), { count: plan.cards.length })}
+              {tn("csvImportCards", plan.cards.length, locale)}
             </button>
             <button type="button" onClick={reset} className={buttonClass("ghost", "md")}>
               {t("cancel", locale)}

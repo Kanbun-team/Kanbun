@@ -10,7 +10,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUi } from "@/components/ui/UiProvider";
-import { t, type Locale } from "@/lib/i18n";
+import { t, tn, type Locale } from "@/lib/i18n";
 import { SYNC_EVENT, flushOutbox, useOfflineState } from "@/lib/offline-store";
 import { isOnline, useOnline } from "@/lib/use-online";
 import { retryableError, runOutboxOp } from "@/components/board/offline-runner";
@@ -137,7 +137,7 @@ export default function PwaClient({
           const labels = failed.map((f) => `"${f.entry.label}"`);
           const list = labels.length > 5 ? `${labels.slice(0, 5).join(", ")}, ...` : labels.join(", ");
           ui.toast({
-            message: t("syncFailed", locale).replace("{count}", String(failed.length)).replace("{list}", list),
+            message: tn("syncFailed", failed.length, locale).replace("{list}", list),
             tone: "error",
           });
         } else if (synced.length > 0) {

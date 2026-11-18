@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import { requirePageUser } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
-import { t } from "@/lib/i18n";
+import { t, tn } from "@/lib/i18n";
 import { auditActionLabel, auditTargetLabel } from "@/lib/audit-labels";
 import { buttonClass } from "@/components/ui/button";
 import RelativeTime from "@/components/ui/RelativeTime";
@@ -121,7 +121,7 @@ export default async function AdminAuditPage({
       </form>
 
       <p className="text-sm text-ink-muted" aria-live="polite">
-        {t("auditCount", locale).replace("{count}", String(total))}
+        {tn("auditCount", total, locale)}
       </p>
 
       {entries.length === 0 ? (

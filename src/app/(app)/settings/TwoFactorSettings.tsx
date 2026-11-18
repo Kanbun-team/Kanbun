@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { useUi } from "@/components/ui/UiProvider";
-import { t, type Locale } from "@/lib/i18n";
+import { t, tn, type Locale } from "@/lib/i18n";
 import {
   cancelTotpSetupAction,
   confirmTotpSetupAction,
@@ -200,7 +200,7 @@ export default function TwoFactorSettings({ locale, enabledOn, pending, recovery
       {!ssoOnly && enabledOn && (
         <form onSubmit={manage} className="space-y-2">
           <p className="text-sm text-ink-muted">
-            {t("twoFactorRecoveryLeft", locale).replace("{count}", String(recoveryLeft))}
+            {tn("twoFactorRecoveryLeft", recoveryLeft, locale)}
           </p>
           <p className="text-sm text-ink-muted">{t("twoFactorManage", locale)}</p>
           <label className="block max-w-sm">

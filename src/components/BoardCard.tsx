@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock } from "lucide-react";
 import Avatar from "./Avatar";
 import PinButton from "./home/PinButton";
-import { t, type Locale } from "@/lib/i18n";
+import { t, tn, type Locale } from "@/lib/i18n";
 import { readableOn } from "@/lib/palette";
 import { cn } from "@/lib/utils";
 
@@ -133,7 +133,7 @@ export default function BoardCard({
               )}
             </span>
             <span className="sr-only">
-              {t("boardMembersA11y", locale).replace("{count}", String(board.membersCount))}
+              {tn("boardMembersA11y", board.membersCount, locale)}
             </span>
           </span>
         )}
