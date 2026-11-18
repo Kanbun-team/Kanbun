@@ -10,7 +10,7 @@ import { z } from "zod";
 import { ActionError } from "@/lib/action-result";
 import { clientIp, isLoginBlocked, recordLoginFailure, recordLoginSuccess } from "@/lib/rate-limit";
 import { audit } from "@/server/audit";
-import { hasUsablePassword } from "@/lib/password";
+import { TIMING_HASH, hasUsablePassword } from "@/lib/password";
 import { SSO_PROVIDER_ID, passwordLoginAllowed, ssoConfig } from "@/lib/sso";
 import { verifySecondFactor } from "@/server/two-factor";
 import { handleSsoSignIn, resolveSsoUser } from "@/server/sso";
@@ -116,7 +116,10 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         // to the block are, and a flood must not be able to fill the log.
         if (await isLoginBlocked(ip, username)) return null;
         const user = await prisma.user.findUnique({ where: { username } });
-        const ok = user && hasUsablePassword(user.passwordHash) ? await bcrypt.compare(password, user.passwordHash) : false;
+        const usable = !!user && hasUsablePassword(user.passwordHash);
+        // Always run one bcrypt comparison, so timing does not reveal unknown usernames.
+        const matched = await bcrypt.compare(password, usable ? user.passwordHash : TIMING_HASH);
+        const ok = usable && matched;
         if (!user || !ok || user.deactivatedAt) {
           await recordLoginFailure(ip, username);
           const reason = !user ? "unknownUser" : !ok ? "badPassword" : "deactivated";
