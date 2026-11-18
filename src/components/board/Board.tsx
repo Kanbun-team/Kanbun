@@ -43,6 +43,7 @@ import { TEMP_PREFIX, newId, splitTitles, type CardFields } from "@/lib/outbox";
 import { useOfflineBoard } from "./useOfflineBoard";
 import OfflineBanner from "./OfflineBanner";
 import OfflineCardSheet from "@/components/card/OfflineCardSheet";
+import type { BoardCardFallback } from "@/components/card/OfflineCardView";
 import { createCardFromTemplateAction, saveCardAsTemplateAction } from "@/server/template-actions";
 import { useUi } from "@/components/ui/UiProvider";
 import { useUndo } from "@/components/ui/useUndo";
@@ -929,22 +930,31 @@ export default function Board({
           cardId={offline.offlineCardId}
           userId={currentUserId}
           locale={locale}
-          fallback={offlineFallback(offline.offlineCardId)}
+          fallback={offlineFallback(columns, offline.offlineCardId, {
+            boardId,
+            members,
+            tags: boardTags,
+            renderedAt: offline.dataTime,
+          })}
           onClose={offline.closeOfflineCard}
         />
       )}
     </div>
   );
 
-  function offlineFallback(cardId: string) {
-    for (const c of columns) {
-      const found = c.cards.find((cc) => cc.id === cardId);
-      if (found) {
-        return { card: found, boardId, columnName: c.name, members, tags: boardTags, renderedAt: offline.dataTime };
-      }
-    }
-    return undefined;
+}
+
+/** The board's copy of a card, shown offline when no details are stored. */
+function offlineFallback(
+  columns: ColumnDTO[],
+  cardId: string,
+  rest: Omit<BoardCardFallback, "card" | "columnName">
+): BoardCardFallback | undefined {
+  for (const c of columns) {
+    const found = c.cards.find((cc) => cc.id === cardId);
+    if (found) return { ...rest, card: found, columnName: c.name };
   }
+  return undefined;
 }
 
 function AddColumnForm({ boardId, locale, guard }: { boardId: string; locale: Locale; guard: () => boolean }) {
