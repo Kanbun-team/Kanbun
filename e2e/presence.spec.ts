@@ -58,6 +58,35 @@ test("two people on a board see each other, their open card and live moves", asy
     await expect(live).toHaveAttribute("data-live-changed", "");
     await expect(column(page, "Done").locator("[data-card-id]").filter({ hasText: moved })).toHaveCount(0);
 
+    // A card Marta creates shows up on Ada's board highlighted too; Ada's own
+    // new card is not.
+    const fresh = `Live card ${Date.now()}`;
+    const todo = column(marta, "To do");
+    await todo.getByRole("button", { name: "Add card" }).click();
+    await todo.getByPlaceholder("Title").fill(fresh);
+    await todo.getByPlaceholder("Title").press("Enter");
+    const arrived = card(page, "To do", fresh);
+    await expect(arrived).toBeVisible();
+    await expect(arrived).toHaveAttribute("data-live-changed", "");
+    await todo.getByPlaceholder("Title").press("Escape");
+
+    const mine = `My card ${Date.now()}`;
+    const adaTodo = column(page, "To do");
+    await adaTodo.getByRole("button", { name: "Add card" }).click();
+    await adaTodo.getByPlaceholder("Title").fill(mine);
+    await adaTodo.getByPlaceholder("Title").press("Enter");
+    await adaTodo.getByPlaceholder("Title").press("Escape");
+    const own = card(page, "To do", mine);
+    await expect(own).toBeVisible();
+    await expect(own).toHaveAttribute("data-card-id", /^(?!tmp_)/);
+    // Watch for a while: the live refresh after the save must not flag it.
+    for (let i = 0; i < 6; i++) {
+      await expect(own).not.toHaveAttribute("data-live-changed", "");
+      await page.waitForTimeout(150);
+    }
+    // Marta sees Ada's card highlighted.
+    await expect(card(marta, "To do", mine)).toHaveAttribute("data-live-changed", "");
+
     // Marta leaves: Ada's header empties.
     await marta.close();
     await expect(page.getByTestId("board-presence")).toHaveCount(0);

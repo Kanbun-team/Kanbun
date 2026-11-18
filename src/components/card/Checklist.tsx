@@ -43,6 +43,7 @@ import {
   setSubtaskAssigneeAction,
   setSubtaskDueAction,
 } from "@/server/checklist-actions";
+import { markLocalCards } from "@/components/board/live-changes";
 
 // The card checklist (Checklists 2.0): items with their own assignee and due
 // date, reordered by dragging the handle (pointer or Space plus arrow keys)
@@ -153,6 +154,7 @@ export default function Checklist({
       const result = ui.report(await convertSubtaskToCardAction(item.id));
       if (result.ok) {
         const { boardId, cardId: newId } = result.data;
+        markLocalCards([newId]);
         ui.toast({
           message: t("subtaskConverted", locale).replace("{title}", item.title),
           action: { label: t("subtaskOpenCard", locale), onAction: () => router.push(`/tasks/${boardId}/cards/${newId}`) },

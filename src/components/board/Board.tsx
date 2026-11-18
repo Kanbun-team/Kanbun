@@ -27,7 +27,7 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyb
 import { CalendarDays, Columns3, Keyboard, List, Plus, Sparkles } from "lucide-react";
 import { useSyncedState } from "@/lib/use-synced-state";
 import { getViewingCard, subscribeBoardStream } from "@/lib/board-stream";
-import { animateChanges, snapshotCards, type CardSnapshot } from "./live-changes";
+import { animateChanges, markLocalCards, snapshotCards, type CardSnapshot } from "./live-changes";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
@@ -428,6 +428,7 @@ export default function Board({
     addFromTemplate: async (column, template) => {
       if (!offline.guard()) return;
       const result = ui.report(await createCardFromTemplateAction({ templateId: template.id, columnId: column.id }));
+      if (result.ok) markLocalCards([result.data.cardId]);
       if (result.ok) ui.toast({ message: tr("cardFromTemplateToast", { name: template.name, column: column.name }) });
       router.refresh();
     },
