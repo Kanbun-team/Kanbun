@@ -21,6 +21,10 @@ export type AuditAction =
   | "board.memberAdd"
   | "board.memberRemove"
   | "board.memberRole"
+  | "token.create"
+  | "token.revoke"
+  | "webhook.create"
+  | "webhook.delete"
   | (string & {});
 
 export interface AuditInput {

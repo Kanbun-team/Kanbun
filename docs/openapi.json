@@ -1,0 +1,618 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kanbun REST API",
+    "version": "1.0.0",
+    "description": "Read and change boards, columns, cards and comments with a personal access token. See docs/API.md for authentication, pagination, errors, rate limits and webhooks.",
+    "license": { "name": "AGPL-3.0-only", "identifier": "AGPL-3.0-only" }
+  },
+  "servers": [{ "url": "/api/v1" }],
+  "security": [{ "bearerAuth": [] }],
+  "tags": [
+    { "name": "Account" },
+    { "name": "Boards" },
+    { "name": "Columns" },
+    { "name": "Cards" },
+    { "name": "Comments" },
+    { "name": "Tags" }
+  ],
+  "paths": {
+    "/me": {
+      "get": {
+        "tags": ["Account"],
+        "operationId": "getMe",
+        "summary": "The user the token belongs to",
+        "responses": {
+          "200": { "description": "The user and the token in use.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Me" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/boards": {
+      "get": {
+        "tags": ["Boards"],
+        "operationId": "listBoards",
+        "summary": "Boards the user can open",
+        "description": "Admins see every board, other users the boards they are a member of. Archived boards are included (see `archived`).",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Cursor" }],
+        "responses": {
+          "200": {
+            "description": "A page of boards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "next"],
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Board" } },
+                    "next": { "$ref": "#/components/schemas/NextCursor" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/boards/{boardId}": {
+      "parameters": [{ "$ref": "#/components/parameters/BoardId" }],
+      "get": {
+        "tags": ["Boards"],
+        "operationId": "getBoard",
+        "summary": "A board with its columns and tags",
+        "responses": {
+          "200": { "description": "The board.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BoardDetail" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/boards/{boardId}/columns": {
+      "parameters": [{ "$ref": "#/components/parameters/BoardId" }],
+      "get": {
+        "tags": ["Columns"],
+        "operationId": "listColumns",
+        "summary": "Columns of a board, in order",
+        "responses": {
+          "200": {
+            "description": "All columns.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Column" } } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "post": {
+        "tags": ["Columns"],
+        "operationId": "createColumn",
+        "summary": "Add a column at the end of the board",
+        "description": "Needs the write scope.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ColumnCreate" } } }
+        },
+        "responses": {
+          "201": { "description": "The new column.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Column" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/columns/{columnId}": {
+      "parameters": [{ "$ref": "#/components/parameters/ColumnId" }],
+      "patch": {
+        "tags": ["Columns"],
+        "operationId": "updateColumn",
+        "summary": "Rename a column, set its WIP limit or move it",
+        "description": "Needs the write scope. Changing `position` needs a board owner or an admin.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ColumnUpdate" } } }
+        },
+        "responses": {
+          "200": { "description": "The updated column.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Column" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "delete": {
+        "tags": ["Columns"],
+        "operationId": "deleteColumn",
+        "summary": "Move a column and its cards to the trash",
+        "description": "Needs the write scope and a board owner or an admin. Restorable from the trash for 30 days.",
+        "responses": {
+          "200": { "description": "Deleted.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Trashed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/boards/{boardId}/cards": {
+      "parameters": [{ "$ref": "#/components/parameters/BoardId" }],
+      "get": {
+        "tags": ["Cards"],
+        "operationId": "listCards",
+        "summary": "Cards of a board",
+        "description": "Ordered by column, then by position in the column.",
+        "parameters": [
+          { "name": "column", "in": "query", "description": "Only cards in this column (id).", "schema": { "type": "string" } },
+          { "name": "assignee", "in": "query", "description": "Only cards assigned to this user (id or username).", "schema": { "type": "string" } },
+          { "name": "tag", "in": "query", "description": "Only cards with this tag (id or exact name).", "schema": { "type": "string" } },
+          { "name": "updatedSince", "in": "query", "description": "Only cards changed at or after this time (ISO 8601).", "schema": { "type": "string", "format": "date-time" } },
+          { "$ref": "#/components/parameters/Limit" },
+          { "$ref": "#/components/parameters/Cursor" }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "next"],
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Card" } },
+                    "next": { "$ref": "#/components/schemas/NextCursor" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "post": {
+        "tags": ["Cards"],
+        "operationId": "createCard",
+        "summary": "Create a card",
+        "description": "Needs the write scope. Board watchers and assignees are notified, open boards update live.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CardCreate" } } }
+        },
+        "responses": {
+          "201": { "description": "The new card.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Card" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/cards/{cardId}": {
+      "parameters": [{ "$ref": "#/components/parameters/CardId" }],
+      "get": {
+        "tags": ["Cards"],
+        "operationId": "getCard",
+        "summary": "A card",
+        "responses": {
+          "200": { "description": "The card.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Card" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "patch": {
+        "tags": ["Cards"],
+        "operationId": "updateCard",
+        "summary": "Change a card or move it",
+        "description": "Needs the write scope. Send only the fields to change. `columnId` and `position` move the card (position 0 is the top of the column). `assigneeIds` and `tagIds` replace the whole set.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CardUpdate" } } }
+        },
+        "responses": {
+          "200": { "description": "The updated card.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Card" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "delete": {
+        "tags": ["Cards"],
+        "operationId": "deleteCard",
+        "summary": "Move a card to the trash",
+        "description": "Needs the write scope. Restorable from the trash for 30 days.",
+        "responses": {
+          "200": { "description": "Deleted.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Trashed" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/cards/{cardId}/comments": {
+      "parameters": [{ "$ref": "#/components/parameters/CardId" }],
+      "get": {
+        "tags": ["Comments"],
+        "operationId": "listComments",
+        "summary": "Comments on a card, oldest first",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }, { "$ref": "#/components/parameters/Cursor" }],
+        "responses": {
+          "200": {
+            "description": "A page of comments.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "next"],
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } },
+                    "next": { "$ref": "#/components/schemas/NextCursor" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      },
+      "post": {
+        "tags": ["Comments"],
+        "operationId": "createComment",
+        "summary": "Comment on a card",
+        "description": "Needs the write scope. `@username` mentions and card watchers are notified.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body"],
+                "properties": { "body": { "type": "string", "minLength": 1, "maxLength": 5000, "description": "Markdown." } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "The new comment.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Comment" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationFailed" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/boards/{boardId}/tags": {
+      "parameters": [{ "$ref": "#/components/parameters/BoardId" }],
+      "get": {
+        "tags": ["Tags"],
+        "operationId": "listTags",
+        "summary": "Tags of a board",
+        "responses": {
+          "200": {
+            "description": "All tags.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Tag" } } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": ["Account"],
+        "operationId": "getOpenApi",
+        "summary": "This document",
+        "security": [],
+        "responses": { "200": { "description": "The OpenAPI description.", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A personal access token from Settings, API tokens (`kbn_` followed by 64 hex characters)."
+      }
+    },
+    "parameters": {
+      "BoardId": { "name": "boardId", "in": "path", "required": true, "schema": { "type": "string" } },
+      "ColumnId": { "name": "columnId", "in": "path", "required": true, "schema": { "type": "string" } },
+      "CardId": { "name": "cardId", "in": "path", "required": true, "schema": { "type": "string" } },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Items per page.",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "description": "The `next` value of the previous page.",
+        "schema": { "type": "string" }
+      }
+    },
+    "responses": {
+      "BadRequest": { "description": "The body is not a JSON object.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": {
+        "description": "Missing, invalid, expired or revoked token, or the user is deactivated.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Forbidden": {
+        "description": "The user can not access this board, or the token lacks the write scope (`insufficient_scope`).",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": { "description": "No such resource.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "ValidationFailed": {
+        "description": "The input is not valid; `details` lists the problems.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "RateLimited": {
+        "description": "Too many requests. Wait for `Retry-After` seconds.",
+        "headers": { "Retry-After": { "schema": { "type": "integer" } } },
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "unauthorized",
+                  "forbidden",
+                  "insufficient_scope",
+                  "not_found",
+                  "payload_too_large",
+                  "unsupported_media_type",
+                  "validation_failed",
+                  "rate_limited",
+                  "internal_error"
+                ]
+              },
+              "message": { "type": "string" },
+              "details": {}
+            }
+          }
+        }
+      },
+      "NextCursor": { "type": ["string", "null"], "description": "Pass as `cursor` for the next page; null on the last page." },
+      "UserRef": {
+        "type": "object",
+        "required": ["id", "username", "displayName"],
+        "properties": {
+          "id": { "type": "string" },
+          "username": { "type": "string" },
+          "displayName": { "type": ["string", "null"] }
+        }
+      },
+      "Me": {
+        "type": "object",
+        "required": ["id", "username", "displayName", "role", "token"],
+        "properties": {
+          "id": { "type": "string" },
+          "username": { "type": "string" },
+          "displayName": { "type": ["string", "null"] },
+          "role": { "type": "string", "enum": ["admin", "member"] },
+          "token": {
+            "type": "object",
+            "required": ["id", "name", "scope", "expiresAt"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "scope": { "type": "string", "enum": ["read", "write"] },
+              "expiresAt": { "type": ["string", "null"], "format": "date-time" }
+            }
+          }
+        }
+      },
+      "Board": {
+        "type": "object",
+        "required": ["id", "name", "description", "color", "archived", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "color": { "type": "string", "examples": ["#2563eb"] },
+          "archived": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BoardDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Board" },
+          {
+            "type": "object",
+            "required": ["columns", "tags"],
+            "properties": {
+              "columns": { "type": "array", "items": { "$ref": "#/components/schemas/Column" } },
+              "tags": { "type": "array", "items": { "$ref": "#/components/schemas/Tag" } }
+            }
+          }
+        ]
+      },
+      "Column": {
+        "type": "object",
+        "required": ["id", "boardId", "name", "position", "wipLimit"],
+        "properties": {
+          "id": { "type": "string" },
+          "boardId": { "type": "string" },
+          "name": { "type": "string" },
+          "position": { "type": "integer", "minimum": 0 },
+          "wipLimit": { "type": ["integer", "null"] }
+        }
+      },
+      "ColumnCreate": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "wipLimit": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 }
+        }
+      },
+      "ColumnUpdate": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "wipLimit": { "type": ["integer", "null"], "minimum": 1, "maximum": 999 },
+          "position": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "required": ["id", "boardId", "name", "color"],
+        "properties": {
+          "id": { "type": "string" },
+          "boardId": { "type": "string" },
+          "name": { "type": "string" },
+          "color": { "type": "string" }
+        }
+      },
+      "Priority": { "type": "string", "enum": ["low", "normal", "high", "critical"] },
+      "Deadline": {
+        "type": ["string", "null"],
+        "description": "A calendar date, YYYY-MM-DD. Requests also accept an ISO date-time (its UTC date is used).",
+        "examples": ["2026-12-31"]
+      },
+      "Card": {
+        "type": "object",
+        "required": [
+          "id",
+          "boardId",
+          "columnId",
+          "title",
+          "description",
+          "position",
+          "priority",
+          "deadline",
+          "coverColor",
+          "createdBy",
+          "assignees",
+          "tags",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "boardId": { "type": "string" },
+          "columnId": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": ["string", "null"], "description": "Markdown." },
+          "position": { "type": "integer", "minimum": 0 },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "deadline": { "$ref": "#/components/schemas/Deadline" },
+          "coverColor": { "type": ["string", "null"] },
+          "createdBy": { "oneOf": [{ "$ref": "#/components/schemas/UserRef" }, { "type": "null" }] },
+          "assignees": { "type": "array", "items": { "$ref": "#/components/schemas/UserRef" } },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name", "color"],
+              "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "color": { "type": "string" } }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CardCreate": {
+        "type": "object",
+        "required": ["columnId", "title"],
+        "properties": {
+          "columnId": { "type": "string" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": { "type": ["string", "null"], "maxLength": 20000 },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "deadline": { "$ref": "#/components/schemas/Deadline" },
+          "position": { "type": "integer", "minimum": 0, "description": "Defaults to the end of the column." },
+          "assigneeIds": { "type": "array", "items": { "type": "string" }, "maxItems": 50, "description": "Active members of the board." },
+          "tagIds": { "type": "array", "items": { "type": "string" }, "maxItems": 50 }
+        }
+      },
+      "CardUpdate": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": { "type": ["string", "null"], "maxLength": 20000 },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "deadline": { "$ref": "#/components/schemas/Deadline" },
+          "columnId": { "type": "string", "description": "Move to this column of the same board." },
+          "position": { "type": "integer", "minimum": 0, "description": "Position in the (new) column; moving to another column without it puts the card at the end." },
+          "assigneeIds": { "type": "array", "items": { "type": "string" }, "maxItems": 50 },
+          "tagIds": { "type": "array", "items": { "type": "string" }, "maxItems": 50 }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "required": ["id", "cardId", "body", "author", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "cardId": { "type": "string" },
+          "body": { "type": "string" },
+          "author": { "oneOf": [{ "$ref": "#/components/schemas/UserRef" }, { "type": "null" }] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Trashed": {
+        "type": "object",
+        "required": ["id", "trashId"],
+        "properties": { "id": { "type": "string" }, "trashId": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -14,7 +14,11 @@ export async function loadBoardAccess(boardId: string): Promise<BoardAccess> {
   const session = await auth();
   const user = session?.user;
   if (!user?.id) throw new ActionError("unauthorized");
+  return resolveBoardAccess({ id: user.id, role: user.role }, boardId);
+}
 
+/** Board access for a known user (a session user or an API token's owner). */
+export async function resolveBoardAccess(user: { id: string; role: string }, boardId: string): Promise<BoardAccess> {
   const board = await prisma.board.findUnique({
     where: { id: boardId },
     select: { id: true },

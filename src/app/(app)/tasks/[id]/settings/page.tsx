@@ -8,6 +8,8 @@ import ActionForm from "@/components/ui/ActionForm";
 import { buttonClass } from "@/components/ui/button";
 import TagChip from "@/components/ui/TagChip";
 import TemplateSettings from "@/components/board/TemplateSettings";
+import WebhookSettings from "@/components/board/WebhookSettings";
+import { WEBHOOK_EVENTS, WEBHOOK_FAILURE_LIMIT, parseEvents } from "@/lib/webhooks";
 import { t } from "@/lib/i18n";
 import { boardRoleLabel } from "@/lib/labels";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
@@ -54,6 +56,10 @@ export default async function BoardSettingsPage({
       cardRecurrences: {
         orderBy: { createdAt: "asc" },
         include: { template: { select: { name: true } }, column: { select: { name: true } } },
+      },
+      webhooks: {
+        orderBy: { createdAt: "asc" },
+        include: { deliveries: { orderBy: { createdAt: "desc" } } },
       },
     },
   });
@@ -210,6 +216,30 @@ export default async function BoardSettingsPage({
         columns={board.columns}
         tags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
         locale={locale}
+      />
+
+      <WebhookSettings
+        boardId={board.id}
+        events={[...WEBHOOK_EVENTS]}
+        failureLimit={WEBHOOK_FAILURE_LIMIT}
+        locale={locale}
+        webhooks={board.webhooks.map((w) => ({
+          id: w.id,
+          url: w.url,
+          events: parseEvents(w.events),
+          active: w.active,
+          failureCount: w.failureCount,
+          deliveries: w.deliveries.map((d) => ({
+            id: d.id,
+            event: d.event,
+            success: d.success,
+            statusCode: d.statusCode,
+            durationMs: d.durationMs,
+            error: d.error,
+            attempts: d.attempts,
+            createdAt: d.createdAt.toISOString(),
+          })),
+        }))}
       />
     </div>
   );

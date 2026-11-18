@@ -113,6 +113,16 @@ interface BoardSnapshot {
     createdById: string | null;
     createdAt: string;
   }[];
+  /** Added in v1.0. Delivery history is not kept. */
+  webhooks?: {
+    id: string;
+    url: string;
+    secret: string;
+    events: string;
+    active: boolean;
+    createdById: string | null;
+    createdAt: string;
+  }[];
 }
 
 const cardInclude = {
@@ -288,6 +298,7 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         watchers: { select: { userId: true } },
         cardTemplates: true,
         cardRecurrences: true,
+        webhooks: true,
         columns: {
           orderBy: { position: "asc" },
           include: { cards: { include: cardInclude, orderBy: { position: "asc" } } },
@@ -346,6 +357,15 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         active: r.active,
         createdById: r.createdById,
         createdAt: r.createdAt.toISOString(),
+      })),
+      webhooks: board.webhooks.map((w) => ({
+        id: w.id,
+        url: w.url,
+        secret: w.secret,
+        events: w.events,
+        active: w.active,
+        createdById: w.createdById,
+        createdAt: w.createdAt.toISOString(),
       })),
     };
     const item = await tx.trashItem.create({
@@ -533,6 +553,28 @@ async function restoreTemplates(tx: Tx, b: BoardSnapshot) {
   }
 }
 
+async function restoreWebhooks(tx: Tx, b: BoardSnapshot) {
+  const hooks = b.webhooks ?? [];
+  const users = await existingIds(
+    hooks.map((w) => w.createdById),
+    (ids) => tx.user.findMany({ where: { id: { in: ids } }, select: { id: true } })
+  );
+  for (const w of hooks) {
+    await tx.webhook.create({
+      data: {
+        id: w.id,
+        boardId: b.id,
+        url: w.url,
+        secret: w.secret,
+        events: w.events,
+        active: w.active,
+        createdById: w.createdById && users.has(w.createdById) ? w.createdById : null,
+        createdAt: new Date(w.createdAt),
+      },
+    });
+  }
+}
+
 /** Restores a trash item and deletes it. Returns the board id it belongs to. */
 export async function restoreTrashItem(item: { id: string; kind: string; boardId: string; payload: string }): Promise<string> {
   return prisma.$transaction(async (tx) => {
@@ -615,6 +657,7 @@ export async function restoreTrashItem(item: { id: string; kind: string; boardId
       }
       await restoreCards(tx, b.columns.flatMap((c) => c.cards), (card) => card.columnId);
       await restoreTemplates(tx, b);
+      await restoreWebhooks(tx, b);
     }
     await tx.trashItem.delete({ where: { id: item.id } });
     return boardId;

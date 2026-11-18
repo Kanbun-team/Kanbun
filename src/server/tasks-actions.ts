@@ -14,6 +14,7 @@ import { ActionError } from "@/lib/action-result";
 import { logActivity, type ActivityEntry } from "@/server/activity";
 import { notifyComment, notifyMoved, notifyNewCards, watchCard } from "@/server/watchers";
 import { getLocale } from "@/lib/get-locale";
+import { changedFields, emitBoardEvent } from "@/server/webhooks";
 import { BOARD_TEMPLATE_IDS, boardTemplateContent } from "@/lib/board-templates";
 
 // -----------------------------
@@ -515,6 +516,7 @@ export async function addCardAction(formData: FormData) {
       }
     });
     await notifyNewCards(col.boardId, created, { id: user.id, name: user.displayName ?? user.username });
+    for (const c of created) emitBoardEvent(col.boardId, "card.created", { cardId: c.id, actorId: user.id });
     revalidatePath(`/tasks/${col.boardId}`);
     publishBoard(col.boardId);
     return { count: titles.length };
@@ -601,6 +603,8 @@ export async function updateCardAction(formData: FormData) {
     revalidatePath(`/tasks/${card.column.boardId}`);
     revalidatePath(`/tasks/${card.column.boardId}/cards/${data.cardId}`);
     publishBoard(card.column.boardId);
+    const changes = changedFields(activity);
+    if (changes.length) emitBoardEvent(card.column.boardId, "card.updated", { cardId: data.cardId, actorId: access.userId, extra: { changes } });
   });
 }
 
@@ -616,6 +620,7 @@ export async function deleteCardAction(formData: FormData) {
     const trashId = await trashCard(cardId, access.userId);
     revalidatePath(`/tasks/${card.column.boardId}`);
     publishBoard(card.column.boardId);
+    emitBoardEvent(card.column.boardId, "card.deleted", { cardId, actorId: access.userId });
     return { trashId, boardId: card.column.boardId };
   });
 }
@@ -720,6 +725,11 @@ export async function moveCardAction(input: {
     }
     revalidatePath(`/tasks/${card.column.boardId}`);
     publishBoard(card.column.boardId);
+    emitBoardEvent(card.column.boardId, "card.moved", {
+      cardId: data.cardId,
+      actorId: user.id,
+      extra: { from: { columnId: card.columnId, columnName: card.column.name }, to: { columnId: data.toColumnId, columnName: toCol.name } },
+    });
   });
 }
 
@@ -789,6 +799,7 @@ export async function toggleAssigneeAction(formData: FormData) {
     revalidatePath(`/tasks/${card.column.boardId}`);
     revalidatePath(`/tasks/${card.column.boardId}/cards/${data.cardId}`);
     publishBoard(card.column.boardId);
+    emitBoardEvent(card.column.boardId, "card.updated", { cardId: data.cardId, actorId: user.id, extra: { changes: ["assignees"] } });
   });
 }
 
@@ -988,6 +999,7 @@ export async function toggleCardTagAction(formData: FormData) {
     revalidatePath(`/tasks/${card.column.boardId}`);
     revalidatePath(`/tasks/${card.column.boardId}/cards/${cardId}`);
     publishBoard(card.column.boardId);
+    emitBoardEvent(card.column.boardId, "card.updated", { cardId, actorId: access.userId, extra: { changes: ["tags"] } });
   });
 }
 
@@ -1008,8 +1020,8 @@ export async function addCommentAction(formData: FormData) {
     if (!card) throw new ActionError("notFound");
     const boardId = card.column.boardId;
     await loadBoardAccess(boardId);
-    await prisma.$transaction(async (tx) => {
-      await tx.taskCardComment.create({
+    const comment = await prisma.$transaction(async (tx) => {
+      const created = await tx.taskCardComment.create({
         data: {
           cardId,
           authorId: user.id,
@@ -1017,6 +1029,7 @@ export async function addCommentAction(formData: FormData) {
         },
       });
       await watchCard(cardId, user.id, tx);
+      return created;
     });
 
     // Mentioned board members get "mention", card watchers "comment" (once each).
@@ -1026,6 +1039,7 @@ export async function addCommentAction(formData: FormData) {
     );
 
     revalidatePath(`/tasks/${boardId}/cards/${cardId}`);
+    emitBoardEvent(boardId, "comment.created", { cardId, actorId: user.id, commentId: comment.id });
   });
 }
 
