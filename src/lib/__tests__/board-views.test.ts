@@ -28,6 +28,7 @@ function card(id: string, over: Partial<CardDTO> = {}): CardDTO {
     subtasksDone: 0,
     commentsCount: 0,
     blockedByCount: 0,
+    attachmentsCount: 0,
     ...over,
   };
 }

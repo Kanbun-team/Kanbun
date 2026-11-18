@@ -15,7 +15,9 @@ import {
   CardPriorityEditor,
   CardTitleEditor,
 } from "@/components/CardEditor";
-import SubtaskList from "@/components/SubtaskList";
+import Checklist from "@/components/card/Checklist";
+import CardAttachments from "@/components/card/CardAttachments";
+import { maxAttachmentBytes } from "@/server/attachment-storage";
 import { CardBlocks, CardTags } from "@/components/CardTagsBlocks";
 import Comments from "@/components/Comments";
 import { CardPresence } from "@/components/presence/Presence";
@@ -54,7 +56,14 @@ export default async function CardDetail({
         include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
       },
       tags: { select: { tagId: true } },
-      subtasks: { orderBy: { position: "asc" } },
+      subtasks: {
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        include: { assignee: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+      },
+      attachments: {
+        orderBy: { createdAt: "asc" },
+        include: { uploader: { select: { username: true, displayName: true } } },
+      },
       comments: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
@@ -150,16 +159,35 @@ export default async function CardDetail({
             />
           </section>
 
-          <section>
-            <h2 className="text-md font-semibold mb-2">
-              {t("cardSubtasks", locale)}
-            </h2>
-            <SubtaskList
-              cardId={card.id}
-              subtasks={card.subtasks.map((s) => ({ id: s.id, title: s.title, done: s.done }))}
-              locale={locale}
-            />
-          </section>
+          <Checklist
+            cardId={card.id}
+            items={card.subtasks.map((s) => ({
+              id: s.id,
+              title: s.title,
+              done: s.done,
+              dueDate: s.dueDate ? s.dueDate.toISOString().slice(0, 10) : null,
+              assignee: s.assignee,
+            }))}
+            members={board.members.map((m) => m.user)}
+            locale={locale}
+          />
+
+          <CardAttachments
+            cardId={card.id}
+            maxBytes={maxAttachmentBytes()}
+            locale={locale}
+            attachments={card.attachments.map((a) => ({
+              id: a.id,
+              fileName: a.fileName,
+              mimeType: a.mimeType,
+              size: a.size,
+              width: a.width,
+              height: a.height,
+              createdAt: a.createdAt.toISOString(),
+              uploaderName: a.uploader ? a.uploader.displayName ?? a.uploader.username : null,
+              canDelete: a.uploaderId === me.id || canManage,
+            }))}
+          />
 
           <section>
             <Comments

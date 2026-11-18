@@ -20,3 +20,5 @@ prisma/e2e.db-journal
 test-results
 playwright-report
 .claude/worktrees/
+prisma/attachments
+prisma/e2e-attachments

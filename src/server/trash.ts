@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db-local";
 import { ActionError } from "@/lib/action-result";
+import { removeAttachmentFiles } from "@/server/attachment-storage";
 
 // Deleting a card, column or board stores its whole subtree as a JSON
 // snapshot in TrashItem and then removes the live rows. Restoring recreates
@@ -40,6 +41,21 @@ interface CardSnapshot {
     createdAt: string;
     completedAt: string | null;
     completedById: string | null;
+    // Added in v0.6; older snapshots lack them.
+    assigneeId?: string | null;
+    dueDate?: string | null;
+  }[];
+  /** Metadata only: the files stay on disk until the trash item is purged. Added in v0.6. */
+  attachments?: {
+    id: string;
+    uploaderId: string | null;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    storageKey: string;
+    width: number | null;
+    height: number | null;
+    createdAt: string;
   }[];
   comments: { id: string; authorId: string | null; body: string; createdAt: string }[];
   blocks: { id: string; blockerId: string; blockedId: string; createdAt: string; createdById: string | null }[];
@@ -81,6 +97,7 @@ const cardInclude = {
   blocking: true,
   blockedBy: true,
   watchers: { select: { userId: true } },
+  attachments: true,
 } satisfies Prisma.TaskCardInclude;
 
 type CardWithRelations = Prisma.TaskCardGetPayload<{ include: typeof cardInclude }>;
@@ -119,6 +136,19 @@ function snapshotCard(card: CardWithRelations): CardSnapshot {
       createdAt: s.createdAt.toISOString(),
       completedAt: iso(s.completedAt),
       completedById: s.completedById,
+      assigneeId: s.assigneeId,
+      dueDate: iso(s.dueDate),
+    })),
+    attachments: card.attachments.map((a) => ({
+      id: a.id,
+      uploaderId: a.uploaderId,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      size: a.size,
+      storageKey: a.storageKey,
+      width: a.width,
+      height: a.height,
+      createdAt: a.createdAt.toISOString(),
     })),
     comments: card.comments.map((c) => ({
       id: c.id,
@@ -131,12 +161,47 @@ function snapshotCard(card: CardWithRelations): CardSnapshot {
   };
 }
 
-async function purgeExpired(tx: Tx) {
-  await tx.trashItem.deleteMany({ where: { deletedAt: { lt: trashCutoff() } } });
+/** Storage keys of the attachment files held by a trash item's snapshot. */
+export function snapshotStorageKeys(kind: string, payload: string): string[] {
+  try {
+    const snap = JSON.parse(payload) as CardSnapshot | ColumnSnapshot | BoardSnapshot;
+    const cards: CardSnapshot[] =
+      kind === "card"
+        ? [snap as CardSnapshot]
+        : kind === "column"
+          ? (snap as ColumnSnapshot).cards
+          : (snap as BoardSnapshot).columns.flatMap((c) => c.cards);
+    return cards.flatMap((c) => (c.attachments ?? []).map((a) => a.storageKey));
+  } catch {
+    return [];
+  }
+}
+
+// Expired items are dropped inside the caller's transaction; their files are
+// removed once it has committed (see withPurge), so a rollback keeps them.
+async function purgeExpired(tx: Tx): Promise<string[]> {
+  const expired = await tx.trashItem.findMany({
+    where: { deletedAt: { lt: trashCutoff() } },
+    select: { id: true, kind: true, payload: true },
+  });
+  if (expired.length === 0) return [];
+  await tx.trashItem.deleteMany({ where: { id: { in: expired.map((e) => e.id) } } });
+  return expired.flatMap((e) => snapshotStorageKeys(e.kind, e.payload));
+}
+
+async function withPurge(run: (tx: Tx) => Promise<string>): Promise<string> {
+  let keys: string[] = [];
+  const id = await prisma.$transaction(async (tx) => {
+    const result = await run(tx);
+    keys = await purgeExpired(tx);
+    return result;
+  });
+  if (keys.length) await removeAttachmentFiles(keys);
+  return id;
 }
 
 export async function trashCard(cardId: string, userId: string): Promise<string> {
-  return prisma.$transaction(async (tx) => {
+  return withPurge(async (tx) => {
     const card = await tx.taskCard.findUnique({
       where: { id: cardId },
       include: { ...cardInclude, column: { select: { boardId: true } } },
@@ -153,13 +218,12 @@ export async function trashCard(cardId: string, userId: string): Promise<string>
       },
     });
     await tx.taskCard.delete({ where: { id: cardId } });
-    await purgeExpired(tx);
     return item.id;
   });
 }
 
 export async function trashColumn(columnId: string, userId: string): Promise<string> {
-  return prisma.$transaction(async (tx) => {
+  return withPurge(async (tx) => {
     const col = await tx.boardColumn.findUnique({
       where: { id: columnId },
       include: { cards: { include: cardInclude, orderBy: { position: "asc" } } },
@@ -184,13 +248,12 @@ export async function trashColumn(columnId: string, userId: string): Promise<str
       },
     });
     await tx.boardColumn.delete({ where: { id: columnId } });
-    await purgeExpired(tx);
     return item.id;
   });
 }
 
 export async function trashBoard(boardId: string, userId: string): Promise<string> {
-  return prisma.$transaction(async (tx) => {
+  return withPurge(async (tx) => {
     const board = await tx.board.findUnique({
       where: { id: boardId },
       include: {
@@ -243,7 +306,6 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
       },
     });
     await tx.board.delete({ where: { id: boardId } });
-    await purgeExpired(tx);
     return item.id;
   });
 }
@@ -268,7 +330,8 @@ async function restoreCards(tx: Tx, cards: CardSnapshot[], columnFor: (card: Car
     cards.flatMap((c) => [
       c.createdById,
       ...c.assigneeIds,
-      ...c.subtasks.map((s) => s.completedById),
+      ...c.subtasks.flatMap((s) => [s.completedById, s.assigneeId ?? null]),
+      ...(c.attachments ?? []).map((a) => a.uploaderId),
       ...c.comments.map((m) => m.authorId),
       ...c.blocks.map((b) => b.createdById),
       ...(c.watcherIds ?? []),
@@ -305,6 +368,21 @@ async function restoreCards(tx: Tx, cards: CardSnapshot[], columnFor: (card: Car
             createdAt: new Date(s.createdAt),
             completedAt: s.completedAt ? new Date(s.completedAt) : null,
             completedById: keepUser(s.completedById),
+            assigneeId: keepUser(s.assigneeId ?? null),
+            dueDate: s.dueDate ? new Date(s.dueDate) : null,
+          })),
+        },
+        attachments: {
+          create: (c.attachments ?? []).map((a) => ({
+            id: a.id,
+            uploaderId: keepUser(a.uploaderId),
+            fileName: a.fileName,
+            mimeType: a.mimeType,
+            size: a.size,
+            storageKey: a.storageKey,
+            width: a.width,
+            height: a.height,
+            createdAt: new Date(a.createdAt),
           })),
         },
         comments: {

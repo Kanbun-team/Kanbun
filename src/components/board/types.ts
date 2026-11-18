@@ -24,6 +24,7 @@ export interface CardDTO {
   subtasksDone: number;
   commentsCount: number;
   blockedByCount: number;
+  attachmentsCount: number;
 }
 
 export interface ColumnDTO {

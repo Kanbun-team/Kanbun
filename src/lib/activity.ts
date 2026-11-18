@@ -19,6 +19,9 @@ export type ActivityData = {
   blocked: { title: string };
   unblocked: { title: string };
   subtaskDone: { title: string };
+  subtaskConverted: { title: string };
+  attachmentAdded: { name: string };
+  attachmentRemoved: { name: string };
 };
 
 export type ActivityType = keyof ActivityData;
@@ -41,6 +44,9 @@ const TEMPLATES: Record<ActivityType, DictKey> = {
   blocked: "activityBlocked",
   unblocked: "activityUnblocked",
   subtaskDone: "activitySubtaskDone",
+  subtaskConverted: "activitySubtaskConverted",
+  attachmentAdded: "activityAttachmentAdded",
+  attachmentRemoved: "activityAttachmentRemoved",
 };
 
 export function isActivityType(value: string): value is ActivityType {
@@ -119,11 +125,14 @@ export function describeActivity(
       case "assigneeRemoved":
       case "tagAdded":
       case "tagRemoved":
+      case "attachmentAdded":
+      case "attachmentRemoved":
         values = { name: str(data, "name") };
         break;
       case "blocked":
       case "unblocked":
       case "subtaskDone":
+      case "subtaskConverted":
         values = { title: str(data, "title") };
         break;
       default:
