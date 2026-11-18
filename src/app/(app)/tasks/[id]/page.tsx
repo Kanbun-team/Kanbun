@@ -70,6 +70,12 @@ export default async function BoardPage({
       : [];
   });
 
+  const templates = await prisma.cardTemplate.findMany({
+    where: { boardId: id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
   const dto: ColumnDTO[] = board.columns.map((c) => ({
     id: c.id,
     name: c.name,
@@ -149,6 +155,7 @@ export default async function BoardPage({
         }))}
         boardTags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
         savedFilters={savedFilters}
+        templates={templates}
       />
     </div>
   );

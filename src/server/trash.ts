@@ -87,6 +87,32 @@ interface BoardSnapshot {
   columns: ColumnSnapshot[];
   /** Missing in snapshots taken before watchers existed. */
   watcherIds?: string[];
+  // Optional: snapshots taken before card templates existed lack them.
+  templates?: {
+    id: string;
+    name: string;
+    title: string;
+    description: string | null;
+    priority: string;
+    tagIds: string;
+    checklist: string;
+    createdById: string | null;
+    createdAt: string;
+  }[];
+  recurrences?: {
+    id: string;
+    templateId: string | null;
+    columnId: string | null;
+    rule: string;
+    weekday: number | null;
+    monthDay: number | null;
+    timeOfDay: string | null;
+    nextRunAt: string;
+    lastRunAt: string | null;
+    active: boolean;
+    createdById: string | null;
+    createdAt: string;
+  }[];
 }
 
 const cardInclude = {
@@ -260,6 +286,8 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         members: true,
         tags: true,
         watchers: { select: { userId: true } },
+        cardTemplates: true,
+        cardRecurrences: true,
         columns: {
           orderBy: { position: "asc" },
           include: { cards: { include: cardInclude, orderBy: { position: "asc" } } },
@@ -294,6 +322,31 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         cards: c.cards.map(snapshotCard),
       })),
       watcherIds: board.watchers.map((w) => w.userId),
+      templates: board.cardTemplates.map((tp) => ({
+        id: tp.id,
+        name: tp.name,
+        title: tp.title,
+        description: tp.description,
+        priority: tp.priority,
+        tagIds: tp.tagIds,
+        checklist: tp.checklist,
+        createdById: tp.createdById,
+        createdAt: tp.createdAt.toISOString(),
+      })),
+      recurrences: board.cardRecurrences.map((r) => ({
+        id: r.id,
+        templateId: r.templateId,
+        columnId: r.columnId,
+        rule: r.rule,
+        weekday: r.weekday,
+        monthDay: r.monthDay,
+        timeOfDay: r.timeOfDay,
+        nextRunAt: r.nextRunAt.toISOString(),
+        lastRunAt: iso(r.lastRunAt),
+        active: r.active,
+        createdById: r.createdById,
+        createdAt: r.createdAt.toISOString(),
+      })),
     };
     const item = await tx.trashItem.create({
       data: {
@@ -431,6 +484,55 @@ async function restoreColumn(tx: Tx, col: ColumnSnapshot) {
   await restoreCards(tx, col.cards, () => col.id);
 }
 
+async function restoreTemplates(tx: Tx, b: BoardSnapshot) {
+  const templates = b.templates ?? [];
+  const recurrences = b.recurrences ?? [];
+  const users = await existingIds(
+    [...templates.map((tp) => tp.createdById), ...recurrences.map((r) => r.createdById)],
+    (ids) => tx.user.findMany({ where: { id: { in: ids } }, select: { id: true } })
+  );
+  const keepUser = (id: string | null) => (id && users.has(id) ? id : null);
+  for (const tp of templates) {
+    await tx.cardTemplate.create({
+      data: {
+        id: tp.id,
+        boardId: b.id,
+        name: tp.name,
+        title: tp.title,
+        description: tp.description,
+        priority: tp.priority,
+        tagIds: tp.tagIds,
+        checklist: tp.checklist,
+        createdById: keepUser(tp.createdById),
+        createdAt: new Date(tp.createdAt),
+      },
+    });
+  }
+  const templateIds = new Set(templates.map((tp) => tp.id));
+  const columnIds = new Set(b.columns.map((c) => c.id));
+  for (const r of recurrences) {
+    const templateId = r.templateId && templateIds.has(r.templateId) ? r.templateId : null;
+    const columnId = r.columnId && columnIds.has(r.columnId) ? r.columnId : null;
+    await tx.cardRecurrence.create({
+      data: {
+        id: r.id,
+        boardId: b.id,
+        templateId,
+        columnId,
+        rule: r.rule,
+        weekday: r.weekday,
+        monthDay: r.monthDay,
+        timeOfDay: r.timeOfDay,
+        nextRunAt: new Date(r.nextRunAt),
+        lastRunAt: r.lastRunAt ? new Date(r.lastRunAt) : null,
+        active: r.active && !!templateId && !!columnId,
+        createdById: keepUser(r.createdById),
+        createdAt: new Date(r.createdAt),
+      },
+    });
+  }
+}
+
 /** Restores a trash item and deletes it. Returns the board id it belongs to. */
 export async function restoreTrashItem(item: { id: string; kind: string; boardId: string; payload: string }): Promise<string> {
   return prisma.$transaction(async (tx) => {
@@ -512,6 +614,7 @@ export async function restoreTrashItem(item: { id: string; kind: string; boardId
         });
       }
       await restoreCards(tx, b.columns.flatMap((c) => c.cards), (card) => card.columnId);
+      await restoreTemplates(tx, b);
     }
     await tx.trashItem.delete({ where: { id: item.id } });
     return boardId;

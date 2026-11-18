@@ -1,13 +1,16 @@
 #!/bin/sh
 # Serves the production build on a throwaway demo database for Playwright.
-# Run `npm run build` first.
+# Run `npm run build` first. With E2E_EMPTY=1 it serves an empty database
+# instead (no users), for the first-run setup tests.
 set -e
-export DATABASE_URL="file:./e2e.db"
+DB="${E2E_EMPTY:+e2e-setup}"
+DB="${DB:-e2e}"
+export DATABASE_URL="file:./$DB.db"
 export AUTH_SECRET="${AUTH_SECRET:-e2e-only-secret-not-for-production-use}"
 export NEXTAUTH_URL="http://localhost:${PORT:-3456}"
-export ATTACHMENTS_DIR="prisma/e2e-attachments"
-rm -f prisma/e2e.db prisma/e2e.db-journal
-rm -rf prisma/e2e-attachments
+export ATTACHMENTS_DIR="prisma/$DB-attachments"
+rm -f "prisma/$DB.db" "prisma/$DB.db-journal"
+rm -rf "prisma/$DB-attachments"
 npx prisma migrate deploy
-npx tsx scripts/seed-demo.ts
+if [ -z "$E2E_EMPTY" ]; then npx tsx scripts/seed-demo.ts; fi
 exec npx next start -p "${PORT:-3456}"

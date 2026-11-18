@@ -7,6 +7,8 @@ import { priorityLabel } from "@/lib/labels";
 
 export type ActivityData = {
   created: { column: string };
+  createdFromTemplate: { column: string; template: string };
+  createdBySchedule: { column: string; template: string };
   moved: { from: string; to: string };
   renamed: { from: string; to: string };
   priority: { from: string; to: string };
@@ -32,6 +34,8 @@ export type ActivityInput = {
 
 const TEMPLATES: Record<ActivityType, DictKey> = {
   created: "activityCreated",
+  createdFromTemplate: "activityCreatedFromTemplate",
+  createdBySchedule: "activityCreatedBySchedule",
   moved: "activityMoved",
   renamed: "activityRenamed",
   priority: "activityPriority",
@@ -104,6 +108,10 @@ export function describeActivity(
     switch (type) {
       case "created":
         values = { column: str(data, "column") };
+        break;
+      case "createdFromTemplate":
+      case "createdBySchedule":
+        values = { column: str(data, "column"), template: str(data, "template") };
         break;
       case "moved":
       case "renamed":

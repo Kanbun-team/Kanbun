@@ -2,11 +2,14 @@ import { requirePageUser } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
 import { formatDate, t, type DictKey } from "@/lib/i18n";
-import { Clock, ListChecks } from "lucide-react";
+import Link from "next/link";
+import { Clock, Inbox, ListChecks } from "lucide-react";
 import { daysUntil, relativeDeadline } from "@/lib/deadline";
 import { cn } from "@/lib/utils";
 import CardFace from "@/components/board/CardFace";
 import type { CardDTO } from "@/components/board/types";
+import EmptyState from "@/components/ui/EmptyState";
+import { buttonClass } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -180,7 +183,17 @@ export default async function MyWorkPage() {
     <div className="space-y-8">
       <h1 className="text-lg font-semibold">{t("myTasksTitle", locale)}</h1>
       {visible.length === 0 && subtasks.length === 0 ? (
-        <p className="text-base text-ink-muted max-w-prose">{t("myTasksEmpty", locale)}</p>
+        <EmptyState
+          icon={<Inbox size={20} />}
+          title={t("myTasksEmptyTitle", locale)}
+          action={
+            <Link href="/tasks" className={buttonClass("primary", "md")}>
+              {t("myTasksEmptyAction", locale)}
+            </Link>
+          }
+        >
+          {t("myTasksEmpty", locale)}
+        </EmptyState>
       ) : (
         visible.map((section) => {
           const items = groups[section.key];

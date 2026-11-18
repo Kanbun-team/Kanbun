@@ -7,6 +7,7 @@ import { getLocale } from "@/lib/get-locale";
 import ActionForm from "@/components/ui/ActionForm";
 import { buttonClass } from "@/components/ui/button";
 import TagChip from "@/components/ui/TagChip";
+import TemplateSettings from "@/components/board/TemplateSettings";
 import { t } from "@/lib/i18n";
 import { boardRoleLabel } from "@/lib/labels";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
@@ -48,6 +49,12 @@ export default async function BoardSettingsPage({
         orderBy: { addedAt: "asc" },
       },
       tags: { orderBy: { position: "asc" } },
+      columns: { orderBy: { position: "asc" }, select: { id: true, name: true } },
+      cardTemplates: { orderBy: { name: "asc" } },
+      cardRecurrences: {
+        orderBy: { createdAt: "asc" },
+        include: { template: { select: { name: true } }, column: { select: { name: true } } },
+      },
     },
   });
   if (!board) notFound();
@@ -195,6 +202,15 @@ export default async function BoardSettingsPage({
           <button className={buttonClass("primary")}>{t("add", locale)}</button>
         </ActionForm>
       </section>
+
+      <TemplateSettings
+        boardId={board.id}
+        templates={board.cardTemplates}
+        recurrences={board.cardRecurrences}
+        columns={board.columns}
+        tags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
+        locale={locale}
+      />
     </div>
   );
 }

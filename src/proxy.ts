@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+// /setup is the first-run wizard; it checks for itself whether it may run.
+const PUBLIC_PATHS = ["/login", "/setup", "/api/auth"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

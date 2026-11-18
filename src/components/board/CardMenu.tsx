@@ -16,6 +16,7 @@ export interface CardMenuHandlers {
   setPriority: (card: CardDTO, priority: string) => void;
   setCover: (card: CardDTO, color: string | null) => void;
   setDeadline: (card: CardDTO) => void;
+  saveAsTemplate: (card: CardDTO) => void;
   remove: (card: CardDTO) => void;
 }
 
@@ -27,6 +28,7 @@ export default function CardMenu({
   currentUserId,
   locale,
   handlers,
+  canManage = false,
   isOpen,
   onOpenChange,
 }: {
@@ -36,6 +38,8 @@ export default function CardMenu({
   currentUserId: string;
   locale: Locale;
   handlers: CardMenuHandlers;
+  /** Board owners and admins can save the card as a template. */
+  canManage?: boolean;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -108,6 +112,7 @@ export default function CardMenu({
           </MenuItem>
         ))}
       </Submenu>
+      {canManage && <MenuItem onAction={() => handlers.saveAsTemplate(card)}>{t("cardSaveAsTemplate", locale)}</MenuItem>}
       <MenuSeparator />
       <MenuItem danger onAction={() => handlers.remove(card)}>
         {t("cardDelete", locale)}

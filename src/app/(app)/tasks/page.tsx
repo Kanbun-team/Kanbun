@@ -9,6 +9,8 @@ import BoardCard, { BOARD_GRID_CLASS, type BoardCardData } from "@/components/Bo
 import CategorizedBoards from "@/components/CategorizedBoards";
 import CreateBoardModal from "@/components/CreateBoardModal";
 import CreateCategoryModal from "@/components/CreateCategoryModal";
+import EmptyState from "@/components/ui/EmptyState";
+import { LayoutDashboard } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -116,11 +118,19 @@ export default async function TasksIndexPage() {
         <h1 className="text-lg font-semibold">{t("boardsTitle", locale)}</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <CreateCategoryModal locale={locale} />
-          <CreateBoardModal users={otherUsers} categories={categories} locale={locale} />
+          {boards.length > 0 && <CreateBoardModal users={otherUsers} categories={categories} locale={locale} />}
         </div>
       </header>
 
-      {boards.length === 0 && <p className="text-base text-ink-muted">{t("homeEmpty", locale)}</p>}
+      {boards.length === 0 && (
+        <EmptyState
+          icon={<LayoutDashboard size={20} />}
+          title={t("homeEmptyTitle", locale)}
+          action={<CreateBoardModal users={otherUsers} categories={categories} locale={locale} />}
+        >
+          {t("homeEmpty", locale)}
+        </EmptyState>
+      )}
 
       {recentBoards.length > 0 && (
         <section aria-labelledby="home-recent" className="space-y-3">

@@ -33,6 +33,8 @@
 - Markdown in card descriptions and comments, WIP limits, card covers, board filters.
 - In-app notifications for assignments, @mentions and blocked cards.
 - Trash with undo: deleted cards, columns and boards can be restored for 30 days.
+- Card templates (title, description, priority, tags, checklist) and repeating cards ("Every Monday", "Monthly on the 1st") per board.
+- First-run setup in the browser and built-in board templates (Simple, Software, Personal).
 - Deactivate users instead of deleting them: they can no longer sign in, but their work stays.
 - Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run.
 - Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
@@ -54,13 +56,12 @@ cp .env.example .env
 # edit AUTH_SECRET to a long random string
 npm install
 npx prisma migrate deploy
-npm run create-admin
 npm run dev
 ```
 
-Want to look around first? On an empty database, `npm run seed:demo` creates a demo workspace (log in as `admin` / `demo1234`).
+Open `http://localhost:3000`. On a new database Kanbun opens the first-run setup: create the admin account, then pick a first board (Simple, Software, Personal or blank).
 
-Visit `http://localhost:3000` and log in.
+Want to look around first? On an empty database, `npm run seed:demo` creates a demo workspace instead (log in as `admin` / `demo1234`).
 
 Checks (also run in CI):
 
@@ -74,7 +75,7 @@ npx playwright install chromium   # once
 npm run build && npm run test:e2e
 ```
 
-The e2e suite starts its own server on port 3456 with a throwaway demo database (`prisma/e2e.db`).
+The e2e suite starts its own server on port 3456 with a throwaway demo database (`prisma/e2e.db`), plus a second one on port 3457 with an empty database (`prisma/e2e-setup.db`) for the first-run setup test. Set `E2E_PORT` to move both.
 
 ## Quick start (Docker)
 
@@ -82,18 +83,23 @@ The e2e suite starts its own server on port 3456 with a throwaway demo database 
 cp .env.example .env
 # edit AUTH_SECRET
 docker compose up -d --build
-docker compose exec kanbun npm run create-admin
 ```
+
+Then open the app in your browser (`http://localhost:3000` by default). The first visit shows the setup screen: create the admin account and your first board. Setup is only available while the database has no users.
 
 Data persists in the `kanbun-data` volume at `/data/kanbun.db`. Card attachments are stored next to the database in `/data/attachments`, so the same volume keeps them; back up the whole `/data` folder, not only the database file.
 
-## Bootstrap an admin
+## Admin from the command line (optional)
+
+You don't need this for a new install, the browser setup creates the first admin. The script is still there for headless installs and for recovering access:
 
 ```bash
 npm run create-admin
+# or, in Docker:
+docker compose exec kanbun npm run create-admin
 ```
 
-You will be prompted for username, display name, and password. The script creates an `admin` user with `accessTasks=true`, or upgrades an existing user.
+You will be prompted for username, display name, and password. The script creates an `admin` user, or upgrades an existing user to admin and resets their password.
 
 ## Environment
 
@@ -105,6 +111,7 @@ You will be prompted for username, display name, and password. The script create
 - `SMTP_FROM` - sender for notification emails, e.g. `Kanbun <kanbun@example.com>`
 - `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`)
 - `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
+- `TZ` - time zone for repeating card schedules, e.g. `Europe/Warsaw` (the server clock otherwise)
 
 ### Notifications
 
@@ -121,9 +128,11 @@ src/
     api/auth/...       Auth.js handlers
     api/session/...    heartbeat
     login/             English-only login screen
+    setup/             first-run setup (admin account, first board)
   components/          UI building blocks
   lib/                 i18n, locale, prisma client, helpers
   server/              server actions
+  server/jobs/         background jobs (recurring cards)
   auth.ts              Auth.js setup
   proxy.ts             protects routes
 prisma/
@@ -132,7 +141,7 @@ public/
   manifest.webmanifest PWA manifest
   icons/               app icons (PNG + SVG)
 scripts/
-  create-admin.ts      bootstrap script
+  create-admin.ts      optional CLI to create or reset an admin
 ```
 
 ## Notes

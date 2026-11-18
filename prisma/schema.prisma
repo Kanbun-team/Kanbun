@@ -50,6 +50,8 @@ model User {
   boardWatches      BoardWatcher[]
   assignedSubtasks  TaskSubtask[]        @relation("SubtaskAssignee")
   attachments       CardAttachment[]     @relation("AttachmentUploader")
+  cardTemplates     CardTemplate[]       @relation("CardTemplateCreator")
+  cardRecurrences   CardRecurrence[]     @relation("CardRecurrenceCreator")
 }
 
 model Board {
@@ -76,6 +78,8 @@ model Board {
   pins BoardPin[]
   watchers BoardWatcher[]
   savedFilters SavedFilter[]
+  cardTemplates CardTemplate[]
+  cardRecurrences CardRecurrence[]
 }
 
 model BoardCategory {
@@ -108,8 +112,9 @@ model BoardColumn {
   position Int
   wipLimit Int?
 
-  board Board      @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  cards TaskCard[]
+  board       Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards       TaskCard[]
+  recurrences CardRecurrence[]
 
   @@index([boardId, position])
 }
@@ -400,4 +405,62 @@ model DueSoonNotice {
   cardId   String   @id
   deadline DateTime
   sentAt   DateTime @default(now())
+}
+
+// A reusable card on a board: "New card from template" copies these fields
+// into a new card. `tagIds` is a JSON array of BoardTag ids (ids of tags
+// deleted since are skipped when used) and `checklist` a JSON array of
+// checklist item titles.
+model CardTemplate {
+  id          String   @id @default(cuid())
+  boardId     String
+  name        String
+  title       String
+  description String?
+  priority    String   @default("normal")
+  tagIds      String   @default("[]")
+  checklist   String   @default("[]")
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  board       Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy   User?            @relation("CardTemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  recurrences CardRecurrence[]
+
+  @@index([boardId, name])
+}
+
+// A schedule that creates a card from a template on a repeating rule. The
+// background job (src/server/jobs/recurring.ts) picks up active rows whose
+// nextRunAt has passed. Deleting the template or the column nulls the
+// reference and the job then deactivates the schedule.
+model CardRecurrence {
+  id          String    @id @default(cuid())
+  boardId     String
+  templateId  String?
+  columnId    String?
+  // "daily" | "weekly" | "monthly"
+  rule        String
+  // 0 (Sunday) to 6, for weekly rules.
+  weekday     Int?
+  // 1 to 31, for monthly rules; a day past the end of a month means its last day.
+  monthDay    Int?
+  // "HH:MM" in the server's time zone; null means midnight.
+  timeOfDay   String?
+  nextRunAt   DateTime
+  lastRunAt   DateTime?
+  active      Boolean   @default(true)
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  board     Board         @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  template  CardTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  column    BoardColumn?  @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  createdBy User?         @relation("CardRecurrenceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([active, nextRunAt])
+  @@index([boardId])
+  @@index([templateId])
+  @@index([columnId])
 }
