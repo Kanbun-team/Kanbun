@@ -918,7 +918,11 @@ export async function toggleSubtaskAction(formData: FormData) {
     });
     if (!sub) throw new ActionError("notFound");
     await loadBoardAccess(sub.card.column.boardId);
-    const newDone = !sub.done;
+    // "done" (1 or 0) sets the state instead of flipping it: an edit queued
+    // offline then never undoes a change someone else made meanwhile.
+    const wanted = formData.get("done");
+    const newDone = wanted === null ? !sub.done : wanted === "1";
+    if (newDone === sub.done) return;
     await prisma.$transaction(async (tx) => {
       await tx.taskSubtask.update({
         where: { id: subtaskId },

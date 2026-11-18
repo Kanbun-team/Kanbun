@@ -88,7 +88,7 @@ Shipped in v1.0.0, together with a security review, a performance and Lighthouse
 5. **Offline-tolerant PWA.** Done: boards readable offline, queued board edits sync on reconnect.
 6. **Admin audit log.** Done, with filters, CSV download and retention.
 
-Still open after v1.0: card details are not stored for offline reading; webhook deliveries waiting in the queue are lost on restart; attachments on several instances need a shared folder (no S3); the nodemailer advisory waits for a next-auth release that supports nodemailer 10.
+Still open after v1.0: webhook deliveries waiting in the queue are lost on restart; attachments on several instances need a shared folder (no S3); the nodemailer advisory waits for a next-auth release that supports nodemailer 10.
 
 ## Quality bar for every release
 

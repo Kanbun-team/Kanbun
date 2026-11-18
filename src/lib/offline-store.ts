@@ -2,13 +2,16 @@
 
 // Client-side offline state for the signed-in user: the outbox of queued card
 // edits and the latest board snapshots, kept in memory for rendering
-// (useSyncExternalStore) and persisted to IndexedDB. Everything is keyed by
+// (useSyncExternalStore) and persisted to IndexedDB, plus card details for
+// offline reading (IndexedDB only, read on demand). Everything is keyed by
 // user id, and data of any other user found on the device is deleted, so a
 // second person signing in on the same browser never sees it.
 
 import { useSyncExternalStore } from "react";
 import { idbClear, idbDelete, idbGet, idbKeys, idbSet } from "./idb";
-import { enqueue, replay, type IdMap, type OutboxEntry, type OutboxOp, type RunResult } from "./outbox";
+import { cardIdsOf, enqueue, newId, replay, type IdMap, type OutboxEntry, type OutboxOp, type RunResult } from "./outbox";
+import { newerCard, type OfflineBoardCards, type StoredCard } from "./offline-card";
+import { isOnline } from "./use-online";
 import type { ColumnDTO } from "@/components/board/types";
 
 export interface BoardSnapshot {
@@ -54,6 +57,26 @@ const listeners = new Set<() => void>();
 
 const outboxKey = (userId: string) => `outbox:${userId}`;
 const snapshotKey = (userId: string, boardId: string) => `snap:${userId}:${boardId}`;
+/** Details of a card the user opened. */
+const cardKey = (userId: string, cardId: string) => `card:${userId}:${cardId}`;
+/** Lightweight details of every card of a board (GET /api/boards/[id]/offline). */
+const boardCardsKey = (userId: string, boardId: string) => `bcards:${userId}:${boardId}`;
+/** Ids of the stored opened cards, most recent first. */
+const cardIndexKey = (userId: string) => `cardidx:${userId}`;
+
+/** Opened cards kept per user; older ones are deleted. */
+const MAX_STORED_CARDS = 200;
+/** A board's card details are fetched again at most this often. */
+const PREFETCH_EVERY_MS = 10 * 60_000;
+
+/** Keys of this user's data (everything else is deleted when they sign in). */
+function ownKey(userId: string, key: string): boolean {
+  return (
+    key === outboxKey(userId) ||
+    key === cardIndexKey(userId) ||
+    [`snap:${userId}:`, `card:${userId}:`, `bcards:${userId}:`].some((prefix) => key.startsWith(prefix))
+  );
+}
 
 function set(next: Partial<OfflineState>) {
   state = { ...state, ...next };
@@ -81,6 +104,7 @@ export function ensureUser(userId: string) {
   if (state.userId === userId) return;
   state = { ...EMPTY, userId };
   persisted.clear();
+  prefetched.clear();
   for (const l of listeners) l();
   void (async () => {
     const stored = await readOutbox(userId);
@@ -95,10 +119,7 @@ export function ensureUser(userId: string) {
     });
     if (state.entries.length !== stored.entries.length) void persistOutbox();
     const keys = await idbKeys();
-    const mine = [outboxKey(userId), `snap:${userId}:`];
-    await Promise.all(
-      keys.filter((k) => !mine.some((prefix) => k.startsWith(prefix))).map((k) => idbDelete(k))
-    );
+    await Promise.all(keys.filter((k) => !ownKey(userId, k)).map((k) => idbDelete(k)));
   })();
 }
 
@@ -153,6 +174,92 @@ export function saveSnapshot(boardId: string, snapshot: BoardSnapshot) {
   void idbSet(snapshotKey(userId, boardId), snapshot);
 }
 
+// ---------- Card details ----------
+
+/** Boards whose card details were fetched by this tab, with the time. */
+const prefetched = new Map<string, number>();
+let cardIndexChain: Promise<unknown> = Promise.resolve();
+
+function isStoredCard(value: unknown): value is StoredCard {
+  const v = value as StoredCard | undefined;
+  return !!v && typeof v.renderedAt === "string" && !!v.card && typeof v.card.id === "string" && Array.isArray(v.members);
+}
+
+function isBoardCards(value: unknown): value is OfflineBoardCards {
+  const v = value as OfflineBoardCards | undefined;
+  return !!v && typeof v.renderedAt === "string" && Array.isArray(v.cards) && Array.isArray(v.members) && Array.isArray(v.tags);
+}
+
+/** Stores the details of a card the user opened, unless a newer copy is kept. */
+export function saveCard(record: StoredCard): Promise<void> {
+  const userId = state.userId;
+  if (!userId) return Promise.resolve();
+  const cardId = record.card.id;
+  const task = cardIndexChain.then(async () => {
+    const current = await idbGet<StoredCard>(cardKey(userId, cardId));
+    if (state.userId !== userId) return;
+    if (isStoredCard(current) && current.renderedAt > record.renderedAt) return;
+    await idbSet(cardKey(userId, cardId), record);
+    const stored = await idbGet<string[]>(cardIndexKey(userId));
+    const index = [cardId, ...(Array.isArray(stored) ? stored.filter((id) => id !== cardId) : [])];
+    if (state.userId !== userId) return;
+    await idbSet(cardIndexKey(userId), index.slice(0, MAX_STORED_CARDS));
+    await Promise.all(index.slice(MAX_STORED_CARDS).map((id) => idbDelete(cardKey(userId, id))));
+  });
+  cardIndexChain = task.catch(() => undefined);
+  return task;
+}
+
+/** The newest stored details of a card: from opening it, or from its board's lightweight copy. */
+export async function readCard(boardId: string, cardId: string): Promise<StoredCard | undefined> {
+  const userId = state.userId;
+  if (!userId) return undefined;
+  const [full, board] = await Promise.all([
+    idbGet<StoredCard>(cardKey(userId, cardId)),
+    idbGet<OfflineBoardCards>(boardCardsKey(userId, boardId)),
+  ]);
+  if (state.userId !== userId) return undefined;
+  const fromOpen = isStoredCard(full) && full.card.boardId === boardId ? full : undefined;
+  const liteCard = isBoardCards(board) ? board.cards.find((c) => c?.id === cardId) : undefined;
+  const fromBoard: StoredCard | undefined =
+    liteCard && isBoardCards(board)
+      ? { card: liteCard, members: board.members, tags: board.tags, renderedAt: board.renderedAt, partial: true }
+      : undefined;
+  return newerCard(fromOpen, fromBoard);
+}
+
+/**
+ * Fetches lightweight details of every card of a board in the background, so
+ * cards never opened can still be read offline. At most every 10 minutes per
+ * board; failures are ignored (the board works as before).
+ */
+export function prefetchBoardCards(boardId: string): void {
+  const userId = state.userId;
+  if (!userId || !isOnline() || typeof fetch === "undefined") return;
+  const last = prefetched.get(boardId);
+  if (last !== undefined && Date.now() - last < PREFETCH_EVERY_MS) return;
+  prefetched.set(boardId, Date.now());
+  void (async () => {
+    try {
+      const stored = await idbGet<OfflineBoardCards>(boardCardsKey(userId, boardId));
+      if (isBoardCards(stored) && Date.now() - Date.parse(stored.renderedAt) < PREFETCH_EVERY_MS) return;
+      const res = await fetch(`/api/boards/${encodeURIComponent(boardId)}/offline`, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok || res.redirected || !(res.headers.get("content-type") ?? "").includes("application/json")) return;
+      const data: unknown = await res.json();
+      // Signed out or switched user while fetching: drop it.
+      if (state.userId !== userId || !isBoardCards(data) || data.boardId !== boardId) return;
+      await idbSet(boardCardsKey(userId, boardId), data);
+    } catch {
+      // Offline or the server is unreachable: try again next time.
+      prefetched.delete(boardId);
+    }
+  })();
+}
+
 // ---------- Outbox ----------
 
 /** Window event asking the app to replay the outbox now (see PwaClient). */
@@ -168,11 +275,17 @@ export function addEntry(entry: OutboxEntry) {
   void persistOutbox();
 }
 
+/** Queues a card edit for this board; sends it right away when online. */
+export function queueEdit(boardId: string, op: OutboxOp, label: string) {
+  addEntry({ id: newId(), boardId, createdAt: Date.now(), label, op });
+  if (isOnline()) requestSync();
+}
+
 /** Fresh server data arrived: synced entries no longer need to be applied on top. */
 export function clearApplied() {
   if (state.syncing || state.applied.length === 0) return;
   const stillUsed = new Set(
-    state.entries.flatMap((e) => (e.op.kind === "addCards" ? e.op.tempIds : [e.op.cardId]))
+    state.entries.flatMap((e) => cardIdsOf(e.op))
   );
   const idMap = Object.fromEntries(Object.entries(state.idMap).filter(([temp]) => stillUsed.has(temp)));
   set({ applied: [], idMap });
@@ -257,6 +370,7 @@ export async function flushOutbox(
 export async function clearOfflineData() {
   state = { ...EMPTY };
   persisted.clear();
+  prefetched.clear();
   for (const l of listeners) l();
   const tasks: Promise<unknown>[] = [idbClear()];
   if (typeof caches !== "undefined") {
