@@ -24,14 +24,15 @@
 - Board, list and calendar views, saved filters shared with the board, and a "My tasks" page grouped into overdue, today, upcoming and done this week.
 - Card history: moves, edits, assignees, tags and dependencies in one timeline with comments; @mention autocomplete; searchable pickers.
 - Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).
-- Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh.
-- Subtasks, tags, comments, blocking dependencies, priorities, deadlines.
+- Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh, with avatars of who is viewing the board and who has the same card open.
+- Checklists with an assignee and due date per item (reorder, convert to card), tags, comments, blocking dependencies, priorities, deadlines.
+- File and image attachments on cards, stored next to the database.
 - Per-board membership with owner/member roles. Admin override.
 - User profiles with year-long activity heatmap, latest moves, latest comments.
 - Active and recent sessions per user, with web/mobile/desktop detection.
 - Online dot driven by a 60s heartbeat. 5-minute online window.
 - Markdown in card descriptions and comments, WIP limits, card covers, board filters.
-- In-app notifications for assignments, @mentions and blocked cards.
+- Notifications for assignments, @mentions, blocked cards and watched cards and boards, each set to in-app, in-app + email (optional SMTP) or off, with an optional daily digest.
 - Trash with undo: deleted cards, columns and boards can be restored for 30 days.
 - Card templates (title, description, priority, tags, checklist) and repeating cards ("Every Monday", "Monthly on the 1st") per board.
 - First-run setup in the browser and built-in board templates (Simple, Software, Personal).

@@ -66,14 +66,16 @@ Shipped in v0.5.0.
 6. **Card activity log.** Done, merged with comments in one timeline.
 7. **Moved from Phase 2.** Done: phone "Add card" bar, `d` shortcut with a shared date picker.
 
-## Phase 4: Team and collaboration (v0.6)
+## Phase 4: Team and collaboration (v0.6): done
 
-1. **Presence.** Avatars of who is viewing the board; a subtle indicator when someone else has the same card open.
-2. **Watchers and notification settings.** Follow a card or board; per-user choice of in-app, email (optional SMTP) or none for each notification type; daily digest.
-3. **Attachments.** Files and images on cards, stored on the local volume next to the database, with size limits and image previews.
-4. **Checklists 2.0.** Subtasks with their own assignee and due date, reorderable, convertible to cards.
-5. **Card templates and recurring cards.**
-6. **Onboarding.** First-run setup in the browser (create admin, first board from a template) instead of the `create-admin` CLI; empty states that teach.
+Shipped in v0.6.0.
+
+1. **Presence.** Done: viewer avatars in the board header, "also viewing this card" in the card panel, a marker on cards others have open, and a soft highlight for teammates' moves and renames (moved from Phase 2). Cards created by teammates are not highlighted yet.
+2. **Watchers and notification settings.** Done: watch cards and boards (automatic for cards you create, comment on or are assigned to), In-app, In-app + email or Off per type, optional SMTP, daily digest, deadline reminders.
+3. **Attachments.** Done: stored next to the database, size limit, image thumbnails, only safe image types shown inline, kept through trash and restore. No server-side thumbnail resizing yet.
+4. **Checklists 2.0.** Done: assignee and due date per item, drag and keyboard reorder, convert to card, items in My tasks. Assigning a checklist item does not send a notification yet.
+5. **Card templates and recurring cards.** Done: templates per board, daily, weekly and monthly schedules.
+6. **Onboarding.** Done: browser setup for the first admin and first board, board templates in "New board", teaching empty states.
 
 ## Phase 5: Platform (v1.0)
 

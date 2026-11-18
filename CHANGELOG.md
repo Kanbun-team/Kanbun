@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-18
+
+Phase 4 of the [roadmap](docs/ROADMAP.md): team and collaboration.
+
+### Added
+
+- Presence: avatars of the people viewing a board in its header, "also viewing this card" in the card panel, a small marker on cards someone else has open, and a soft highlight when a teammate moves or renames a card (no motion with reduced motion turned on).
+- Watchers: follow a card or a board with the Watch button. You watch cards you create, comment on or are assigned to automatically. Watchers hear about new comments, moves, approaching deadlines and new cards on watched boards.
+- Notification settings: each kind of notification can be In-app, In-app + email or Off, plus an optional daily digest email. Email uses optional SMTP (`SMTP_URL`, `SMTP_FROM`) and is sent in the background.
+- Attachments: drag files onto a card or pick them with a button. Images get thumbnails, other files a download row. Files live next to the database (`/data/attachments` in Docker); `ATTACHMENTS_DIR` and `ATTACHMENT_MAX_MB` change the folder and the per-file limit (default 10 MB). A paperclip count shows on the card face.
+- Checklists 2.0: each item can have an assignee and a due date, items reorder by drag or keyboard, and an item can be turned into its own card. Items assigned to you appear under "Subtasks" in My tasks.
+- Card templates per board (title, description, priority, tags, checklist), managed in board settings or saved from a card's menu, and used from a column's "New card from template".
+- Recurring cards: create a card from a template every day, every week on a weekday or every month on a day, at an optional time (server time zone, `TZ`).
+- First-run setup in the browser: a new install opens a setup screen to create the admin account and the first board from a template (Simple, Software, Personal or Blank). `npm run create-admin` still works.
+- Board templates are also offered in the "New board" dialog.
+- Empty states that explain what to do next on an empty board, the boards page, My tasks, the trash and a card without comments.
+
+### Fixed
+
+- Opening a card from My tasks no longer shows "Page not found".
+- The notification bell's accessible name includes the unread count.
+
+### Upgrade notes
+
+- New tables for watchers, attachments, templates and schedules, and new columns on users and checklist items, are created automatically on start. Back up the whole `/data` folder from now on, since it holds attachments as well as the database.
+
 ## [0.5.0] - 2026-11-18
 
 Phase 3 of the [roadmap](docs/ROADMAP.md): find and focus.
@@ -172,7 +198,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.3...v0.3.0

@@ -9,6 +9,42 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-18",
+    title: { en: "Version 0.6.0", it: "Versione 0.6.0", pl: "Wersja 0.6.0", de: "Version 0.6.0" },
+    items: [
+      {
+        en: "See who else is on the board and who has the same card open, and watch teammates' changes slide into place.",
+        it: "Vedi chi altro è sulla bacheca e chi ha aperto la stessa card, e guarda le modifiche dei colleghi andare al loro posto.",
+        pl: "Zobacz, kto jeszcze jest na tablicy i kto ma otwartą tę samą kartę, a zmiany współpracowników płynnie wskakują na miejsce.",
+        de: "Sieh, wer noch auf dem Board ist und wer dieselbe Karte geöffnet hat, und wie Änderungen im Team an ihren Platz gleiten.",
+      },
+      {
+        en: "Watch cards and boards, and choose in Settings which notifications you get in the app, by email or not at all.",
+        it: "Segui card e bacheche e scegli nelle Impostazioni quali notifiche ricevere nell'app, via email o per niente.",
+        pl: "Obserwuj karty i tablice, a w Ustawieniach wybierz, które powiadomienia dostajesz w aplikacji, e-mailem albo wcale.",
+        de: "Beobachte Karten und Boards und wähle in den Einstellungen, welche Benachrichtigungen du in der App, per E-Mail oder gar nicht bekommst.",
+      },
+      {
+        en: "Attach files and images to cards, and give checklist items their own assignee and due date.",
+        it: "Allega file e immagini alle card e assegna a ogni voce della checklist una persona e una scadenza.",
+        pl: "Dołączaj pliki i obrazy do kart, a punktom listy kontrolnej przypisuj osobę i termin.",
+        de: "Hänge Dateien und Bilder an Karten an und gib Checklistenpunkten eine eigene zuständige Person und ein Fälligkeitsdatum.",
+      },
+      {
+        en: "Card templates and cards that repeat every day, week or month.",
+        it: "Modelli di card e card che si ripetono ogni giorno, settimana o mese.",
+        pl: "Szablony kart i karty powtarzane codziennie, co tydzień albo co miesiąc.",
+        de: "Kartenvorlagen und Karten, die sich täglich, wöchentlich oder monatlich wiederholen.",
+      },
+      {
+        en: "A new install now starts with a setup screen in the browser and a first board from a template.",
+        it: "Una nuova installazione ora parte con una schermata di configurazione nel browser e una prima bacheca da un modello.",
+        pl: "Nowa instalacja zaczyna się teraz od ekranu konfiguracji w przeglądarce i pierwszej tablicy z szablonu.",
+        de: "Eine neue Installation beginnt jetzt mit einem Einrichtungsbildschirm im Browser und einem ersten Board aus einer Vorlage.",
+      },
+    ],
+  },
+  {
+    date: "2026-11-18",
     title: { en: "Version 0.5.0", it: "Versione 0.5.0", pl: "Wersja 0.5.0", de: "Version 0.5.0" },
     items: [
       {
