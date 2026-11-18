@@ -1,0 +1,81 @@
+# Kanbun on PostgreSQL and Redis, two app instances behind a Caddy load
+# balancer. See docs/SCALING.md. Start with:
+#
+#   AUTH_SECRET=$(openssl rand -base64 32) POSTGRES_PASSWORD=change-me \
+#     docker compose -f docker-compose.postgres.yml up -d
+#
+# Then open http://localhost:3000. Both instances use the same image as the
+# SQLite setup; DATABASE_URL selects PostgreSQL. They run `prisma migrate
+# deploy` on start (Prisma takes a lock, so only one applies migrations).
+
+x-kanbun: &kanbun
+  build: .
+  image: kanbun:latest
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  environment:
+    DATABASE_URL: "postgresql://kanbun:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/kanbun"
+    REDIS_URL: "redis://redis:6379"
+    AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET in .env}"
+    AUTH_TRUST_HOST: "true"
+    NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+    # Every instance must see the same files: a shared volume here, NFS or
+    # similar across hosts.
+    ATTACHMENTS_DIR: "/data/attachments"
+    # Optional email notifications and daily digest (off when SMTP_URL is unset):
+    # SMTP_URL: "smtp://user:pass@smtp.example.com:587"
+    # SMTP_FROM: "Kanbun <kanbun@example.com>"
+  volumes:
+    - kanbun-attachments:/data/attachments
+
+services:
+  kanbun-1:
+    <<: *kanbun
+  kanbun-2:
+    <<: *kanbun
+
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [kanbun-1, kanbun-2]
+    ports:
+      - "3000:80"
+    # Round-robin over both instances. Caddy streams server-sent events
+    # without buffering; no sticky sessions are needed.
+    command: >-
+      caddy reverse-proxy --from :80 --to kanbun-1:3000 --to kanbun-2:3000
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kanbun
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
+      POSTGRES_DB: kanbun
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanbun"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - kanbun-postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    # Redis only holds short-lived state (events, presence, rate limits, job
+    # locks): no persistence needed.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kanbun-attachments:
+  kanbun-postgres:

@@ -20,7 +20,7 @@
 ## Features
 
 - Boards, columns and cards with drag and drop that works with a mouse, on touch screens (long-press) and with the keyboard (Space, arrows), with screen-reader announcements. Every card also has a "Move to" action.
-- Search everything with Cmd/Ctrl+K: boards, card titles, descriptions and comments (SQLite FTS5), plus quick commands.
+- Search everything with Cmd/Ctrl+K: boards, card titles, descriptions and comments (SQLite FTS5 or PostgreSQL full-text search), plus quick commands.
 - Board, list and calendar views, saved filters shared with the board, and a "My tasks" page grouped into overdue, today, upcoming and done this week.
 - Card history: moves, edits, assignees, tags and dependencies in one timeline with comments; @mention autocomplete; searchable pickers.
 - Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).
@@ -46,7 +46,7 @@
 
 - Next.js 16 (App Router, server components by default)
 - TypeScript
-- Prisma + SQLite (`file:./dev.db`)
+- Prisma + SQLite (`file:./dev.db`) by default, PostgreSQL and Redis optional for running several instances ([docs/SCALING.md](docs/SCALING.md))
 - Auth.js v5 (credentials + JWT sessions, bcrypt)
 - React 19, Tailwind CSS v3 with `darkMode: "class"`
 
@@ -104,13 +104,14 @@ You will be prompted for username, display name, and password. The script create
 
 ## Environment
 
-- `DATABASE_URL` - SQLite URL, e.g. `file:./dev.db` or `file:/data/kanbun.db`
+- `DATABASE_URL` - SQLite URL, e.g. `file:./dev.db` or `file:/data/kanbun.db`, or a PostgreSQL URL (`postgresql://user:pass@host:5432/kanbun`, see [docs/SCALING.md](docs/SCALING.md))
+- `REDIS_URL` - optional, e.g. `redis://redis:6379`. Needed only to run several instances behind a load balancer: shares live updates, presence, rate limits and job locks between them. `KANBUN_REDIS_PREFIX` sets the key prefix (default `kanbun:`)
 - `AUTH_SECRET` - long random string used to sign JWT cookies
 - `AUTH_TRUST_HOST` - set to `true` when behind a proxy
 - `NEXTAUTH_URL` - public URL of the app (also the base for links in emails; `AUTH_URL` works too)
 - `SMTP_URL` - optional, enables email notifications, e.g. `smtp://user:pass@smtp.example.com:587` (use `smtps://` for port 465). Without it email is off and the settings page says so.
 - `SMTP_FROM` - sender for notification emails, e.g. `Kanbun <kanbun@example.com>`
-- `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`)
+- `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`). Set it with PostgreSQL, and point every instance at the same shared volume
 - `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
 - `TZ` - time zone for repeating card schedules, e.g. `Europe/Warsaw` (the server clock otherwise)
 
@@ -137,17 +138,20 @@ src/
   auth.ts              Auth.js setup
   proxy.ts             protects routes
 prisma/
-  schema.prisma        SQLite data model
+  schema.prisma        data model (SQLite, the source of truth)
+  postgres/            generated PostgreSQL schema, its migrations and search SQL
 public/
   manifest.webmanifest PWA manifest
   icons/               app icons (PNG + SVG)
 scripts/
   create-admin.ts      optional CLI to create or reset an admin
+  db.mjs               generate clients / migrate for the database in DATABASE_URL
+  sqlite-to-postgres.ts copy a SQLite install into PostgreSQL
 ```
 
 ## Notes
 
-- Schema changes: edit `prisma/schema.prisma`, then `npx prisma migrate dev --name <change>`.
+- Schema changes: edit `prisma/schema.prisma`, then `npx prisma migrate dev --name <change>`, and create the PostgreSQL migration too (`npm run db:pg:baseline` or `npm run db:pg:migration -- <change>`, see [docs/SCALING.md](docs/SCALING.md#adding-a-migration)).
 - The session heartbeat creates a `panelSessionId` cookie scoped per browser.
 - Card moves are logged to `TaskCardMoveEvent` only when the column actually changes.
 - Deleted cards, columns and boards are stored as JSON snapshots in `TrashItem` and restored with their original ids (`src/server/trash.ts`). Items older than 30 days are purged on the next delete.
@@ -155,8 +159,8 @@ scripts/
 - Server actions return typed results (`{ ok, error }`, see `src/lib/action-result.ts`); the UI turns error codes into translated toasts.
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
 - Sessions are JWTs, but the user is re-read from the database on every request, so deactivating or deleting a user, changing a role, or resetting a password applies immediately.
-- Failed logins are rate limited in memory per IP and username. Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
-- Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). This is single-process by design; running multiple instances would need an external broker.
+- Failed logins are rate limited per IP and username (in memory, or in Redis when `REDIS_URL` is set). Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
+- Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). In process by default; with `REDIS_URL` events go through Redis pub/sub so every instance delivers them ([docs/SCALING.md](docs/SCALING.md)).
 
 ## Pro modules (optional)
 
