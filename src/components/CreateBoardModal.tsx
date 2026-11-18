@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Plus, Upload } from "lucide-react";
 import Avatar from "./Avatar";
 import ColorPicker from "./ColorPicker";
 import BoardTemplatePicker from "./BoardTemplatePicker";
@@ -258,7 +259,11 @@ export default function CreateBoardModal({
                 </div>
               </div>
 
-              <footer className="flex items-center justify-end gap-2 p-4 border-t border-line">
+              <footer className="flex flex-wrap items-center justify-end gap-2 p-4 border-t border-line">
+                <Link href="/tasks/import" onClick={close} className={buttonClass("ghost", "lg", "mr-auto")}>
+                  <Upload size={16} aria-hidden />
+                  {t("importBoardLink", locale)}
+                </Link>
                 <button
                   type="button"
                   onClick={close}

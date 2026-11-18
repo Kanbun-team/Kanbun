@@ -21,13 +21,13 @@ export function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-// api/attachments is left out so uploads are not buffered (and capped at
-// 10 MB) by the proxy; those routes check the session themselves.
+// api/attachments and api/import are left out so uploads are not buffered
+// (and capped at 10 MB) by the proxy; those routes check the session themselves.
 // api/v1 (the REST API) is left out because it never uses the session: every
 // route authenticates its bearer token (src/server/api/http.ts) and answers
 // 401 in JSON instead of redirecting to the login page.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|api/auth|api/attachments|api/v1/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|api/auth|api/attachments|api/import|api/v1/).*)",
   ],
 };

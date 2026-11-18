@@ -10,6 +10,10 @@ import { isLocale } from "@/lib/i18n";
 import { LOCALE_COOKIE } from "@/lib/get-locale";
 import { safeAction } from "@/server/safe-action";
 import { ActionError } from "@/lib/action-result";
+import { audit } from "@/server/audit";
+
+type SessionUser = { id: string; username: string };
+const actorOf = (u: SessionUser) => ({ id: u.id, name: u.username });
 
 async function tryRefreshSession(patch: Record<string, unknown>): Promise<void> {
   try {
@@ -104,7 +108,7 @@ const userCreateSchema = z.object({
 
 export async function adminCreateUserAction(formData: FormData) {
   return safeAction(async () => {
-    await requireRole("admin");
+    const me = await requireRole("admin");
     const data = userCreateSchema.parse({
       username: formData.get("username"),
       password: formData.get("password"),
@@ -117,13 +121,19 @@ export async function adminCreateUserAction(formData: FormData) {
     });
     if (taken) throw new ActionError("usernameTaken");
     const passwordHash = await bcrypt.hash(data.password, 12);
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         username: data.username.toLowerCase(),
         passwordHash,
         displayName: data.displayName ?? data.username,
         role: data.role,
       },
+    });
+    await audit({
+      action: "user.create",
+      actor: actorOf(me),
+      target: { type: "user", id: created.id, name: created.username },
+      details: { role: created.role },
     });
     revalidatePath("/admin/users");
   });
@@ -137,19 +147,35 @@ const userUpdateSchema = z.object({
 
 export async function adminUpdateUserAction(formData: FormData) {
   return safeAction(async () => {
-    await requireRole("admin");
+    const me = await requireRole("admin");
     const data = userUpdateSchema.parse({
       userId: formData.get("userId"),
       role: formData.get("role"),
       displayName: formData.get("displayName") || null,
     });
-    await prisma.user.update({
+    const before = await prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { role: true },
+    });
+    if (!before) throw new ActionError("userNotFound");
+    // Admins can not change their own role (the UI locks it too), so the
+    // last admin can never demote themselves by accident.
+    const role = data.userId === me.id ? before.role : data.role;
+    const updated = await prisma.user.update({
       where: { id: data.userId },
       data: {
-        role: data.role,
+        role,
         displayName: data.displayName ?? undefined,
       },
     });
+    if (before.role !== updated.role) {
+      await audit({
+        action: "user.role",
+        actor: actorOf(me),
+        target: { type: "user", id: updated.id, name: updated.username },
+        details: { from: before.role, to: updated.role },
+      });
+    }
     revalidatePath("/admin/users");
   });
 }
@@ -161,16 +187,21 @@ const userResetSchema = z.object({
 
 export async function adminResetPasswordAction(formData: FormData) {
   return safeAction(async () => {
-    await requireRole("admin");
+    const me = await requireRole("admin");
     const data = userResetSchema.parse({
       userId: formData.get("userId"),
       password: formData.get("password"),
     });
     const passwordHash = await bcrypt.hash(data.password, 12);
-    await prisma.user.update({
+    const target = await prisma.user.update({
       where: { id: data.userId },
       // Bumping sessionVersion signs the user out everywhere.
       data: { passwordHash, sessionVersion: { increment: 1 } },
+    });
+    await audit({
+      action: "user.passwordReset",
+      actor: actorOf(me),
+      target: { type: "user", id: target.id, name: target.username },
     });
     revalidatePath("/admin/users");
   });
@@ -182,7 +213,13 @@ export async function adminDeleteUserAction(formData: FormData) {
     const userId = String(formData.get("userId") ?? "");
     if (!userId) throw new ActionError("invalid");
     if (userId === me.id) throw new ActionError("selfAction");
-    await prisma.user.delete({ where: { id: userId } });
+    const deleted = await prisma.user.delete({ where: { id: userId } });
+    await audit({
+      action: "user.delete",
+      actor: actorOf(me),
+      target: { type: "user", id: deleted.id, name: deleted.username },
+      details: { role: deleted.role },
+    });
     revalidatePath("/admin/users");
   });
 }
@@ -196,11 +233,16 @@ export async function adminSetUserActiveAction(formData: FormData) {
     const active = formData.get("active") === "true";
     if (!userId) throw new ActionError("invalid");
     if (userId === me.id) throw new ActionError("selfAction");
-    await prisma.user.update({
+    const target = await prisma.user.update({
       where: { id: userId },
       data: active
         ? { deactivatedAt: null }
         : { deactivatedAt: new Date(), sessionVersion: { increment: 1 } },
+    });
+    await audit({
+      action: active ? "user.activate" : "user.deactivate",
+      actor: actorOf(me),
+      target: { type: "user", id: target.id, name: target.username },
     });
     revalidatePath("/admin/users");
   });

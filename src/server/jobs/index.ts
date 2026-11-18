@@ -29,6 +29,15 @@ const JOBS: Job[] = [
   },
   // Recurring cards: due schedules create their card within a minute.
   { name: "recurring-cards", everyMs: 60_000, run: async () => void (await runRecurringCards()) },
+  {
+    // Audit log retention (AUDIT_RETENTION_DAYS, default 365 days).
+    name: "audit-purge",
+    everyMs: 6 * 60 * 60 * 1000,
+    run: async () => {
+      const { runAuditPurge } = await import("./audit-purge");
+      await runAuditPurge();
+    },
+  },
 ];
 
 const globalForJobs = globalThis as unknown as { __kanbunJobsStarted?: boolean };

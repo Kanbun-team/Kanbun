@@ -25,6 +25,11 @@ export type AuditAction =
   | "token.revoke"
   | "webhook.create"
   | "webhook.delete"
+  | "import.board"
+  | "import.csv"
+  | "export.board"
+  | "export.full"
+  | "backup.download"
   | (string & {});
 
 export interface AuditInput {
