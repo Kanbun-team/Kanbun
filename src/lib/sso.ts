@@ -16,6 +16,12 @@ export interface SsoConfig {
   adminGroup: string | null;
   /** Link an unlinked IdP account to the Kanbun user with the same username. */
   matchUsername: boolean;
+  /**
+   * Link an unlinked IdP account to the one Kanbun user with the same
+   * (IdP-verified) email. Off by default: users type their own email in
+   * Settings, so a member could claim someone else's address.
+   */
+  matchEmail: boolean;
   /** Hide the password form; admins keep a break-glass password login. */
   disablePassword: boolean;
 }
@@ -38,6 +44,7 @@ export function readSsoConfig(env: Record<string, string | undefined> = process.
     allowSignup: truthy(env.OIDC_ALLOW_SIGNUP),
     adminGroup: env.OIDC_ADMIN_GROUP?.trim() || null,
     matchUsername: truthy(env.OIDC_MATCH_USERNAME),
+    matchEmail: truthy(env.OIDC_MATCH_EMAIL),
     disablePassword: truthy(env.OIDC_DISABLE_PASSWORD),
   };
 }
@@ -108,12 +115,12 @@ export type SsoDecision =
 
 export interface SsoDecisionInput {
   claims: SsoClaims | null;
-  config: Pick<SsoConfig, "allowSignup" | "adminGroup" | "matchUsername">;
+  config: Pick<SsoConfig, "allowSignup" | "adminGroup" | "matchUsername"> & { matchEmail?: boolean };
   /** The user already linked to this subject. */
   linked: SsoCandidate | null;
   /** The signed-in user who asked to link from Settings. */
   linkTo: SsoCandidate | null;
-  /** Users whose email equals the claim (only looked up for a verified email). */
+  /** Users whose email equals the claim (only looked up for a verified email with matchEmail). */
   emailMatches: SsoCandidate[];
   /** The user whose username equals preferred_username (only with matchUsername). */
   usernameMatch: SsoCandidate | null;
@@ -144,7 +151,8 @@ export function syncedRole(
  * 1. Linking from Settings: link the signed-in user, unless this IdP account
  *    belongs to someone else or the user already linked another one.
  * 2. An IdP account that is already linked signs in as its user.
- * 3. A verified email equal to exactly one user's email links that user.
+ * 3. With OIDC_MATCH_EMAIL, a verified email equal to exactly one user's
+ *    email links that user.
  * 4. With OIDC_MATCH_USERNAME, preferred_username equal to a username links it.
  * 5. Otherwise a new member is created when sign-up is allowed.
  * Deactivated users are always refused, and a user who already has a
@@ -175,7 +183,7 @@ export function decideSsoSignIn(input: SsoDecisionInput): SsoDecision {
     return { kind: "link", userId: u.id, role: role(u), auto: true };
   };
 
-  if (claims.email && claims.emailVerified && input.emailMatches.length > 0) {
+  if (config.matchEmail && claims.email && claims.emailVerified && input.emailMatches.length > 0) {
     if (input.emailMatches.length > 1) return { kind: "deny", error: "SsoNotLinked" };
     return autoLink(input.emailMatches[0]);
   }
