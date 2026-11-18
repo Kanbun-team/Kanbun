@@ -4,6 +4,9 @@ import { getLocale } from "@/lib/get-locale";
 import { formatDate, formatDateTime, t } from "@/lib/i18n";
 import ActionForm from "@/components/ui/ActionForm";
 import { buttonClass } from "@/components/ui/button";
+import EmptyState from "@/components/ui/EmptyState";
+import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { TRASH_RETENTION_DAYS, boardSnapshotOwners, trashCutoff } from "@/server/trash";
 import { restoreTrashFormAction } from "@/server/trash-actions";
 
@@ -54,9 +57,17 @@ export default async function TrashPage() {
       </header>
 
       {visible.length === 0 ? (
-        <p className="bg-surface border border-line rounded-panel p-6 text-center text-ink-muted">
+        <EmptyState
+          icon={<Trash2 size={20} />}
+          title={t("trashEmptyTitle", locale)}
+          action={
+            <Link href="/tasks" className={buttonClass("secondary", "md")}>
+              {t("trashEmptyAction", locale)}
+            </Link>
+          }
+        >
           {t("trashEmpty", locale).replace("{days}", days)}
-        </p>
+        </EmptyState>
       ) : (
         <ul className="bg-surface border border-line rounded-panel divide-y divide-line">
           {visible.map((item) => {

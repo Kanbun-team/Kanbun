@@ -6,11 +6,12 @@ import SessionPing from "@/components/SessionPing";
 import { getLocale } from "@/lib/get-locale";
 import UiProvider from "@/components/ui/UiProvider";
 import CommandPalette from "@/components/CommandPalette";
+import { needsSetup } from "@/server/setup";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const result = await safeAuth();
   if (result.status === "bad-cookie") redirect("/api/auth/clear?to=/login");
-  if (result.status === "anonymous") redirect("/login");
+  if (result.status === "anonymous") redirect((await needsSetup()) ? "/setup" : "/login");
 
   const locale = await getLocale();
 

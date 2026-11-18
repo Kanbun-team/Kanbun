@@ -7,6 +7,9 @@ import { daysUntil } from "@/lib/deadline";
 import { cn } from "@/lib/utils";
 import CardFace from "@/components/board/CardFace";
 import type { CardDTO } from "@/components/board/types";
+import EmptyState from "@/components/ui/EmptyState";
+import { buttonClass } from "@/components/ui/button";
+import { Inbox } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -150,7 +153,17 @@ export default async function MyWorkPage() {
     <div className="space-y-8">
       <h1 className="text-lg font-semibold">{t("myTasksTitle", locale)}</h1>
       {visible.length === 0 ? (
-        <p className="text-base text-ink-muted max-w-prose">{t("myTasksEmpty", locale)}</p>
+        <EmptyState
+          icon={<Inbox size={20} />}
+          title={t("myTasksEmptyTitle", locale)}
+          action={
+            <Link href="/tasks" className={buttonClass("primary", "md")}>
+              {t("myTasksEmptyAction", locale)}
+            </Link>
+          }
+        >
+          {t("myTasksEmpty", locale)}
+        </EmptyState>
       ) : (
         visible.map((section) => {
           const items = groups[section.key];

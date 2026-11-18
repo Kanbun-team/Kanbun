@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { Plus } from "lucide-react";
 import Avatar from "./Avatar";
 import ColorPicker from "./ColorPicker";
+import BoardTemplatePicker from "./BoardTemplatePicker";
 import { createBoardAction } from "@/server/tasks-actions";
 import { t, type Locale } from "@/lib/i18n";
 import { useUi } from "./ui/UiProvider";
@@ -166,6 +167,8 @@ export default function CreateBoardModal({
                   <span className="text-sm font-medium text-ink-muted">{t("boardDescription", locale)}</span>
                   <textarea name="description" maxLength={2000} rows={2} className="mt-1.5" />
                 </label>
+
+                <BoardTemplatePicker locale={locale} />
 
                 <div>
                   <span className="text-sm font-medium text-ink-muted block mb-1.5">

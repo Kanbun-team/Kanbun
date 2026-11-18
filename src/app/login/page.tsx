@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { safeAuth } from "@/auth";
 import Logo from "@/components/Logo";
 import LoginForm from "./LoginForm";
+import { needsSetup } from "@/server/setup";
 
 export const metadata = { title: "Log in - Kanbun" };
 
@@ -12,6 +13,8 @@ export default async function LoginPage({
   searchParams: Promise<{ from?: string; error?: string }>;
 }) {
   const sp = await searchParams;
+  // A brand-new install has no accounts yet: create the admin in the browser.
+  if (await needsSetup()) redirect("/setup");
   const result = await safeAuth();
   if (result.status === "bad-cookie") {
     redirect("/api/auth/clear?to=/login");

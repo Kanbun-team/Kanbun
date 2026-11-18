@@ -12,6 +12,8 @@ import { safeAction } from "@/server/safe-action";
 import { trashBoard, trashCard, trashColumn } from "@/server/trash";
 import { ActionError } from "@/lib/action-result";
 import { logActivity, type ActivityEntry } from "@/server/activity";
+import { getLocale } from "@/lib/get-locale";
+import { BOARD_TEMPLATE_IDS, boardTemplateContent } from "@/lib/board-templates";
 
 // -----------------------------
 // Boards
@@ -29,6 +31,7 @@ const createBoardSchema = z.object({
   color: colorSchema.optional().default("#2563eb"),
   categoryId: z.string().min(1).optional().nullable(),
   memberIds: z.array(z.string().min(1)).default([]),
+  template: z.enum(BOARD_TEMPLATE_IDS).default("simple"),
 });
 
 export async function createBoardAction(formData: FormData) {
@@ -42,7 +45,9 @@ export async function createBoardAction(formData: FormData) {
       color: formData.get("color") || "#2563eb",
       categoryId,
       memberIds: memberIdsRaw,
+      template: formData.get("template") || "simple",
     });
+    const content = boardTemplateContent(data.template, await getLocale());
 
     const uniqueMemberIds = Array.from(
       new Set(data.memberIds.filter((id) => id !== user.id))
@@ -69,13 +74,8 @@ export async function createBoardAction(formData: FormData) {
         position: nextPosition,
         createdById: user.id,
         members: { create: memberCreates },
-        columns: {
-          create: [
-            { name: "To do", position: 0 },
-            { name: "Doing", position: 1 },
-            { name: "Done", position: 2 },
-          ],
-        },
+        columns: { create: content.columns.map((name, position) => ({ name, position })) },
+        tags: { create: content.tags.map((tag, position) => ({ ...tag, position })) },
       },
     });
     revalidatePath("/tasks");
