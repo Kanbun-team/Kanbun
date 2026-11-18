@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type CSSProperties } from "react";
+import { memo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Link from "next/link";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -24,6 +24,8 @@ export interface ColumnHandlers {
   setAdding: (columnId: string | null) => void;
   renameCard: (card: CardDTO, title: string) => void;
   setEditing: (cardId: string | null) => void;
+  /** Warms up the card's page when the pointer or focus reaches it. */
+  prefetchCard: (card: CardDTO) => void;
 }
 
 interface Shared {
@@ -37,16 +39,19 @@ interface Shared {
   currentUserId: string;
   cardHandlers: CardMenuHandlers;
   columnHandlers: ColumnHandlers;
-  editingCardId: string | null;
 }
 
-export default function Column({
+// Columns and cards are memoized (Board keeps `shared` and unchanged cards
+// stable), so a drag, a filter change or a live refresh only re-renders what
+// changed. See docs/PERFORMANCE.md.
+export default memo(function Column({
   column,
   visibleCards,
   index,
   total,
   collapsed,
   adding,
+  editingCardId,
   shared,
 }: {
   column: ColumnDTO;
@@ -55,6 +60,7 @@ export default function Column({
   total: number;
   collapsed: boolean;
   adding: boolean;
+  editingCardId: string | null;
   shared: Shared;
 }) {
   const { locale, canManage, dndDisabled, columnHandlers: h } = shared;
@@ -182,7 +188,7 @@ export default function Column({
       <div className="px-2 py-2 flex-1 overflow-y-auto space-y-2 min-h-12">
         <SortableContext items={visibleCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {visibleCards.map((card) => (
-            <SortableCard key={card.id} card={card} columnId={column.id} shared={shared} />
+            <SortableCard key={card.id} card={card} columnId={column.id} editing={editingCardId === card.id} shared={shared} />
           ))}
         </SortableContext>
         {!shared.dndDisabled &&
@@ -216,27 +222,39 @@ export default function Column({
       </div>
     </section>
   );
-}
+});
 
-function SortableCard({ card, columnId, shared }: { card: CardDTO; columnId: string; shared: Shared }) {
-  const { boardId, locale, dndDisabled, editingCardId } = shared;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { setNodeRef, attributes: rawAttributes, listeners, transform, transition, isDragging } = useSortable({
+const CARD_RESIZE_OBSERVER = { disabled: true };
+
+const faceClass =
+  "relative block overflow-hidden rounded-card bg-raised border border-line shadow-card px-3 pt-2.5 pb-2.5 outline-none hover:border-line-strong focus-visible:ring-2 focus-visible:ring-accent";
+
+// The sortable wrapper re-renders whenever dnd-kit's context changes (every
+// card does during a drag); the card body below it only when its own props do.
+const SortableCard = memo(function SortableCard({
+  card,
+  columnId,
+  editing,
+  shared,
+}: {
+  card: CardDTO;
+  columnId: string;
+  editing: boolean;
+  shared: Shared;
+}) {
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card", columnId },
-    disabled: dndDisabled,
+    disabled: shared.dndDisabled,
+    // dnd-kit would create a ResizeObserver per card on every drag start;
+    // card sizes do not change mid-drag and columns still observe theirs.
+    resizeObserverConfig: CARD_RESIZE_OBSERVER,
   });
-  // Keep the link semantics (Enter opens the card); Space picks it up.
-  const { role: _role, ...attributes } = rawAttributes;
-  void _role;
-  const editing = editingCardId === card.id;
 
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition: transition,
   };
-  const faceClass =
-    "relative block overflow-hidden rounded-card bg-raised border border-line shadow-card px-3 pt-2.5 pb-2.5 outline-none hover:border-line-strong focus-visible:ring-2 focus-visible:ring-accent";
 
   return (
     <div
@@ -245,6 +263,41 @@ function SortableCard({ card, columnId, shared }: { card: CardDTO; columnId: str
       data-card-id={card.id}
       className={cn("group relative", isDragging && "opacity-40")}
     >
+      <CardBody card={card} editing={editing} attributes={attributes} listeners={listeners} shared={shared} />
+    </div>
+  );
+});
+
+const CardBody = memo(function CardBody({
+  card,
+  editing,
+  attributes: rawAttributes,
+  listeners,
+  shared,
+}: {
+  card: CardDTO;
+  editing: boolean;
+  attributes: ReturnType<typeof useSortable>["attributes"];
+  listeners: ReturnType<typeof useSortable>["listeners"];
+  shared: Shared;
+}) {
+  const { boardId, locale, dndDisabled } = shared;
+  const [menuOpen, setMenuOpen] = useState(false);
+  // The card menu starts as a cheap stand-in (see CardMenu `active`) and
+  // becomes the real menu once a mouse or focus reaches the card.
+  const [menu, setMenu] = useState<"idle" | "active" | "focus">("idle");
+  const activateMenu = () => setMenu((m) => (m === "idle" ? "active" : m));
+  const onPointerEnter = (e: PointerEvent<HTMLElement>) => {
+    shared.columnHandlers.prefetchCard(card);
+    // Not for touch: swapping the button mid-tap would lose the tap.
+    if (e.pointerType === "mouse") activateMenu();
+  };
+  // Keep the link semantics (Enter opens the card); Space picks it up.
+  const { role: _role, ...attributes } = rawAttributes;
+  void _role;
+
+  return (
+    <>
       {editing ? (
         <div className={faceClass}>
           <InlineTitleEditor
@@ -261,8 +314,17 @@ function SortableCard({ card, columnId, shared }: { card: CardDTO; columnId: str
           {...attributes}
           {...listeners}
           aria-roledescription={undefined}
+          // Hundreds of links would each prefetch while in view; prefetch on
+          // intent instead (pointer or focus).
+          prefetch={false}
+          onFocus={() => {
+            shared.columnHandlers.prefetchCard(card);
+            activateMenu();
+          }}
+          onPointerEnter={onPointerEnter}
           onContextMenu={(e) => {
             e.preventDefault();
+            activateMenu();
             setMenuOpen(true);
           }}
           className={cn(faceClass, card.coverColor && "pt-3.5", !dndDisabled && "touch-manipulation")}
@@ -288,12 +350,15 @@ function SortableCard({ card, columnId, shared }: { card: CardDTO; columnId: str
             canManage={shared.canManage}
             isOpen={menuOpen}
             onOpenChange={setMenuOpen}
+            active={menu !== "idle"}
+            onActivate={(focus) => setMenu(focus ? "focus" : "active")}
+            autoFocus={menu === "focus"}
           />
         </div>
       )}
-    </div>
+    </>
   );
-}
+});
 
 function InlineTitleEditor({
   card,

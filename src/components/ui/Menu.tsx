@@ -20,6 +20,10 @@ import { cn } from "@/lib/utils";
 const popoverClass =
   "min-w-[12rem] max-w-[18rem] max-h-[min(24rem,var(--visual-viewport-height))] overflow-auto rounded-panel border border-line bg-raised text-ink shadow-float py-1 outline-none text-base";
 
+/** The look of a menu's trigger button (also used by stand-ins for it). */
+export const menuButtonClass =
+  "inline-flex items-center justify-center rounded-control w-7 h-7 text-ink-muted hover:text-ink hover:bg-ink/5 outline-none focus-visible:ring-2 focus-visible:ring-accent pressed:bg-ink/10";
+
 export function MenuButton({
   label,
   children,
@@ -27,6 +31,7 @@ export function MenuButton({
   onOpenChange,
   className,
   icon,
+  autoFocus,
 }: {
   label: string;
   children: ReactNode;
@@ -34,16 +39,11 @@ export function MenuButton({
   onOpenChange?: (open: boolean) => void;
   className?: string;
   icon?: ReactNode;
+  autoFocus?: boolean;
 }) {
   return (
     <MenuTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
-      <Button
-        aria-label={label}
-        className={cn(
-          "inline-flex items-center justify-center rounded-control w-7 h-7 text-ink-muted hover:text-ink hover:bg-ink/5 outline-none focus-visible:ring-2 focus-visible:ring-accent pressed:bg-ink/10",
-          className
-        )}
-      >
+      <Button aria-label={label} autoFocus={autoFocus} className={cn(menuButtonClass, className)}>
         {icon ?? <MoreHorizontal size={16} aria-hidden />}
       </Button>
       <Popover placement="bottom end" className={popoverClass}>

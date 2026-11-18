@@ -26,7 +26,9 @@ import {
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CalendarDays, Columns3, Keyboard, List, Plus, Sparkles } from "lucide-react";
 import { useSyncedState } from "@/lib/use-synced-state";
-import { getViewingCard, subscribeBoardStream } from "@/lib/board-stream";
+import { useStableHandlers, useStableValue } from "@/lib/use-stable";
+import { reconcileColumns } from "./reconcile";
+import { getViewingCard, markBoardRefreshed, refreshedSince, subscribeBoardStream } from "@/lib/board-stream";
 import { animateChanges, snapshotCards, type CardSnapshot } from "./live-changes";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -85,6 +87,13 @@ const VIEW_ICONS = { board: Columns3, list: List, calendar: CalendarDays } as co
 const VIEW_LABELS = { board: "viewBoard", list: "viewList", calendar: "viewCalendar" } as const;
 
 const COLLAPSE_EVENT = "kanbun:collapsed";
+const NO_TEMPLATES: TemplateOption[] = [];
+
+// Sensor options live outside the component: new option objects on every
+// render would give every sortable card new listeners and defeat memoization.
+const MOUSE_OPTIONS = { activationConstraint: { distance: 6 } };
+// Long-press on touch, so swiping still scrolls the board.
+const TOUCH_OPTIONS = { activationConstraint: { delay: 250, tolerance: 8 } };
 
 // Keyboard dragging: Left/Right jump a card to the neighbouring column,
 // Up/Down reorder within the column (dnd-kit's default getter only looks at
@@ -99,7 +108,9 @@ const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
   const cols = droppableContainers
     .getEnabled()
     .filter((c) => isColumnKey(String(c.id)))
-    .map((c) => droppableRects.get(c.id))
+    // Right after the pick-up dnd-kit may not have measured the columns yet:
+    // read them from the DOM then.
+    .map((c) => droppableRects.get(c.id) ?? c.node.current?.getBoundingClientRect())
     .filter((r): r is NonNullable<typeof r> => !!r)
     .sort((a, b) => a.left - b.left);
   const centerX = collisionRect.left + collisionRect.width / 2;
@@ -107,6 +118,12 @@ const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
   const target = cols[current + (event.code === "ArrowRight" ? 1 : -1)];
   if (current < 0 || !target) return undefined;
   return { x: target.left + 8, y: target.top + 44 };
+};
+
+// Space lifts and drops; Enter is left to the link so it opens the card.
+const KEYBOARD_OPTIONS = {
+  coordinateGetter: keyboardCoordinates,
+  keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
 };
 
 // Collapsed columns are a per-browser preference. useSyncExternalStore keeps
@@ -176,14 +193,18 @@ export default function Board({
   locale,
   canManage,
   currentUserId,
-  members,
-  boardTags,
+  members: membersProp,
+  boardTags: boardTagsProp,
   savedFilters,
-  templates = [],
+  templates: templatesProp = NO_TEMPLATES,
   renderedAt,
 }: BoardProps) {
   const offline = useOfflineBoard({ boardId, userId: currentUserId, serverColumns, renderedAt, locale });
-  const [columns, setColumns] = useSyncedState(offline.columns);
+  // Unchanged cards keep their object across refreshes (see reconcile.ts).
+  const [columns, setColumns] = useSyncedState(offline.columns, reconcileColumns);
+  const members = useStableValue(membersProp);
+  const boardTags = useStableValue(boardTagsProp);
+  const templates = useStableValue(templatesProp);
   const searchParams = useSearchParams();
   const view = parseView(searchParams.get("view"));
   // `?deadline=none` comes from the calendar's "Show in list" link.
@@ -215,17 +236,23 @@ export default function Board({
   // drag is in progress so the list does not jump under the pointer.
   // Before a live re-fetch, remember where every card is so teammates'
   // changes can animate into place once the new data renders.
+  // Bursts of events become one refetch, and events already covered by a
+  // refresh this tab started later (after its own edit) cause none.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastEventAt = 0;
     const unsubscribe = subscribeBoardStream(boardId, {
       onBoard: () => {
+        lastEventAt = performance.now();
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
+          if (refreshedSince(boardId, lastEventAt)) return;
           if (dragStart.current) {
             refreshPending.current = true;
             return;
           }
           if (boardScroller.current) liveSnapshot.current = snapshotCards(boardScroller.current, columnsRef.current);
+          markBoardRefreshed(boardId);
           router.refresh();
         }, 250);
       },
@@ -327,7 +354,7 @@ export default function Board({
     offline.run({ kind: "update", cardId: card.id, fields }, fields.title ?? card.title);
   }
 
-  const cardHandlers: CardMenuHandlers = {
+  const latestCardHandlers: CardMenuHandlers = {
     open: (card) => {
       if (offline.canOpenCard()) router.push(`/tasks/${boardId}/cards/${card.id}`, { scroll: false });
     },
@@ -389,7 +416,10 @@ export default function Board({
     router.refresh();
   }
 
-  const columnHandlers: ColumnHandlers = {
+  // Stable identities for the memoized columns and cards.
+  const cardHandlers = useStableHandlers(latestCardHandlers);
+
+  const latestColumnHandlers: ColumnHandlers = {
     rename: async (column, name, wipLimit) => {
       if (!offline.guard()) return false;
       const fd = new FormData();
@@ -437,19 +467,18 @@ export default function Board({
       updateCard(card, { title });
     },
     setEditing: setEditingCardId,
+    prefetchCard: (card) => {
+      if (!card.id.startsWith(TEMP_PREFIX)) router.prefetch(`/tasks/${boardId}/cards/${card.id}`);
+    },
   };
+  const columnHandlers = useStableHandlers(latestColumnHandlers);
 
   // ---------- Drag and drop ----------
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    // Long-press on touch, so swiping still scrolls the board.
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-    // Space lifts and drops; Enter is left to the link so it opens the card.
-    useSensor(KeyboardSensor, {
-      coordinateGetter: keyboardCoordinates,
-      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
-    })
+    useSensor(MouseSensor, MOUSE_OPTIONS),
+    useSensor(TouchSensor, TOUCH_OPTIONS),
+    useSensor(KeyboardSensor, KEYBOARD_OPTIONS)
   );
 
   const collisionDetection: CollisionDetection = (args) => {
@@ -500,6 +529,7 @@ export default function Board({
     setActiveId(null);
     if (refreshPending.current) {
       refreshPending.current = false;
+      markBoardRefreshed(boardId);
       router.refresh();
     }
   }
@@ -660,19 +690,21 @@ export default function Board({
   const activeCard = activeId && !isColumnKey(activeId) ? allCards.find((c) => c.id === activeId) : null;
   const activeColumn = activeId && isColumnKey(activeId) ? columns.find((c) => columnKey(c.id) === activeId) : null;
 
-  const shared = {
-    boardId,
-    locale,
-    canManage,
-    dndDisabled: filtering,
-    members,
-    boardTags,
-    templates,
-    currentUserId,
-    cardHandlers,
-    columnHandlers,
-    editingCardId,
-  };
+  const shared = useMemo(
+    () => ({
+      boardId,
+      locale,
+      canManage,
+      dndDisabled: filtering,
+      members,
+      boardTags,
+      templates,
+      currentUserId,
+      cardHandlers,
+      columnHandlers,
+    }),
+    [boardId, locale, canManage, filtering, members, boardTags, templates, currentUserId, cardHandlers, columnHandlers]
+  );
 
   const showAddBar = view === "board" && !filtering && columns.length > 0;
   const addBarColumn = columns[Math.min(visibleColumnIndex, columns.length - 1)];
@@ -826,6 +858,7 @@ export default function Board({
                     total={columns.length}
                     collapsed={collapsed.has(col.id) && !filtering}
                     adding={addingColumnId === col.id}
+                    editingCardId={editingCardId}
                     shared={shared}
                   />
                 ))}
