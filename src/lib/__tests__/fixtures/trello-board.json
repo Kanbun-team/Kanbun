@@ -1,0 +1,120 @@
+{
+  "id": "5f0000000000000000000001",
+  "name": "Trello launch plan",
+  "desc": "Imported from Trello for the tests.",
+  "closed": false,
+  "prefs": { "background": "green" },
+  "labels": [
+    { "id": "lab-design", "idBoard": "5f0000000000000000000001", "name": "Design", "color": "purple" },
+    { "id": "lab-urgent", "idBoard": "5f0000000000000000000001", "name": "Urgent", "color": "red_dark" },
+    { "id": "lab-plain", "idBoard": "5f0000000000000000000001", "name": "", "color": "sky" }
+  ],
+  "lists": [
+    { "id": "list-ideas", "name": "Ideas", "closed": false, "pos": 16384 },
+    { "id": "list-doing", "name": "Doing", "closed": false, "pos": 32768 },
+    { "id": "list-old", "name": "Old stuff", "closed": true, "pos": 49152 }
+  ],
+  "members": [
+    { "id": "mem-marta", "username": "marta", "fullName": "Marta Nowak" },
+    { "id": "mem-ghost", "username": "ghost_user", "fullName": "Ghost User" }
+  ],
+  "cards": [
+    {
+      "id": "card-landing",
+      "name": "Design the landing page",
+      "desc": "Hero, pricing and **FAQ**.",
+      "closed": false,
+      "idList": "list-ideas",
+      "pos": 2000,
+      "due": "2026-12-01T16:00:00.000Z",
+      "idLabels": ["lab-design", "lab-urgent"],
+      "idMembers": ["mem-marta", "mem-ghost"],
+      "idChecklists": ["cl-1", "cl-2"],
+      "cover": { "color": "orange" }
+    },
+    {
+      "id": "card-brief",
+      "name": "Write the brief",
+      "desc": "",
+      "closed": false,
+      "idList": "list-ideas",
+      "pos": 1000,
+      "due": null,
+      "idLabels": ["lab-plain"],
+      "idMembers": [],
+      "idChecklists": []
+    },
+    {
+      "id": "card-build",
+      "name": "Build the signup flow",
+      "desc": "",
+      "closed": false,
+      "idList": "list-doing",
+      "pos": 1000,
+      "due": null,
+      "idLabels": [],
+      "idMembers": [],
+      "idChecklists": []
+    },
+    {
+      "id": "card-archived",
+      "name": "Archived card",
+      "closed": true,
+      "idList": "list-doing",
+      "pos": 3000,
+      "idLabels": [],
+      "idMembers": []
+    },
+    {
+      "id": "card-in-closed-list",
+      "name": "Card in a closed list",
+      "closed": false,
+      "idList": "list-old",
+      "pos": 1000,
+      "idLabels": [],
+      "idMembers": []
+    }
+  ],
+  "checklists": [
+    {
+      "id": "cl-2",
+      "idCard": "card-landing",
+      "name": "Review",
+      "pos": 2,
+      "checkItems": [{ "id": "ci-3", "name": "Copy review", "state": "incomplete", "pos": 1 }]
+    },
+    {
+      "id": "cl-1",
+      "idCard": "card-landing",
+      "name": "Build",
+      "pos": 1,
+      "checkItems": [
+        { "id": "ci-2", "name": "Mobile layout", "state": "incomplete", "pos": 2 },
+        { "id": "ci-1", "name": "Wireframe", "state": "complete", "pos": 1 }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "act-2",
+      "type": "commentCard",
+      "date": "2026-10-02T09:30:00.000Z",
+      "data": { "text": "Second comment", "card": { "id": "card-build", "name": "Build the signup flow" } },
+      "memberCreator": { "id": "mem-ghost", "fullName": "Ghost User", "username": "ghost_user" }
+    },
+    {
+      "id": "act-1",
+      "type": "commentCard",
+      "date": "2026-10-01T08:00:00.000Z",
+      "data": { "text": "First comment", "card": { "id": "card-build", "name": "Build the signup flow" } },
+      "memberCreator": { "id": "mem-marta", "fullName": "Marta Nowak", "username": "marta" }
+    },
+    {
+      "id": "act-3",
+      "type": "updateCard",
+      "date": "2026-10-03T08:00:00.000Z",
+      "data": { "card": { "id": "card-build" } },
+      "memberCreator": { "id": "mem-marta", "fullName": "Marta Nowak", "username": "marta" }
+    }
+  ]
+}

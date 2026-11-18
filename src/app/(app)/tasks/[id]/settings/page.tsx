@@ -8,6 +8,9 @@ import ActionForm from "@/components/ui/ActionForm";
 import { buttonClass } from "@/components/ui/button";
 import TagChip from "@/components/ui/TagChip";
 import TemplateSettings from "@/components/board/TemplateSettings";
+import CsvImport from "@/components/transfer/CsvImport";
+import { Download } from "lucide-react";
+import { maxImportBytes } from "@/server/transfer/http";
 import { t } from "@/lib/i18n";
 import { boardRoleLabel } from "@/lib/labels";
 import { canManageBoard, loadBoardAccess } from "@/server/board-access";
@@ -211,6 +214,40 @@ export default async function BoardSettingsPage({
         tags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
         locale={locale}
       />
+
+      <section className={`${card} space-y-4`} aria-labelledby="transfer-title">
+        <h2 id="transfer-title" className="text-md font-semibold">{t("transferTitle", locale)}</h2>
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">{t("exportBoardTitle", locale)}</h3>
+          <p className="text-sm text-ink-muted max-w-prose">{t("exportBoardBody", locale)}</p>
+          <div className="flex flex-wrap gap-2">
+            <a href={`/api/boards/${board.id}/export?format=json`} download className={buttonClass("secondary", "md")}>
+              <Download size={16} aria-hidden />
+              {t("exportJson", locale)}
+            </a>
+            <a href={`/api/boards/${board.id}/export?format=json&activity=1`} download className={buttonClass("secondary", "md")}>
+              <Download size={16} aria-hidden />
+              {t("exportJsonHistory", locale)}
+            </a>
+            <a href={`/api/boards/${board.id}/export?format=csv`} download className={buttonClass("secondary", "md")}>
+              <Download size={16} aria-hidden />
+              {t("exportCsv", locale)}
+            </a>
+          </div>
+        </div>
+        <div className="space-y-2 border-t border-line pt-4">
+          <h3 className="text-sm font-semibold">{t("csvImportTitle", locale)}</h3>
+          <p className="text-sm text-ink-muted max-w-prose">{t("csvImportBody", locale)}</p>
+          <CsvImport
+            boardId={board.id}
+            columns={board.columns.map((c) => c.name)}
+            tags={board.tags.map((tg) => tg.name)}
+            members={board.members.filter((m) => !m.user.deactivatedAt).map((m) => m.user.username)}
+            maxBytes={maxImportBytes()}
+            locale={locale}
+          />
+        </div>
+      </section>
     </div>
   );
 }

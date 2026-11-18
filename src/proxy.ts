@@ -21,10 +21,10 @@ export function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-// api/attachments is left out so uploads are not buffered (and capped at
-// 10 MB) by the proxy; those routes check the session themselves.
+// api/attachments and api/import are left out so uploads are not buffered
+// (and capped at 10 MB) by the proxy; those routes check the session themselves.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|api/auth|api/attachments).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|api/auth|api/attachments|api/import).*)",
   ],
 };
