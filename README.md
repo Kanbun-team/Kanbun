@@ -38,10 +38,14 @@
 - REST API with personal access tokens (read or read and write, optional expiry), an OpenAPI 3.1 description, and signed outgoing webhooks per board. See [docs/API.md](docs/API.md).
 - First-run setup in the browser and built-in board templates (Simple, Software, Personal).
 - Deactivate users instead of deleting them: they can no longer sign in, but their work stays.
+- Single sign-on with any OpenID Connect provider (Authentik, Keycloak, Google Workspace) alongside passwords, and optional two-factor authentication (TOTP with recovery codes) for password accounts. See [docs/SSO.md](docs/SSO.md).
+- Runs on SQLite by default; PostgreSQL and Redis let several instances run behind a load balancer. See [docs/SCALING.md](docs/SCALING.md).
+- Security headers with a nonce-based Content Security Policy, rate-limited sign-in, and an operator checklist in [SECURITY.md](SECURITY.md).
 - Import boards from Trello or Kanbun JSON, import cards from CSV with a preview, export a board as JSON or CSV, and (admins) export everything or download a one-click backup. See [docs/IMPORT-EXPORT.md](docs/IMPORT-EXPORT.md).
 - Admin audit log of sign-ins, user and role changes, board deletions, membership changes, imports, exports and backups, with filters and CSV download.
-- Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run.
-- Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
+- Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run, Lighthouse accessibility 100 on every main page.
+- Fast on big boards: a 500-card board loads in about half a second ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
+- Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language); the login screen follows the browser language.
 - Mobile responsive with hamburger drawer and safe-area insets. Installable PWA that works offline: boards opened before stay readable, and card edits made offline sync when the connection returns ([docs/OFFLINE.md](docs/OFFLINE.md)).
 - Loading skeletons on every data-fetching page.
 

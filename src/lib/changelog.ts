@@ -9,6 +9,42 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-18",
+    title: { en: "Version 1.0", it: "Versione 1.0", pl: "Wersja 1.0", de: "Version 1.0" },
+    items: [
+      {
+        en: "Sign in with your company account (single sign-on), and protect password accounts with two-factor authentication.",
+        it: "Accedi con l'account aziendale (single sign-on) e proteggi gli account con password con l'autenticazione a due fattori.",
+        pl: "Logowanie kontem firmowym (single sign-on) i ochrona kont z hasłem weryfikacją dwuetapową.",
+        de: "Melde dich mit deinem Firmenkonto an (Single Sign-on) und schütze Passwortkonten mit Zwei-Faktor-Authentifizierung.",
+      },
+      {
+        en: "Import boards from Trello or CSV, export them as JSON or CSV, and download a full backup as an admin.",
+        it: "Importa bacheche da Trello o CSV, esportale in JSON o CSV e, come admin, scarica un backup completo.",
+        pl: "Importuj tablice z Trello lub CSV, eksportuj je do JSON lub CSV, a jako admin pobierz pełną kopię zapasową.",
+        de: "Importiere Boards aus Trello oder CSV, exportiere sie als JSON oder CSV und lade als Admin ein vollständiges Backup herunter.",
+      },
+      {
+        en: "Connect other tools with the REST API, personal access tokens and webhooks.",
+        it: "Collega altri strumenti con la REST API, i token di accesso personali e i webhook.",
+        pl: "Łącz inne narzędzia przez REST API, osobiste tokeny dostępu i webhooki.",
+        de: "Verbinde andere Tools über die REST-API, persönliche Zugriffstoken und Webhooks.",
+      },
+      {
+        en: "Boards you opened stay readable offline, and changes you make offline sync when you are back online.",
+        it: "Le bacheche aperte restano leggibili offline e le modifiche fatte offline si sincronizzano quando torni online.",
+        pl: "Otwierane tablice są dostępne offline, a zmiany zrobione bez sieci synchronizują się po powrocie połączenia.",
+        de: "Geöffnete Boards bleiben offline lesbar, und offline gemachte Änderungen werden synchronisiert, sobald du wieder online bist.",
+      },
+      {
+        en: "Big boards are much faster, and the command palette can now move, assign and prioritize cards.",
+        it: "Le bacheche grandi sono molto più veloci e la palette dei comandi ora sposta, assegna e cambia priorità alle card.",
+        pl: "Duże tablice działają dużo szybciej, a paleta poleceń potrafi teraz przenosić, przypisywać i ustawiać priorytet kart.",
+        de: "Große Boards sind viel schneller, und die Befehlspalette kann jetzt Karten verschieben, zuweisen und priorisieren.",
+      },
+    ],
+  },
+  {
+    date: "2026-11-18",
     title: { en: "Version 0.6.0", it: "Versione 0.6.0", pl: "Wersja 0.6.0", de: "Version 0.6.0" },
     items: [
       {

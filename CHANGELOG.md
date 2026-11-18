@@ -6,6 +6,53 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-18
+
+Phase 5 of the [roadmap](docs/ROADMAP.md): the platform release. Kanbun is now considered stable.
+
+### Added
+
+- REST API under `/api/v1` with personal access tokens (read-only or read and write, optional expiry, revocable in Settings), cursor pagination, per-token rate limits and an OpenAPI 3.1 description ([docs/API.md](docs/API.md)).
+- Webhooks per board, signed with HMAC-SHA256, retried, switched off after repeated failures, with a test button and recent deliveries. Private network addresses are blocked unless `WEBHOOK_ALLOW_PRIVATE=1`.
+- Import from Trello or Kanbun JSON as a new board, CSV import into a board with a preview, board export as JSON or CSV, a full export for admins and a one-click backup (database snapshot plus attachments) on SQLite ([docs/IMPORT-EXPORT.md](docs/IMPORT-EXPORT.md)).
+- Admin audit log of sign-ins, user and role changes, deletions, membership changes, tokens, imports, exports and backups, with filters and CSV download. Kept for 365 days (`AUDIT_RETENTION_DAYS`).
+- Single sign-on with OpenID Connect (Authentik, Keycloak, Google Workspace and others) alongside passwords, with account linking in Settings and optional admin group mapping ([docs/SSO.md](docs/SSO.md)).
+- Two-factor authentication with an authenticator app for password accounts, with recovery codes; admins can reset it.
+- PostgreSQL support and Redis for live updates, presence, rate limits and background jobs, so several instances can run behind a load balancer. SQLite stays the default. Includes a SQLite to PostgreSQL copy script ([docs/SCALING.md](docs/SCALING.md)).
+- Works offline: boards you opened before stay readable, and moves, renames and other board edits made offline sync when the connection returns ([docs/OFFLINE.md](docs/OFFLINE.md)).
+- Card actions in the command palette (move, assign to me, set priority) and "New card" on the current board.
+- Rename saved filters.
+- Notifications when you are given a checklist item; pasting several cards sends one notification; move notifications name the column.
+- Teammates' new cards are highlighted on the board too.
+- Page titles name the board, card or page.
+- The login and setup screens follow the browser language.
+- A security policy with an operator checklist ([SECURITY.md](SECURITY.md)).
+
+### Changed
+
+- A 500-card board loads in about half a second and drag and drop responds much faster ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
+- Security headers on every page, including a nonce-based Content Security Policy.
+- Avatar URLs must use https.
+- Pinned boards appear only under Pinned on the boards page.
+- Counts use proper plural forms in every language.
+- The `card.moved` webhook fires only when a card changes column; reordering within a column sends `card.updated`. Deleting a column sends `card.deleted` for each of its cards.
+- Admin password resets also revoke the user's API tokens.
+- Expired trash is purged daily, with the history of purged cards.
+
+### Fixed
+
+- Sign-in rate limits could be bypassed by sending a forged `X-Forwarded-For` header. The client address is now read from the right, counting `TRUSTED_PROXIES` (default 1), and there is also a per-username limit.
+- Login no longer answers faster for usernames that do not exist.
+- The offline cache no longer stores the settings and admin pages.
+- Rounded corners on the calendar view.
+
+### Upgrade notes
+
+- New tables and columns are created automatically on start.
+- Behind more than one reverse proxy (for example a CDN plus nginx), set `TRUSTED_PROXIES` to the number of proxies. Run Kanbun behind a reverse proxy that appends to `X-Forwarded-For`, see [SECURITY.md](SECURITY.md).
+- SSO linking by email is off unless `OIDC_MATCH_EMAIL=true`, because users can set their own email.
+- Webhook receivers that used `card.moved` for reordering within a column should listen for `card.updated`.
+
 ## [0.6.0] - 2026-11-18
 
 Phase 4 of the [roadmap](docs/ROADMAP.md): team and collaboration.
@@ -198,7 +245,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.3.0...v0.4.0

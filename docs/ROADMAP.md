@@ -77,14 +77,18 @@ Shipped in v0.6.0.
 5. **Card templates and recurring cards.** Done: templates per board, daily, weekly and monthly schedules.
 6. **Onboarding.** Done: browser setup for the first admin and first board, board templates in "New board", teaching empty states.
 
-## Phase 5: Platform (v1.0)
+## Phase 5: Platform (v1.0): done
 
-1. **REST API with personal access tokens** and outgoing **webhooks**; OpenAPI spec.
-2. **Import and export.** Trello and CSV import; full JSON export; one-click backup download for admins.
-3. **Single sign-on.** OIDC (Authentik, Keycloak, Google Workspace) alongside passwords; optional 2FA (TOTP) for password accounts.
-4. **Scale-out option.** PostgreSQL support and a Redis-backed event bus and rate limiter, so several instances can run behind a load balancer. SQLite stays the default. *Fixes F11.*
-5. **Offline-tolerant PWA.** Boards readable offline; queued edits sync when back online.
-6. **Admin audit log** of security-relevant events (logins, role changes, deletions).
+Shipped in v1.0.0, together with a security review, a performance and Lighthouse pass, and the leftovers from earlier phases.
+
+1. **REST API with personal access tokens** and outgoing **webhooks**; OpenAPI spec. Done: `/api/v1` with read or read-and-write tokens, signed webhooks with SSRF protection, `docs/openapi.json` and `docs/API.md`.
+2. **Import and export.** Done: Trello, Kanbun JSON and CSV import, board JSON and CSV export, full admin export and one-click backup (SQLite).
+3. **Single sign-on.** Done: OIDC alongside passwords, TOTP 2FA with recovery codes. Linking by email is opt-in (`OIDC_MATCH_EMAIL`).
+4. **Scale-out option.** Done: PostgreSQL from a generated schema, Redis for live updates, presence, rate limits and job locks, a SQLite to PostgreSQL copy script, and a CI job on two instances. *Fixes F11.*
+5. **Offline-tolerant PWA.** Done: boards readable offline, queued board edits sync on reconnect.
+6. **Admin audit log.** Done, with filters, CSV download and retention.
+
+Still open after v1.0: card details are not stored for offline reading; webhook deliveries waiting in the queue are lost on restart; attachments on several instances need a shared folder (no S3); the nodemailer advisory waits for a next-auth release that supports nodemailer 10.
 
 ## Quality bar for every release
 
