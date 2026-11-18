@@ -136,11 +136,13 @@ export default async function CardDetail({
             &larr; {board.name}, {card.column.name}
           </Link>
         )}
-        <CardWatchToggle cardId={card.id} userId={me.id} />
-        <ActionForm action={deleteCardAction} undo success={t("cardDeleted", locale)} redirectTo={`/tasks/${boardId}`}>
-          <input type="hidden" name="cardId" value={card.id} />
-          <button className={buttonClass("ghost", "sm", "text-danger hover:text-danger")}>{t("cardDelete", locale)}</button>
-        </ActionForm>
+        <div className="flex items-center gap-1 ml-auto">
+          <CardWatchToggle cardId={card.id} userId={me.id} />
+          <ActionForm action={deleteCardAction} undo success={t("cardDeleted", locale)} redirectTo={`/tasks/${boardId}`}>
+            <input type="hidden" name="cardId" value={card.id} />
+            <button className={buttonClass("ghost", "sm", "text-danger hover:text-danger")}>{t("cardDelete", locale)}</button>
+          </ActionForm>
+        </div>
       </div>
 
       <CardTitleEditor cardId={card.id} initialTitle={card.title} locale={locale} />
