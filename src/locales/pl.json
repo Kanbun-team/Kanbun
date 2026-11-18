@@ -555,5 +555,22 @@
   "myTasksEmptyTitle": "Nic nie jest do ciebie przypisane",
   "myTasksEmptyAction": "Przejdź do tablic",
   "trashEmptyTitle": "Kosz jest pusty",
-  "trashEmptyAction": "Wróć do tablic"
+  "trashEmptyAction": "Wróć do tablic",
+  "offlineBanner": "Offline: dane zapisane {time}",
+  "offlineBannerNoTime": "Offline: wyświetlane są ostatnio zapisane dane",
+  "offlinePendingOne": "1 zmiana czeka na synchronizację",
+  "offlinePendingMany": "Zmiany czekające na synchronizację: {count}",
+  "offlineSyncing": "Synchronizowanie zmian ({count})",
+  "offlineUnavailable": "Jesteś offline. Nie można tego zapisać, dopóki nie wrócisz online.",
+  "offlineCardUnavailable": "Szczegóły karty nie są dostępne offline.",
+  "offlineCommentHint": "Jesteś offline. Komentarz zostanie tutaj, dopóki nie będzie można go opublikować.",
+  "syncDone": "Wszystkie zmiany offline zostały zsynchronizowane.",
+  "syncFailed": "Nie udało się zsynchronizować zmian ({count}), zostały odrzucone: {list}",
+  "pwaUpdateAvailable": "Dostępna jest nowa wersja Kanbun.",
+  "pwaReload": "Odśwież",
+  "offlinePageTitle": "Jesteś offline",
+  "offlinePageBody": "Ta strona nie została zapisana do użytku offline. Tablice otwierane wcześniej są nadal dostępne.",
+  "logoutPendingTitle": "Wylogować się z niezsynchronizowanymi zmianami?",
+  "logoutPendingBody": "Zmiany wprowadzone offline ({count}) nie dotarły jeszcze na serwer. Wylogowanie je odrzuci.",
+  "networkError": "Nie można połączyć się z serwerem. Nic nie zostało zapisane."
 }

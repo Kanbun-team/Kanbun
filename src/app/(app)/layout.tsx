@@ -7,6 +7,8 @@ import { getLocale } from "@/lib/get-locale";
 import UiProvider from "@/components/ui/UiProvider";
 import CommandPalette from "@/components/CommandPalette";
 import { needsSetup } from "@/server/setup";
+import PwaClient from "@/components/pwa/PwaClient";
+import { APP_VERSION, APP_BUILD_SHA } from "@/lib/version";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const result = await safeAuth();
@@ -25,6 +27,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Footer locale={locale} />
       <SessionPing />
       <CommandPalette />
+      <PwaClient
+        userId={result.session.user.id}
+        version={APP_BUILD_SHA ? `${APP_VERSION}-${APP_BUILD_SHA.slice(0, 7)}` : APP_VERSION}
+        locale={locale}
+      />
     </div>
     </UiProvider>
   );

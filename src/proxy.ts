@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // /setup is the first-run wizard; it checks for itself whether it may run.
-const PUBLIC_PATHS = ["/login", "/setup", "/api/auth"];
+// /offline is the service worker's fallback page (no user data).
+const PUBLIC_PATHS = ["/login", "/setup", "/api/auth", "/offline"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -22,9 +23,10 @@ export function proxy(req: NextRequest) {
 }
 
 // api/attachments is left out so uploads are not buffered (and capped at
-// 10 MB) by the proxy; those routes check the session themselves.
+// 10 MB) by the proxy; those routes check the session themselves. sw.js is
+// the service worker script, which the browser re-checks even when signed out.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|api/auth|api/attachments).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons|api/auth|api/attachments).*)",
   ],
 };

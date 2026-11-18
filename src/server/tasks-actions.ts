@@ -517,7 +517,7 @@ export async function addCardAction(formData: FormData) {
     await notifyNewCards(col.boardId, created, { id: user.id, name: user.displayName ?? user.username });
     revalidatePath(`/tasks/${col.boardId}`);
     publishBoard(col.boardId);
-    return { count: titles.length };
+    return { count: titles.length, ids: created.map((c) => c.id) };
   });
 }
 
@@ -732,6 +732,15 @@ const assigneeSchema = z.object({
   userId: z.string().min(1),
 });
 
+/**
+ * Optional "on" field of the toggle actions: "1" or "0" sets that state
+ * (replaying a queued offline edit must not flip it back), absent toggles.
+ */
+function desiredState(formData: FormData): boolean | undefined {
+  const on = formData.get("on");
+  return on === "1" ? true : on === "0" ? false : undefined;
+}
+
 export async function toggleAssigneeAction(formData: FormData) {
   return safeAction(async () => {
     const user = await requireUser();
@@ -748,6 +757,8 @@ export async function toggleAssigneeAction(formData: FormData) {
     const existing = await prisma.taskCardAssignee.findUnique({
       where: { cardId_userId: { cardId: data.cardId, userId: data.userId } },
     });
+    const want = desiredState(formData);
+    if (want !== undefined && want === !!existing) return;
     const target = await prisma.user.findUnique({
       where: { id: data.userId },
       select: { username: true, displayName: true },
@@ -968,6 +979,8 @@ export async function toggleCardTagAction(formData: FormData) {
     const existing = await prisma.taskCardTag.findUnique({
       where: { cardId_tagId: { cardId, tagId } },
     });
+    const want = desiredState(formData);
+    if (want !== undefined && want === !!existing) return;
     await prisma.$transaction(async (tx) => {
       if (existing) {
         await tx.taskCardTag.delete({ where: { cardId_tagId: { cardId, tagId } } });

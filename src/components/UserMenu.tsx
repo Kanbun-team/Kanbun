@@ -5,6 +5,8 @@ import Link from "next/link";
 import Avatar from "./Avatar";
 import { logoutAction } from "@/server/auth-actions";
 import { t, type Locale } from "@/lib/i18n";
+import { clearOfflineData, getOfflineState } from "@/lib/offline-store";
+import { useUi } from "@/components/ui/UiProvider";
 
 interface Props {
   user: {
@@ -18,6 +20,7 @@ interface Props {
 
 export default function UserMenu({ user, locale }: Props) {
   const [open, setOpen] = useState(false);
+  const ui = useUi();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -84,7 +87,26 @@ export default function UserMenu({ user, locale }: Props) {
               {t("navAdmin", locale)}
             </Link>
           )}
-          <form action={logoutAction}>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const pending = getOfflineState().entries.length;
+              if (
+                pending > 0 &&
+                !(await ui.confirm({
+                  title: t("logoutPendingTitle", locale),
+                  body: t("logoutPendingBody", locale).replace("{count}", String(pending)),
+                  confirmLabel: t("navLogout", locale),
+                  danger: true,
+                }))
+              ) {
+                return;
+              }
+              // Offline copies of boards must not outlive the session.
+              await clearOfflineData();
+              await logoutAction();
+            }}
+          >
             <button
               type="submit"
               className="block w-full text-left px-4 py-2 text-sm hover:bg-ink/5 border-t border-line"

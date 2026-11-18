@@ -556,5 +556,22 @@
   "myTasksEmptyTitle": "Ihnen ist nichts zugewiesen",
   "myTasksEmptyAction": "Zu den Boards",
   "trashEmptyTitle": "Der Papierkorb ist leer",
-  "trashEmptyAction": "Zurück zu den Boards"
+  "trashEmptyAction": "Zurück zu den Boards",
+  "offlineBanner": "Offline: Datenstand {time}",
+  "offlineBannerNoTime": "Offline: Es werden die zuletzt gespeicherten Daten angezeigt",
+  "offlinePendingOne": "1 Änderung wartet auf Synchronisierung",
+  "offlinePendingMany": "{count} Änderungen warten auf Synchronisierung",
+  "offlineSyncing": "Änderungen werden synchronisiert ({count})",
+  "offlineUnavailable": "Du bist offline. Das kann erst gespeichert werden, wenn du wieder online bist.",
+  "offlineCardUnavailable": "Kartendetails sind offline nicht verfügbar.",
+  "offlineCommentHint": "Du bist offline. Dein Kommentar bleibt hier, bis du ihn senden kannst.",
+  "syncDone": "Alle Offline-Änderungen wurden synchronisiert.",
+  "syncFailed": "{count} Änderungen konnten nicht synchronisiert werden und wurden verworfen: {list}",
+  "pwaUpdateAvailable": "Eine neue Version von Kanbun ist verfügbar.",
+  "pwaReload": "Neu laden",
+  "offlinePageTitle": "Du bist offline",
+  "offlinePageBody": "Diese Seite wurde nicht für die Offline-Nutzung gespeichert. Zuvor geöffnete Boards sind weiterhin verfügbar.",
+  "logoutPendingTitle": "Mit nicht synchronisierten Änderungen abmelden?",
+  "logoutPendingBody": "{count} offline vorgenommene Änderungen haben den Server noch nicht erreicht. Beim Abmelden werden sie verworfen.",
+  "networkError": "Der Server ist nicht erreichbar. Es wurde nichts gespeichert."
 }

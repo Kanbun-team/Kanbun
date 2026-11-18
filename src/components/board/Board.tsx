@@ -31,17 +31,15 @@ import { animateChanges, snapshotCards, type CardSnapshot } from "./live-changes
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  addCardAction,
   addColumnAction,
   deleteCardAction,
   deleteColumnAction,
-  moveCardAction,
   moveColumnAction,
   renameColumnAction,
-  toggleAssigneeAction,
-  toggleCardTagAction,
-  updateCardAction,
 } from "@/server/tasks-actions";
+import { TEMP_PREFIX, newId, splitTitles, type CardFields } from "@/lib/outbox";
+import { useOfflineBoard } from "./useOfflineBoard";
+import OfflineBanner from "./OfflineBanner";
 import { createCardFromTemplateAction, saveCardAsTemplateAction } from "@/server/template-actions";
 import { useUi } from "@/components/ui/UiProvider";
 import { useUndo } from "@/components/ui/useUndo";
@@ -79,6 +77,8 @@ export interface BoardProps {
   boardTags: TagOption[];
   savedFilters: SavedFilterDTO[];
   templates?: TemplateOption[];
+  /** When the server rendered this data (ISO), to compare with the offline snapshot. */
+  renderedAt?: string;
 }
 
 const VIEW_ICONS = { board: Columns3, list: List, calendar: CalendarDays } as const;
@@ -180,8 +180,10 @@ export default function Board({
   boardTags,
   savedFilters,
   templates = [],
+  renderedAt,
 }: BoardProps) {
-  const [columns, setColumns] = useSyncedState(serverColumns);
+  const offline = useOfflineBoard({ boardId, userId: currentUserId, serverColumns, renderedAt, locale });
+  const [columns, setColumns] = useSyncedState(offline.columns);
   const searchParams = useSearchParams();
   const view = parseView(searchParams.get("view"));
   // `?deadline=none` comes from the calendar's "Show in list" link.
@@ -307,8 +309,9 @@ export default function Board({
   }
 
   function setDeadline(card: CardDTO, value: string | null) {
-    patchCard(card.id, { deadline: value ? `${value}T00:00:00.000Z` : null });
-    runCardAction(updateCardAction, card.id, { deadline: value ?? "" });
+    const deadline = value ? `${value}T00:00:00.000Z` : null;
+    patchCard(card.id, { deadline });
+    updateCard(card, { deadline });
   }
 
   // ---------- Optimistic card edits ----------
@@ -319,38 +322,37 @@ export default function Board({
     );
   }
 
-  async function runCardAction(action: (fd: FormData) => ReturnType<typeof updateCardAction>, cardId: string, fields: Record<string, string>) {
-    const fd = new FormData();
-    fd.set("cardId", cardId);
-    for (const [k, v] of Object.entries(fields)) fd.set(k, v);
-    ui.report(await action(fd));
-    // On failure the refresh rolls the optimistic change back.
-    router.refresh();
+  // Sent now, or queued while offline (useOfflineBoard).
+  function updateCard(card: CardDTO, fields: CardFields) {
+    offline.run({ kind: "update", cardId: card.id, fields }, fields.title ?? card.title);
   }
 
   const cardHandlers: CardMenuHandlers = {
-    open: (card) => router.push(`/tasks/${boardId}/cards/${card.id}`, { scroll: false }),
+    open: (card) => {
+      if (offline.canOpenCard()) router.push(`/tasks/${boardId}/cards/${card.id}`, { scroll: false });
+    },
     moveTo: (card) => setMovingCard(card),
     toggleAssignee: (card, user) => {
       const has = card.assignees.some((a) => a.id === user.id);
       patchCard(card.id, { assignees: has ? card.assignees.filter((a) => a.id !== user.id) : [...card.assignees, user] });
-      runCardAction(toggleAssigneeAction, card.id, { userId: user.id });
+      offline.run({ kind: "assignee", cardId: card.id, user, on: !has }, card.title);
     },
     toggleTag: (card, tag) => {
       const has = card.tags.some((tg) => tg.id === tag.id);
       patchCard(card.id, { tags: has ? card.tags.filter((tg) => tg.id !== tag.id) : [...card.tags, tag] });
-      runCardAction(toggleCardTagAction, card.id, { tagId: tag.id });
+      offline.run({ kind: "tag", cardId: card.id, tag, on: !has }, card.title);
     },
     setPriority: (card, priority) => {
       patchCard(card.id, { priority });
-      runCardAction(updateCardAction, card.id, { priority });
+      updateCard(card, { priority });
     },
     setCover: (card, color) => {
       patchCard(card.id, { coverColor: color });
-      runCardAction(updateCardAction, card.id, { coverColor: color ?? "" });
+      updateCard(card, { coverColor: color });
     },
     setDeadline: (card) => openDeadlinePicker(card),
     saveAsTemplate: async (card) => {
+      if (!offline.guard()) return;
       const fd = new FormData();
       fd.set("cardId", card.id);
       const result = ui.report(await saveCardAsTemplateAction(fd));
@@ -358,6 +360,7 @@ export default function Board({
       router.refresh();
     },
     remove: async (card) => {
+      if (!offline.guard()) return;
       setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== card.id) })));
       const fd = new FormData();
       fd.set("cardId", card.id);
@@ -369,15 +372,15 @@ export default function Board({
 
   async function moveCard(card: CardDTO, toColumnId: string, position: number, announce = true) {
     setColumns((prev) => moveCardLocally(prev, card.id, toColumnId, position));
-    const result = ui.report(await moveCardAction({ cardId: card.id, toColumnId, position }));
+    const result = await offline.run({ kind: "move", cardId: card.id, toColumnId, position }, card.title);
     if (result.ok && announce) {
       const column = columns.find((c) => c.id === toColumnId);
       if (column) ui.toast({ message: tr("cardMovedToast", { column: column.name }) });
     }
-    router.refresh();
   }
 
   async function moveColumn(columnId: string, toIndex: number) {
+    if (!offline.guard()) return;
     setColumns((prev) => {
       const from = prev.findIndex((c) => c.id === columnId);
       return from < 0 ? prev : arrayMove(prev, from, toIndex);
@@ -388,6 +391,7 @@ export default function Board({
 
   const columnHandlers: ColumnHandlers = {
     rename: async (column, name, wipLimit) => {
+      if (!offline.guard()) return false;
       const fd = new FormData();
       fd.set("columnId", column.id);
       fd.set("name", name);
@@ -405,6 +409,7 @@ export default function Board({
     },
     toggleCollapsed: (column) => toggleCollapsed(column.id),
     remove: async (column) => {
+      if (!offline.guard()) return;
       setColumns((prev) => prev.filter((c) => c.id !== column.id));
       const fd = new FormData();
       fd.set("columnId", column.id);
@@ -413,15 +418,15 @@ export default function Board({
       router.refresh();
     },
     addCards: async (column, text) => {
-      const fd = new FormData();
-      fd.set("columnId", column.id);
-      fd.set("title", text);
-      const result = ui.report(await addCardAction(fd));
-      if (result.ok && result.data.count > 1) ui.toast({ message: tr("cardsAdded", { count: result.data.count }) });
-      router.refresh();
+      const titles = splitTitles(text);
+      if (titles.length === 0) return false;
+      const tempIds = titles.map(() => newId(TEMP_PREFIX));
+      const result = await offline.run({ kind: "addCards", columnId: column.id, titles, tempIds }, titles.join(", "));
+      if (result.ok && titles.length > 1) ui.toast({ message: tr("cardsAdded", { count: titles.length }) });
       return result.ok;
     },
     addFromTemplate: async (column, template) => {
+      if (!offline.guard()) return;
       const result = ui.report(await createCardFromTemplateAction({ templateId: template.id, columnId: column.id }));
       if (result.ok) ui.toast({ message: tr("cardFromTemplateToast", { name: template.name, column: column.name }) });
       router.refresh();
@@ -429,7 +434,7 @@ export default function Board({
     setAdding: setAddingColumnId,
     renameCard: (card, title) => {
       patchCard(card.id, { title });
-      runCardAction(updateCardAction, card.id, { title });
+      updateCard(card, { title });
     },
     setEditing: setEditingCardId,
   };
@@ -531,10 +536,7 @@ export default function Board({
     }
     finishDrag();
     if (column.id !== start.columnId || index !== start.index) {
-      moveCardAction({ cardId: id, toColumnId: column.id, position: index }).then((result) => {
-        ui.report(result);
-        router.refresh();
-      });
+      offline.run({ kind: "move", cardId: id, toColumnId: column.id, position: index }, titleOf(id));
     }
   }
 
@@ -691,6 +693,13 @@ export default function Board({
 
   return (
     <div className={cn("space-y-3", showAddBar && "pb-16 sm:pb-0")}>
+      <OfflineBanner
+        showOffline={offline.showOffline}
+        dataTime={offline.dataTime}
+        pending={offline.pending}
+        syncing={offline.syncing}
+        locale={locale}
+      />
       <div className="flex items-center gap-2 flex-wrap">
         <ToggleButtonGroup
           aria-label={t("viewSwitcher", locale)}
@@ -821,7 +830,7 @@ export default function Board({
                   />
                 ))}
               </SortableContext>
-              {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
+              {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} guard={offline.guard} />}
             </div>
             <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
               {activeCard ? (
@@ -883,7 +892,7 @@ export default function Board({
   );
 }
 
-function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale }) {
+function AddColumnForm({ boardId, locale, guard }: { boardId: string; locale: Locale; guard: () => boolean }) {
   const [open, setOpen] = useState(false);
   const { report } = useUi();
   const router = useRouter();
@@ -903,7 +912,7 @@ function AddColumnForm({ boardId, locale }: { boardId: string; locale: Locale })
     <form
       className="shrink-0 w-[85vw] sm:w-72 bg-surface border border-line rounded-panel p-3 space-y-2"
       action={async (fd) => {
-        if (!report(await addColumnAction(fd)).ok) return;
+        if (!guard() || !report(await addColumnAction(fd)).ok) return;
         setOpen(false);
         router.refresh();
       }}
