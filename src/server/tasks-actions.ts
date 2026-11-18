@@ -14,7 +14,7 @@ import { ActionError } from "@/lib/action-result";
 import { logActivity, type ActivityEntry } from "@/server/activity";
 import { notifyComment, notifyMoved, notifyNewCards, watchCard } from "@/server/watchers";
 import { getLocale } from "@/lib/get-locale";
-import { changedFields, emitBoardEvent } from "@/server/webhooks";
+import { changedFields, emitBoardEvent, emitColumnCardsDeleted } from "@/server/webhooks";
 import { BOARD_TEMPLATE_IDS, boardTemplateContent } from "@/lib/board-templates";
 import { audit } from "@/server/audit";
 
@@ -503,7 +503,7 @@ export async function deleteColumnAction(formData: FormData) {
     const columnId = String(formData.get("columnId") ?? "");
     const col = await prisma.boardColumn.findUnique({
       where: { id: columnId },
-      select: { boardId: true },
+      select: { boardId: true, name: true, cards: { select: { id: true } } },
     });
     if (!col) throw new ActionError("notFound");
     const access = await loadBoardAccess(col.boardId);
@@ -511,6 +511,7 @@ export async function deleteColumnAction(formData: FormData) {
     const trashId = await trashColumn(columnId, access.userId);
     revalidatePath(`/tasks/${col.boardId}`);
     publishBoard(col.boardId);
+    emitColumnCardsDeleted(col.boardId, { id: columnId, name: col.name }, col.cards.map((c) => c.id), trashId, access.userId);
     return { trashId };
   });
 }
@@ -772,15 +773,21 @@ export async function moveCardAction(input: {
         boardId: card.column.boardId,
         actorId: user.id,
         actorName: user.displayName ?? user.username,
+        toColumnName: toCol.name,
       });
     }
     revalidatePath(`/tasks/${card.column.boardId}`);
     publishBoard(card.column.boardId);
-    emitBoardEvent(card.column.boardId, "card.moved", {
-      cardId: data.cardId,
-      actorId: user.id,
-      extra: { from: { columnId: card.columnId, columnName: card.column.name }, to: { columnId: data.toColumnId, columnName: toCol.name } },
-    });
+    // card.moved means another column; a reorder within one is an update.
+    if (card.columnId !== data.toColumnId) {
+      emitBoardEvent(card.column.boardId, "card.moved", {
+        cardId: data.cardId,
+        actorId: user.id,
+        extra: { from: { columnId: card.columnId, columnName: card.column.name }, to: { columnId: data.toColumnId, columnName: toCol.name } },
+      });
+    } else {
+      emitBoardEvent(card.column.boardId, "card.updated", { cardId: data.cardId, actorId: user.id, extra: { changes: ["position"] } });
+    }
   });
 }
 

@@ -9,10 +9,11 @@
 // Email is only sent when SMTP is configured and the user has an address;
 // otherwise "email" behaves like "inapp".
 
-import { t, type DictKey, type Locale } from "@/lib/i18n";
+import { t, tn, type DictKey, type Locale } from "@/lib/i18n";
 
 export const NOTIFICATION_TYPES = [
   "assigned",
+  "subtaskAssigned",
   "mention",
   "comment",
   "moved",
@@ -68,7 +69,7 @@ export function serializePrefs(prefs: Partial<Record<string, unknown>>): string 
 // When one event reaches a user through several paths (mentioned in a comment
 // on a card they watch, assigned and watching), they get the most specific
 // type. Earlier in this list wins.
-const PRIORITY: NotificationType[] = ["mention", "assigned", "blocked", "dueSoon", "moved", "comment", "newCard"];
+const PRIORITY: NotificationType[] = ["mention", "assigned", "subtaskAssigned", "blocked", "dueSoon", "moved", "comment", "newCard"];
 
 export interface Candidate {
   userId: string;
@@ -127,6 +128,8 @@ export function messageKey(type: string): DictKey {
   switch (type) {
     case "assigned":
       return "notifAssigned";
+    case "subtaskAssigned":
+      return "notifSubtaskAssignedGeneric";
     case "mention":
       return "notifMention";
     case "blocked":
@@ -144,19 +147,56 @@ export function messageKey(type: string): DictKey {
   }
 }
 
+/** Extra message text stored with a notification (Notification.data, JSON). */
+export type NotificationData = Partial<Record<"column" | "count" | "board" | "item", string>>;
+
+const DATA_KEYS = ["column", "count", "board", "item"] as const;
+
+export function parseNotificationData(raw: string | null | undefined): NotificationData {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: NotificationData = {};
+    for (const key of DATA_KEYS) {
+      const v = (parsed as Record<string, unknown>)[key];
+      if (typeof v === "string" && v) out[key] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+const quote = (s: string) => `"${s}"`;
+
 /** The bell and email text of a notification, in the reader's language. */
 export function notificationText(
-  n: { type: string; actorName?: string | null; cardTitle: string },
+  n: { type: string; actorName?: string | null; cardTitle: string; data?: NotificationData | null },
   locale: Locale
 ): string {
   const actor = n.actorName ?? t("notifSomeone", locale);
-  return t(messageKey(n.type), locale).replace("{actor}", actor).replace("{card}", `"${n.cardTitle}"`);
+  const data = n.data ?? {};
+  const count = Number(data.count);
+  let text: string;
+  if (n.type === "newCard" && count > 1) {
+    // Several cards added at once (a pasted list): one notification for all.
+    text = tn("notifNewCards", count, locale).replace("{board}", quote(data.board ?? n.cardTitle));
+  } else if (n.type === "moved" && data.column) {
+    text = t("notifMovedTo", locale).replace("{column}", quote(data.column));
+  } else if (n.type === "subtaskAssigned" && data.item) {
+    text = t("notifSubtaskAssigned", locale).replace("{item}", quote(data.item));
+  } else {
+    text = t(messageKey(n.type), locale);
+  }
+  return text.replace("{actor}", actor).replace("{card}", quote(n.cardTitle));
 }
 
 /** i18n key of the type's label in the settings table. */
 export function typeLabelKey(type: NotificationType): DictKey {
   const keys: Record<NotificationType, DictKey> = {
     assigned: "notifTypeAssigned",
+    subtaskAssigned: "notifTypeSubtaskAssigned",
     mention: "notifTypeMention",
     comment: "notifTypeComment",
     moved: "notifTypeMoved",

@@ -25,4 +25,12 @@ Just edit the file and open a PR. No code changes needed. Tip: run `npm run dev`
 - Keep punctuation consistent with English (period at the end of sentences, no period for short labels).
 - Avoid em-dashes; use commas, periods, or colons.
 - Match capitalization of the English source unless the target language has different conventions.
-- Placeholders like `{name}` are not used yet. If you need string interpolation, open an issue first so we agree on the format.
+- Keep placeholders like `{name}` and `{count}` exactly as in English; the app fills them in.
+
+## Counts and plural forms
+
+Texts with a number come in plural forms, picked with `Intl.PluralRules` by `tn()` in `src/lib/i18n.ts`: `en.json` has `<key>_one` and `<key>_other`, and each language adds the forms it needs (Polish: `_one`, `_few`, `_many` and `_other`; Italian and German: `_one` and `_other`). `src/lib/__tests__/i18n.test.ts` checks that every language has all the forms it uses.
+
+## Unused keys
+
+`src/lib/__tests__/i18n-usage.test.ts` fails when a key in `en.json` is not referenced anywhere in `src`. Keys built at runtime (`error_<code>`, `audit_<action>`, plural forms) are covered by a documented allowlist in that test.

@@ -10,8 +10,13 @@ import CardFace from "@/components/board/CardFace";
 import type { CardDTO } from "@/components/board/types";
 import EmptyState from "@/components/ui/EmptyState";
 import { buttonClass } from "@/components/ui/button";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("myTasksTitle");
+}
 
 // Card links here are plain <a>, not <Link>: a soft navigation from /tasks/me
 // is caught by the board's card-panel interception (/tasks/[id] matches "me")

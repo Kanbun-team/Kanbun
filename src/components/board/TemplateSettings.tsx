@@ -1,7 +1,7 @@
 import ActionForm from "@/components/ui/ActionForm";
 import { buttonClass } from "@/components/ui/button";
 import TagChip from "@/components/ui/TagChip";
-import { formatDateTime, t, type Locale } from "@/lib/i18n";
+import { formatDateTime, t, tn, type Locale } from "@/lib/i18n";
 import { PRIORITIES, priorityLabel } from "@/lib/labels";
 import { parseStringArray } from "@/lib/card-templates";
 import { describeRule, toRule } from "@/lib/recurrence";
@@ -146,7 +146,7 @@ export default function TemplateSettings({
                       <span className="font-medium truncate">{tp.name}</span>
                       <span className="text-sm text-ink-muted truncate flex-1">
                         {tp.title}
-                        {items > 0 && `, ${t("templateChecklistCount", locale).replace("{count}", String(items))}`}
+                        {items > 0 && `, ${tn("templateChecklistCount", items, locale)}`}
                       </span>
                       <span className="text-sm text-accent group-open:hidden">{t("edit", locale)}</span>
                     </summary>

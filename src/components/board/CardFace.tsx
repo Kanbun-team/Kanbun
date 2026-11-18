@@ -4,7 +4,7 @@ import { Clock, Lock, ListChecks, MessageSquare, Paperclip } from "lucide-react"
 import Avatar from "@/components/Avatar";
 import TagChip from "@/components/ui/TagChip";
 import { cn } from "@/lib/utils";
-import { formatDate, t, type Locale } from "@/lib/i18n";
+import { formatDate, t, tn, type Locale } from "@/lib/i18n";
 import { priorityLabel } from "@/lib/labels";
 import { relativeDeadline } from "@/lib/deadline";
 import type { CardDTO } from "./types";
@@ -56,9 +56,7 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
                   {card.subtasksDone}/{card.subtasksTotal}
                 </span>
                 <span className="sr-only">
-                  {t("cardSubtasksA11y", locale)
-                    .replace("{done}", String(card.subtasksDone))
-                    .replace("{total}", String(card.subtasksTotal))}
+                  {tn("cardSubtasksA11y", card.subtasksTotal, locale).replace("{done}", String(card.subtasksDone))}
                 </span>
               </span>
             )}
@@ -66,14 +64,14 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
               <span className="inline-flex items-center gap-1">
                 <MessageSquare size={14} aria-hidden />
                 <span aria-hidden>{card.commentsCount}</span>
-                <span className="sr-only">{t("cardCommentsA11y", locale).replace("{count}", String(card.commentsCount))}</span>
+                <span className="sr-only">{tn("cardCommentsA11y", card.commentsCount, locale)}</span>
               </span>
             )}
             {card.attachmentsCount > 0 && (
               <span className="inline-flex items-center gap-1">
                 <Paperclip size={14} aria-hidden />
                 <span aria-hidden>{card.attachmentsCount}</span>
-                <span className="sr-only">{t("cardAttachmentsA11y", locale).replace("{count}", String(card.attachmentsCount))}</span>
+                <span className="sr-only">{tn("cardAttachmentsA11y", card.attachmentsCount, locale)}</span>
               </span>
             )}
             {card.blockedByCount > 0 && (

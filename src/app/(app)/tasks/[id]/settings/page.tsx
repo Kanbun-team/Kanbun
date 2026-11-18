@@ -26,8 +26,14 @@ import {
   updateBoardAction,
   updateBoardMemberAction,
 } from "@/server/tasks-actions";
+import { boardPageTitle } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return boardPageTitle(id, "boardSettings");
+}
 
 export default async function BoardSettingsPage({
   params,

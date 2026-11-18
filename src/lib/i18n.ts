@@ -34,6 +34,34 @@ export function t(key: DictKey, locale: Locale = DEFAULT_LOCALE): string {
   return enDict[key] ?? key;
 }
 
+/**
+ * Base names of the counted texts: en.json has `<base>_one` and
+ * `<base>_other`; other locales add the forms their language needs (Polish
+ * `_few` and `_many`), chosen with Intl.PluralRules.
+ */
+export type PluralKey = { [K in DictKey]: K extends `${infer B}_other` ? B : never }[DictKey];
+
+const pluralRules = new Map<Locale, Intl.PluralRules>();
+
+function pluralCategory(count: number, locale: Locale): string {
+  let rules = pluralRules.get(locale);
+  if (!rules) pluralRules.set(locale, (rules = new Intl.PluralRules(intlLocale(locale))));
+  return rules.select(count);
+}
+
+/** A counted text in the right plural form, with {count} filled in. */
+export function tn(base: PluralKey, count: number, locale: Locale = DEFAULT_LOCALE): string {
+  const dict = DICTS[locale] as Record<string, string | undefined>;
+  const en = enDict as Record<string, string | undefined>;
+  const text =
+    dict[`${base}_${pluralCategory(count, locale)}`] ||
+    dict[`${base}_other`] ||
+    en[`${base}_${pluralCategory(count, "en")}`] ||
+    en[`${base}_other`] ||
+    base;
+  return text.replaceAll("{count}", String(count));
+}
+
 export function isLocale(value: unknown): value is Locale {
   return value === "en" || value === "it" || value === "pl" || value === "de";
 }

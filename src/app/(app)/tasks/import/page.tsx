@@ -4,8 +4,13 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { maxImportBytes } from "@/server/transfer/http";
 import ImportBoardForm from "@/components/transfer/ImportBoardForm";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("importTitle");
+}
 
 export default async function ImportBoardPage() {
   await requirePageUser();

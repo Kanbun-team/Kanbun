@@ -5,7 +5,9 @@ import { getLocale } from "@/lib/get-locale";
 import StatusPage from "@/components/StatusPage";
 import { buttonClass } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Kanbun" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: t("offlinePageTitle", await getLocale()) };
+}
 
 // Served by the service worker (public/sw.js) for pages that were not stored
 // for offline use. Offline, the link falls back to a full page load, which

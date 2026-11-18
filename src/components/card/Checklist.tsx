@@ -28,7 +28,7 @@ import { MenuButton, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import { useUi } from "@/components/ui/UiProvider";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDate, t, type Locale } from "@/lib/i18n";
+import { formatDate, t, tn, type Locale } from "@/lib/i18n";
 import { relativeDeadline } from "@/lib/deadline";
 import type { ActionResult } from "@/lib/action-result";
 import {
@@ -43,6 +43,7 @@ import {
   setSubtaskAssigneeAction,
   setSubtaskDueAction,
 } from "@/server/checklist-actions";
+import { markLocalCards } from "@/components/board/live-changes";
 
 // The card checklist (Checklists 2.0): items with their own assignee and due
 // date, reordered by dragging the handle (pointer or Space plus arrow keys)
@@ -153,6 +154,7 @@ export default function Checklist({
       const result = ui.report(await convertSubtaskToCardAction(item.id));
       if (result.ok) {
         const { boardId, cardId: newId } = result.data;
+        markLocalCards([newId]);
         ui.toast({
           message: t("subtaskConverted", locale).replace("{title}", item.title),
           action: { label: t("subtaskOpenCard", locale), onAction: () => router.push(`/tasks/${boardId}/cards/${newId}`) },
@@ -210,7 +212,7 @@ export default function Checklist({
               aria-valuemin={0}
               aria-valuemax={total}
               aria-valuenow={done}
-              aria-valuetext={t("cardSubtasksA11y", locale).replace("{done}", String(done)).replace("{total}", String(total))}
+              aria-valuetext={tn("cardSubtasksA11y", total, locale).replace("{done}", String(done))}
               className="flex-1 h-1.5 rounded-full bg-ink/10 overflow-hidden"
             >
               <div
@@ -400,7 +402,8 @@ function ChecklistRow({
         ref={dueRef}
         type="button"
         onClick={() => setDueOpen(true)}
-        aria-label={due ? `${dueTitle}: ${formatDate(new Date(item.dueDate!), locale)}` : dueTitle}
+        // The visible text ("Tomorrow") is part of the name, as WCAG 2.5.3 asks.
+        aria-label={due ? `${dueTitle}: ${due.label}, ${formatDate(new Date(item.dueDate!), locale)}` : dueTitle}
         title={due ? formatDate(new Date(item.dueDate!), locale) : dueTitle}
         className={cn(
           control,
@@ -443,7 +446,8 @@ function ChecklistRow({
         ]}
         trigger={
           item.assignee ? (
-            <Avatar src={item.assignee.avatarUrl} name={assigneeName} size={22} />
+            // The trigger's label names the person; the initials are decoration.
+            <Avatar src={item.assignee.avatarUrl} name={assigneeName} size={22} decorative />
           ) : (
             <UserPlus size={14} aria-hidden />
           )

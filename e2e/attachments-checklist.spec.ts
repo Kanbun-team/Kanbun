@@ -86,14 +86,14 @@ test("upload an image and a text file, download them and delete one", async ({ p
   await expect(toast(page)).toContainText("Attachment deleted");
   await expect(fileLink).toHaveCount(0);
   expect((await page.request.get(fileUrl!)).status()).toBe(404);
-  await expect(card(page, "Backlog", title)).toContainText("1 attachments");
+  await expect(card(page, "Backlog", title)).toContainText(/1 attachment(?!s)/);
 
   // Trashing the card keeps the file; undo brings the attachment back.
   await panel.getByRole("button", { name: "Delete card" }).click();
   await expect(toast(page)).toContainText("Card deleted");
   expect((await page.request.get(imageUrl!)).status()).toBe(404);
   await toast(page).getByRole("button", { name: "Undo" }).click();
-  await expect(card(page, "Backlog", title)).toContainText("1 attachments");
+  await expect(card(page, "Backlog", title)).toContainText(/1 attachment(?!s)/);
   const restored = await page.request.get(imageUrl!);
   expect(restored.status()).toBe(200);
   expect(Buffer.compare(await restored.body(), PNG)).toBe(0);
@@ -121,7 +121,7 @@ test("uploads need a session", async ({ browser }) => {
   await context.close();
 });
 
-test("checklist items get an assignee and a due date, reorder by keyboard and become cards", async ({ page }) => {
+test("checklist items get an assignee and a due date, reorder by keyboard and become cards", async ({ page, browser }) => {
   const stamp = Date.now();
   const title = `Checklist ${stamp}`;
   const panel = await newCard(page, title);
@@ -136,6 +136,14 @@ test("checklist items get an assignee and a due date, reorder by keyboard and be
   await page.getByRole("searchbox", { name: "Search members" }).pressSequentially("jul");
   await page.keyboard.press("Enter");
   await expect(panel.getByRole("button", { name: `Assignee for ${b}: Julia Kowalczyk` })).toBeVisible();
+  // Julia hears about it, naming the item.
+  const julia = await browser.newPage();
+  await loginAs(julia, "julia");
+  await julia.getByRole("button", { name: "Notifications" }).click();
+  await expect(
+    julia.getByRole("list", { name: "Notifications" }).getByText(`Ada Admin assigned you "${b}" on "${title}"`)
+  ).toBeVisible();
+  await julia.close();
   await panel.getByRole("button", { name: `Due date for ${b}` }).click();
   await page.getByRole("dialog", { name: `Due date for ${b}` }).getByRole("button", { name: /Tomorrow/ }).click();
   await expect(panel.locator("[data-subtask-id]").filter({ hasText: b })).toContainText("Tomorrow");

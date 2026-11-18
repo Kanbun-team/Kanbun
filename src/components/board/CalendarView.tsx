@@ -136,64 +136,68 @@ export default function CalendarView({
         )}
       </div>
 
-      <table className="hidden sm:table w-full table-fixed border-collapse bg-surface border border-line rounded-panel">
-        <caption className="sr-only">{title}</caption>
-        <thead>
-          <tr>
-            {weeks[0].map((key) => (
-              <th key={key} scope="col" className="px-2 py-1.5 text-left text-sm font-medium text-ink-muted border-b border-line">
-                <span aria-hidden>{capitalize(fmt.weekdayShort.format(keyToUtcDate(key)), locale)}</span>
-                <span className="sr-only">{capitalize(fmt.weekdayLong.format(keyToUtcDate(key)), locale)}</span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week) => (
-            <tr key={week[0]}>
-              {week.map((key) => {
-                const dayCards = byDay.get(key) ?? [];
-                const open = expanded.has(key);
-                const overflow = dayCards.length > VISIBLE_PER_DAY;
-                const shown = overflow && !open ? dayCards.slice(0, VISIBLE_PER_DAY - 1) : dayCards;
-                const isToday = key === today;
-                const outside = !inMonth(key, month);
-                return (
-                  <td
-                    key={key}
-                    data-date={key}
-                    aria-current={isToday ? "date" : undefined}
-                    className={cn("align-top h-28 p-1.5 border border-line", outside && "bg-paper")}
-                  >
-                    <span
-                      className={cn(
-                        "inline-flex items-center justify-center min-w-6 h-6 px-1 mb-1 rounded-full text-sm tabular-nums",
-                        isToday ? "bg-accent text-accent-fg font-semibold" : outside ? "text-ink-muted" : "text-ink"
-                      )}
-                    >
-                      <span aria-hidden>{Number(key.slice(8))}</span>
-                      <span className="sr-only">{fullDate(key)}</span>
-                    </span>
-                    {dayCards.length > 0 && <ul className="space-y-0.5">{shown.map((card) => chip(card, key))}</ul>}
-                    {overflow && (
-                      <button
-                        type="button"
-                        aria-expanded={open}
-                        onClick={() => toggleDay(key)}
-                        className="mt-0.5 w-full text-left rounded-control px-1.5 py-0.5 text-xs font-medium text-ink-muted hover:text-ink hover:bg-ink/5"
-                      >
-                        {open
-                          ? t("calendarLess", locale)
-                          : t("calendarMore", locale).replace("{count}", String(dayCards.length - shown.length))}
-                      </button>
-                    )}
-                  </td>
-                );
-              })}
+      {/* Collapsed table borders ignore border-radius, so the rounded frame is a
+          wrapper and the table hides its own outer edge (border-hidden). */}
+      <div className="hidden sm:block rounded-panel border border-line bg-surface overflow-hidden">
+        <table className="w-full table-fixed border-collapse border-hidden">
+          <caption className="sr-only">{title}</caption>
+          <thead>
+            <tr>
+              {weeks[0].map((key) => (
+                <th key={key} scope="col" className="px-2 py-1.5 text-left text-sm font-medium text-ink-muted border-b border-line">
+                  <span aria-hidden>{capitalize(fmt.weekdayShort.format(keyToUtcDate(key)), locale)}</span>
+                  <span className="sr-only">{capitalize(fmt.weekdayLong.format(keyToUtcDate(key)), locale)}</span>
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {weeks.map((week) => (
+              <tr key={week[0]}>
+                {week.map((key) => {
+                  const dayCards = byDay.get(key) ?? [];
+                  const open = expanded.has(key);
+                  const overflow = dayCards.length > VISIBLE_PER_DAY;
+                  const shown = overflow && !open ? dayCards.slice(0, VISIBLE_PER_DAY - 1) : dayCards;
+                  const isToday = key === today;
+                  const outside = !inMonth(key, month);
+                  return (
+                    <td
+                      key={key}
+                      data-date={key}
+                      aria-current={isToday ? "date" : undefined}
+                      className={cn("align-top h-28 p-1.5 border border-line", outside && "bg-paper")}
+                    >
+                      <span
+                        className={cn(
+                          "inline-flex items-center justify-center min-w-6 h-6 px-1 mb-1 rounded-full text-sm tabular-nums",
+                          isToday ? "bg-accent text-accent-fg font-semibold" : outside ? "text-ink-muted" : "text-ink"
+                        )}
+                      >
+                        <span aria-hidden>{Number(key.slice(8))}</span>
+                        <span className="sr-only">{fullDate(key)}</span>
+                      </span>
+                      {dayCards.length > 0 && <ul className="space-y-0.5">{shown.map((card) => chip(card, key))}</ul>}
+                      {overflow && (
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() => toggleDay(key)}
+                          className="mt-0.5 w-full text-left rounded-control px-1.5 py-0.5 text-xs font-medium text-ink-muted hover:text-ink hover:bg-ink/5"
+                        >
+                          {open
+                            ? t("calendarLess", locale)
+                            : t("calendarMore", locale).replace("{count}", String(dayCards.length - shown.length))}
+                        </button>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="sm:hidden">
         {agendaDays.length === 0 ? (

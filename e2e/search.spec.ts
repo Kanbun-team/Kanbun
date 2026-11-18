@@ -13,6 +13,16 @@ async function openPalette(page: Page, key = "Control+K") {
   return input;
 }
 
+/** Moves the palette's virtual focus to `option` with the arrow keys. */
+async function highlight(page: Page, option: ReturnType<Page["getByRole"]>) {
+  const input = palette(page).getByRole("textbox");
+  const id = await option.getAttribute("id");
+  for (let i = 0; i < 10 && (await input.getAttribute("aria-activedescendant")) !== id; i++) {
+    await page.keyboard.press("ArrowDown");
+  }
+  await expect(input).toHaveAttribute("aria-activedescendant", id!);
+}
+
 async function addCard(page: Page, columnName: string, title: string) {
   const col = column(page, columnName);
   await col.getByRole("button", { name: "Add card" }).click();
@@ -144,6 +154,116 @@ test("members only find cards on their own boards", async ({ page, browser }) =>
   await input.fill("navigation");
   await expect(palette(julia).getByRole("option", { name: /Responsive navigation/ })).toBeVisible();
   await julia.close();
+});
+
+test("card actions for the open card: move, assign to me, priority", async ({ page }) => {
+  await loginAs(page, "admin");
+  await openDemoBoard(page);
+  const title = `Palette card ${Date.now()}`;
+  await addCard(page, "To do", title);
+  await page.keyboard.press("Escape");
+  await card(page, "To do", title).getByRole("link").click();
+  await page.waitForURL(/\/cards\//);
+
+  let input = await openPalette(page);
+  const section = palette(page).getByRole("group", { name: `Card: ${title}` });
+  await expect(section.getByRole("option", { name: "Move to Review" })).toBeVisible();
+  await expect(section.getByRole("option", { name: "Move to To do" })).toHaveCount(0);
+  await expect(section.getByRole("option", { name: "Open card" })).toHaveCount(0);
+  expect(await axeViolations(page)).toEqual([]);
+  await section.getByRole("option", { name: "Move to Review" }).click();
+  await expect(toast(page)).toContainText(`Moved "${title}" to Review`);
+  await expect(palette(page)).toHaveCount(0);
+
+  input = await openPalette(page);
+  await input.pressSequentially("assign to me");
+  const assign = palette(page).getByRole("option", { name: "Assign to me" });
+  await expect(assign).toBeVisible();
+  await assign.click();
+  await expect(toast(page)).toContainText(`"${title}" is assigned to you`);
+
+  input = await openPalette(page);
+  await input.pressSequentially("priority crit");
+  await palette(page).getByRole("option", { name: "Set priority: Critical" }).click();
+  await expect(toast(page)).toContainText(`Priority of "${title}" set to Critical`);
+
+  // The palette reflects the new state: already assigned, already critical.
+  await openPalette(page);
+  await expect(palette(page).getByRole("option", { name: "Remove me from assignees" })).toBeVisible();
+  await expect(palette(page).getByRole("option", { name: "Set priority: Critical" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(palette(page)).toHaveCount(0);
+  // Focus is back in the card panel, so Escape closes it.
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]')?.getAttribute("aria-label") ?? null))
+    .toBe("Open card");
+
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/tasks\/[^/]+$/);
+  const face = card(page, "Review", title);
+  await expect(face).toBeVisible();
+  await expect(face).toContainText("Critical");
+});
+
+test("right arrow on a card result shows its actions, Escape goes back", async ({ page }) => {
+  await loginAs(page, "admin");
+  await openDemoBoard(page);
+  const stamp = Date.now();
+  const title = `Arrow card ${stamp}`;
+  await addCard(page, "To do", title);
+  await page.keyboard.press("Escape");
+  await page.goto("/tasks");
+
+  const input = await openPalette(page);
+  await input.fill(`arrow card ${stamp}`);
+  await expect(palette(page).getByRole("option").first()).toContainText(title);
+  await expect(palette(page).getByText("shows the actions of the highlighted card")).toBeVisible();
+  await highlight(page, palette(page).getByRole("option", { name: new RegExp(title) }));
+  await page.keyboard.press("ArrowRight");
+  const scoped = palette(page).getByRole("textbox", { name: `Actions for ${title}` });
+  await expect(scoped).toBeFocused();
+  await expect(palette(page).getByRole("option", { name: "Open card" })).toBeVisible();
+  expect(await axeViolations(page)).toEqual([]);
+
+  // Escape returns to the search instead of closing.
+  await page.keyboard.press("Escape");
+  await expect(palette(page)).toBeVisible();
+  const search = palette(page).getByRole("textbox", { name: "Search boards, cards and comments" });
+  await expect(search).toBeFocused();
+
+  await search.fill(`arrow card ${stamp}`);
+  await highlight(page, palette(page).getByRole("option", { name: new RegExp(title) }));
+  await page.keyboard.press("ArrowRight");
+  await expect(scoped).toBeFocused();
+  await scoped.pressSequentially("done");
+  await expect(palette(page).getByRole("option")).toHaveCount(1);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(toast(page)).toContainText(`Moved "${title}" to Done`);
+
+  await openDemoBoard(page);
+  await expect(card(page, "Done", title)).toBeVisible();
+});
+
+test("new card on the current board from the palette", async ({ page }) => {
+  await loginAs(page, "admin");
+  await openDemoBoard(page);
+  const input = await openPalette(page);
+  await input.pressSequentially("new card");
+  await page.keyboard.press("ArrowDown");
+  await expect(palette(page).getByRole("option", { name: "New card on Website relaunch" })).toBeVisible();
+  await palette(page).getByRole("option", { name: "New card on Website relaunch" }).click();
+  const titleInput = palette(page).getByRole("textbox", { name: "Title of the new card" });
+  await expect(titleInput).toBeFocused();
+  await expect(palette(page).getByText("Enter adds the card to Backlog and opens it.")).toBeVisible();
+  expect(await axeViolations(page)).toEqual([]);
+  const title = `From the palette ${Date.now()}`;
+  await titleInput.fill(title);
+  await titleInput.press("Enter");
+  await expect(page).toHaveURL(/\/cards\//);
+  await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(card(page, "Backlog", title)).toBeVisible();
 });
 
 for (const colorScheme of ["light", "dark"] as const) {

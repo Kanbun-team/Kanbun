@@ -11,6 +11,17 @@ import { isOnline, onlineSince, type DeviceType } from "@/lib/sessions";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  const session = await auth();
+  if (!session?.user?.id) return {};
+  const user = await prisma.user.findUnique({
+    where: { username: username.toLowerCase() },
+    select: { username: true, displayName: true },
+  });
+  return user ? { title: user.displayName ?? user.username } : {};
+}
+
 export default async function ProfilePage({
   params,
 }: {

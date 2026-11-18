@@ -143,7 +143,7 @@
         "tags": ["Columns"],
         "operationId": "deleteColumn",
         "summary": "Move a column and its cards to the trash",
-        "description": "Needs the write scope and a board owner or an admin. Restorable from the trash for 30 days.",
+        "description": "Needs the write scope and a board owner or an admin. Restorable from the trash for 30 days. Webhooks get one card.deleted per card, with reason column.deleted.",
         "responses": {
           "200": { "description": "Deleted.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Trashed" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },

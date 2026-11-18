@@ -219,6 +219,36 @@ test("webhooks: add in board settings, send a test and receive signed card event
     await expect.poll(() => received.some((r) => r.headers["x-kanbun-event"] === "card.deleted")).toBe(true);
     expect(received.some((r) => r.headers["x-kanbun-event"] === "comment.created")).toBe(false);
 
+    const events = (name: string) =>
+      received.filter((r) => r.headers["x-kanbun-event"] === name).map((r) => JSON.parse(r.body));
+
+    // A reorder within a column is a card.updated with "position"; card.moved
+    // is only for another column.
+    const colRes = await request.post(`/api/v1/boards/${boardId}/columns`, { headers: auth(token), data: { name: `Hooks ${Date.now()}` } });
+    expect(colRes.status()).toBe(201);
+    const column = await colRes.json();
+    const ids: string[] = [];
+    for (const t of [`First ${Date.now()}`, `Second ${Date.now()}`]) {
+      const r = await request.post(`/api/v1/boards/${boardId}/cards`, { headers: auth(token), data: { columnId: column.id, title: t } });
+      ids.push((await r.json()).id);
+    }
+    await request.patch(`/api/v1/cards/${ids[1]}`, { headers: auth(token), data: { position: 0 } });
+    await expect.poll(() => events("card.updated").some((p) => p.card.id === ids[1])).toBe(true);
+    expect(events("card.updated").find((p) => p.card.id === ids[1]).changes).toEqual(["position"]);
+    expect(events("card.moved").some((p) => p.card.id === ids[1])).toBe(false);
+    await request.patch(`/api/v1/cards/${ids[0]}`, { headers: auth(token), data: { columnId: todo.id } });
+    await request.patch(`/api/v1/cards/${ids[0]}`, { headers: auth(token), data: { columnId: column.id } });
+    await expect.poll(() => events("card.moved").filter((p) => p.card.id === ids[0]).length).toBe(2);
+
+    // Deleting the column sends card.deleted for each of its cards.
+    expect((await request.delete(`/api/v1/columns/${column.id}`, { headers: auth(token) })).status()).toBe(200);
+    await expect.poll(() => events("card.deleted").filter((p) => ids.includes(p.card.id)).length).toBe(2);
+    for (const p of events("card.deleted").filter((e) => ids.includes(e.card.id))) {
+      expect(p).toMatchObject({ reason: "column.deleted", column: { columnId: column.id, columnName: column.name } });
+      expect(p.card.title).toMatch(/^(First|Second) /);
+      expect(p.card.trashId).toBeTruthy();
+    }
+
     // Clean up so other tests do not post to a closed port.
     await page.reload();
     await item.getByRole("button", { name: "Delete" }).click();

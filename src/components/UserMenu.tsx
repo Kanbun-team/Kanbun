@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Avatar from "./Avatar";
 import { logoutAction } from "@/server/auth-actions";
-import { t, type Locale } from "@/lib/i18n";
+import { t, tn, type Locale } from "@/lib/i18n";
 import { clearOfflineData, getOfflineState } from "@/lib/offline-store";
 import { useUi } from "@/components/ui/UiProvider";
 
@@ -95,7 +95,7 @@ export default function UserMenu({ user, locale }: Props) {
                 pending > 0 &&
                 !(await ui.confirm({
                   title: t("logoutPendingTitle", locale),
-                  body: t("logoutPendingBody", locale).replace("{count}", String(pending)),
+                  body: tn("logoutPendingBody", pending, locale),
                   confirmLabel: t("navLogout", locale),
                   danger: true,
                 }))

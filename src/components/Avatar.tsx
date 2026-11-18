@@ -8,6 +8,12 @@ interface AvatarProps {
   size?: number;
   className?: string;
   online?: boolean;
+  /**
+   * Inside a control that already names the person (aria-label): the
+   * initials are drawn with CSS instead of text, so they are not taken for
+   * the control's visible label (WCAG 2.5.3), and the photo gets empty alt.
+   */
+  decorative?: boolean;
 }
 
 function initials(name?: string | null): string {
@@ -26,6 +32,7 @@ export default function Avatar({
   size = 32,
   className,
   online,
+  decorative,
 }: AvatarProps) {
   const dotSize = Math.max(8, Math.round(size * 0.28));
   // Values saved before URLs were checked are ignored instead of loaded.
@@ -47,17 +54,21 @@ export default function Avatar({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={src}
-            alt={name ?? ""}
+            alt={decorative ? "" : name ?? ""}
             width={size}
             height={size}
             className="w-full h-full object-cover"
           />
         ) : (
           <span
-            className="w-full h-full flex items-center justify-center text-white font-semibold"
+            className={cn(
+              "w-full h-full flex items-center justify-center text-white font-semibold",
+              decorative && "before:content-[attr(data-initials)]"
+            )}
             style={{ fontSize: Math.max(10, Math.round(size * 0.4)) }}
+            data-initials={decorative ? initials(name) : undefined}
           >
-            {initials(name)}
+            {decorative ? null : initials(name)}
           </span>
         )}
       </span>

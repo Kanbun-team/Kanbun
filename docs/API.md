@@ -132,9 +132,9 @@ Events:
 | Event | When |
 | --- | --- |
 | `card.created` | A card is created (in the board, from a template, from a checklist item, by a schedule or through the API) |
-| `card.updated` | Title, description, priority, deadline, assignees or tags change; `changes` lists which |
-| `card.moved` | A card is moved or reordered; `from` and `to` name the columns |
-| `card.deleted` | A card is moved to the trash |
+| `card.updated` | Title, description, priority, deadline, assignees, tags or the position within its column change; `changes` lists which (`title`, `description`, `priority`, `deadline`, `assignees`, `tags`, `position`) |
+| `card.moved` | A card is moved to another column; `from` and `to` name the columns. Reordering within a column is a `card.updated` with `position` in `changes` |
+| `card.deleted` | A card is moved to the trash, on its own or with its column. When its column was deleted, the payload has `reason: "column.deleted"` and `column` (`columnId`, `columnName`); one event is sent per card |
 | `comment.created` | Someone comments on a card; the payload has `comment` |
 | `ping` | The **Send test** button |
 

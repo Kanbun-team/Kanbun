@@ -15,16 +15,25 @@ test("pin and unpin a board, and the pin survives a reload", async ({ page }) =>
   const pin = tile(page, operations, "Customer support").getByRole("button", { name: "Pin Customer support" });
   await expect(pin).toHaveAttribute("aria-pressed", "false");
   await pin.click();
-  await expect(pin).toHaveAttribute("aria-pressed", "true");
-  await expect(tile(page, pinned, "Customer support")).toBeVisible();
+  // Listed once: under Pinned, no longer in its category. Focus follows the tile.
+  const pinnedStar = tile(page, pinned, "Customer support").getByRole("button", { name: "Pin Customer support" });
+  await expect(pinnedStar).toHaveAttribute("aria-pressed", "true");
+  await expect(pinnedStar).toBeFocused();
+  await expect(tile(page, operations, "Customer support")).toHaveCount(0);
+  await expect(page.locator("[data-board-tile]").filter({ has: page.getByRole("link", { name: "Customer support", exact: true }) })).toHaveCount(1);
 
   await page.reload();
   await expect(tile(page, pinned, "Customer support")).toBeVisible();
+  await expect(tile(page, operations, "Customer support")).toHaveCount(0);
   const unpin = tile(page, pinned, "Customer support").getByRole("button", { name: "Pin Customer support" });
   await expect(unpin).toHaveAttribute("aria-pressed", "true");
   await unpin.focus();
   await page.keyboard.press("Enter");
   await expect(pinned).toHaveCount(0);
+  // Back in its category, with the focus on its star.
+  const back = tile(page, operations, "Customer support").getByRole("button", { name: "Pin Customer support" });
+  await expect(back).toBeFocused();
+  await expect(back).toHaveAttribute("aria-pressed", "false");
 
   await page.reload();
   await expect(pinned).toHaveCount(0);

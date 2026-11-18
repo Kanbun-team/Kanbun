@@ -41,6 +41,16 @@ const JOBS: Job[] = [
       await runAuditPurge();
     },
   },
+  {
+    // Trash older than 30 days, with the card history of what it held. Also
+    // done on every delete; this covers instances where nobody deletes.
+    name: "trash-purge",
+    everyMs: 6 * 60 * 60 * 1000,
+    run: async () => {
+      const { runTrashPurge } = await import("../trash");
+      await runTrashPurge();
+    },
+  },
 ];
 
 const globalForJobs = globalThis as unknown as { __kanbunJobsStarted?: boolean };

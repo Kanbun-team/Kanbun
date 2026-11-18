@@ -110,7 +110,7 @@ export default function NotificationBell({ initial, locale }: Props) {
               <li className="px-3 py-6 text-sm text-ink-muted text-center">{t("notifEmpty", locale)}</li>
             )}
             {items.map((n) => {
-              const href = n.boardId && n.cardId ? `/tasks/${n.boardId}/cards/${n.cardId}` : null;
+              const href = n.boardId ? (n.cardId ? `/tasks/${n.boardId}/cards/${n.cardId}` : `/tasks/${n.boardId}`) : null;
               const body = (
                 <div className={cn("flex gap-2 px-3 py-2.5", !n.read && "bg-accent-soft")}>
                   {!n.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-accent shrink-0" />}

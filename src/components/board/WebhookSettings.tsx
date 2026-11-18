@@ -7,7 +7,7 @@ import RelativeTime from "@/components/ui/RelativeTime";
 import SecretReveal from "@/components/ui/SecretReveal";
 import { useUi } from "@/components/ui/UiProvider";
 import { buttonClass } from "@/components/ui/button";
-import { t, type DictKey, type Locale } from "@/lib/i18n";
+import { t, tn, type DictKey, type Locale } from "@/lib/i18n";
 import {
   createWebhookAction,
   deleteWebhookAction,
@@ -115,9 +115,7 @@ export default function WebhookSettings({
               <p className="text-xs text-ink-muted">{w.events.map((e) => eventLabel(e, locale)).join(", ")}</p>
               {w.failureCount > 0 && (
                 <p className="text-xs text-danger">
-                  {t("webhookFailing", locale)
-                    .replace("{count}", String(w.failureCount))
-                    .replace("{limit}", String(failureLimit))}
+                  {tn("webhookFailing", w.failureCount, locale).replace("{limit}", String(failureLimit))}
                 </p>
               )}
               <div className="flex flex-wrap gap-2">

@@ -222,6 +222,7 @@ CREATE TABLE "Notification" (
     "boardId" TEXT,
     "actorId" TEXT,
     "actorName" TEXT,
+    "data" TEXT,
 
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );

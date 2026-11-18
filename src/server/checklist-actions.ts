@@ -9,6 +9,8 @@ import { safeAction } from "@/server/safe-action";
 import { logActivity } from "@/server/activity";
 import { publishBoard } from "@/lib/realtime";
 import { emitBoardEvent } from "@/server/webhooks";
+import { requireUser } from "@/auth";
+import { notifySubtaskAssigned } from "@/server/watchers";
 
 // Checklists 2.0: per-item assignee and due date, reordering and turning an
 // item into a card of its own. Adding, ticking, renaming and deleting items
@@ -56,6 +58,20 @@ export async function setSubtaskAssigneeAction(input: { subtaskId: string; userI
     // Only board members, so an item cannot be used to reach arbitrary users.
     if (data.userId && !(await isActiveMember(boardId, data.userId))) throw new ActionError("forbidden");
     await prisma.taskSubtask.update({ where: { id: sub.id }, data: { assigneeId: data.userId } });
+    if (data.userId && data.userId !== sub.assigneeId) {
+      const user = await requireUser();
+      const card = await prisma.taskCard.findUnique({ where: { id: sub.cardId }, select: { title: true } });
+      // Never to the person assigning themselves (dispatch skips the actor).
+      await notifySubtaskAssigned({
+        recipientId: data.userId,
+        item: sub.title,
+        cardId: sub.cardId,
+        cardTitle: card?.title ?? "",
+        boardId,
+        actorId: user.id,
+        actorName: user.displayName ?? user.username,
+      });
+    }
     refresh(boardId, sub.cardId);
   });
 }

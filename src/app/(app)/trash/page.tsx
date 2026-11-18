@@ -9,8 +9,13 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { TRASH_RETENTION_DAYS, boardSnapshotOwners, trashCutoff } from "@/server/trash";
 import { restoreTrashFormAction } from "@/server/trash-actions";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("trashTitle");
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

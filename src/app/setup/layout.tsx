@@ -3,7 +3,9 @@ import UiProvider from "@/components/ui/UiProvider";
 import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 
-export const metadata = { title: "Set up Kanbun" };
+export async function generateMetadata() {
+  return { title: { absolute: t("setupPageTitle", await getLocale()) } };
+}
 
 export default async function SetupLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();

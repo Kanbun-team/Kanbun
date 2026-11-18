@@ -47,6 +47,8 @@ export interface EventInput {
   extra?: Record<string, unknown>;
   /** For comment.created. */
   commentId?: string;
+  /** For card.deleted: the trash item holding the card (a card or a column). */
+  trashId?: string;
 }
 
 /**
@@ -56,6 +58,28 @@ export interface EventInput {
  */
 export function emitBoardEvent(boardId: string, event: WebhookEvent, input: EventInput, db: PrismaClient = prisma): void {
   void dispatch(db, boardId, event, input).catch((err) => console.error("[webhooks] emit failed", event, err));
+}
+
+/**
+ * Deleting a column trashes its cards with it: each card gets its own
+ * card.deleted, with the column it was in (`column`) and `reason` set to
+ * "column.deleted". Call after the column went to the trash.
+ */
+export function emitColumnCardsDeleted(
+  boardId: string,
+  column: { id: string; name: string },
+  cardIds: string[],
+  trashId: string,
+  actorId: string
+): void {
+  for (const cardId of cardIds) {
+    emitBoardEvent(boardId, "card.deleted", {
+      cardId,
+      actorId,
+      trashId,
+      extra: { reason: "column.deleted", column: { columnId: column.id, columnName: column.name } },
+    });
+  }
 }
 
 const FIELD_OF_ACTIVITY: Record<string, string> = {
@@ -89,6 +113,16 @@ async function dispatch(db: PrismaClient, boardId: string, event: WebhookEvent, 
   }
 }
 
+function cardSnapshotIn(kind: string, payload: string, cardId: string): Record<string, unknown> {
+  try {
+    const snap = JSON.parse(payload) as Record<string, unknown> & { cards?: Record<string, unknown>[] };
+    if (kind === "card") return snap;
+    return snap.cards?.find((c) => c.id === cardId) ?? {};
+  } catch {
+    return {};
+  }
+}
+
 async function buildPayload(db: PrismaClient, boardId: string, event: WebhookEvent, input: EventInput) {
   const [board, actor] = await Promise.all([
     db.board.findUnique({ where: { id: boardId }, select: { id: true, name: true } }),
@@ -98,13 +132,16 @@ async function buildPayload(db: PrismaClient, boardId: string, event: WebhookEve
 
   let card: Record<string, unknown> | null = null;
   if (event === "card.deleted") {
-    // The card is gone already; describe it from its trash snapshot.
-    const item = await db.trashItem.findFirst({
-      where: { kind: "card", entityId: input.cardId },
-      orderBy: { deletedAt: "desc" },
-      select: { id: true, payload: true },
-    });
-    const snap = item ? (JSON.parse(item.payload) as Record<string, unknown>) : {};
+    // The card is gone already; describe it from its trash snapshot, which
+    // is the card's own or, when its column was deleted, the column's.
+    const item = input.trashId
+      ? await db.trashItem.findUnique({ where: { id: input.trashId }, select: { id: true, kind: true, payload: true } })
+      : await db.trashItem.findFirst({
+          where: { kind: "card", entityId: input.cardId },
+          orderBy: { deletedAt: "desc" },
+          select: { id: true, kind: true, payload: true },
+        });
+    const snap = item ? cardSnapshotIn(item.kind, item.payload, input.cardId) : {};
     card = {
       id: input.cardId,
       boardId,

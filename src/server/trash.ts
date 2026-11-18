@@ -213,16 +213,57 @@ export function snapshotStorageKeys(kind: string, payload: string): string[] {
   }
 }
 
-// Expired items are dropped inside the caller's transaction; their files are
-// removed once it has committed (see withPurge), so a rollback keeps them.
-async function purgeExpired(tx: Tx): Promise<string[]> {
+/** Ids of the cards held by a trash item's snapshot. */
+export function snapshotCardIds(kind: string, payload: string): string[] {
+  try {
+    const snap = JSON.parse(payload) as CardSnapshot | ColumnSnapshot | BoardSnapshot;
+    if (kind === "card") return [(snap as CardSnapshot).id];
+    if (kind === "column") return (snap as ColumnSnapshot).cards.map((c) => c.id);
+    return (snap as BoardSnapshot).columns.flatMap((c) => c.cards.map((card) => card.id));
+  } catch {
+    return [];
+  }
+}
+
+// Rows that point at a card without a foreign key (so they survive the card
+// sitting in the trash) and mean nothing once it is gone for good. Move
+// events stay: they feed the activity heatmaps and carry the card title.
+async function purgeCardLeftovers(tx: Tx, cardIds: string[]): Promise<void> {
+  for (let i = 0; i < cardIds.length; i += 500) {
+    const chunk = cardIds.slice(i, i + 500);
+    // Defensive: keep the rows of any id that is a live card again.
+    const live = await tx.taskCard.findMany({ where: { id: { in: chunk } }, select: { id: true } });
+    const liveIds = new Set(live.map((c) => c.id));
+    const gone = chunk.filter((id) => !liveIds.has(id));
+    if (gone.length === 0) continue;
+    await tx.cardActivity.deleteMany({ where: { cardId: { in: gone } } });
+    await tx.dueSoonNotice.deleteMany({ where: { cardId: { in: gone } } });
+    await tx.notification.deleteMany({ where: { cardId: { in: gone } } });
+  }
+}
+
+/**
+ * Drops trash items deleted before `cutoff`, with the card history and other
+ * rows of their cards. Returns the storage keys of their attachment files,
+ * which the caller removes once the transaction has committed, so a rollback
+ * keeps them.
+ */
+export async function purgeExpired(tx: Tx, cutoff: Date = trashCutoff()): Promise<string[]> {
   const expired = await tx.trashItem.findMany({
-    where: { deletedAt: { lt: trashCutoff() } },
+    where: { deletedAt: { lt: cutoff } },
     select: { id: true, kind: true, payload: true },
   });
   if (expired.length === 0) return [];
   await tx.trashItem.deleteMany({ where: { id: { in: expired.map((e) => e.id) } } });
+  await purgeCardLeftovers(tx, expired.flatMap((e) => snapshotCardIds(e.kind, e.payload)));
   return expired.flatMap((e) => snapshotStorageKeys(e.kind, e.payload));
+}
+
+/** Background job: purge expired trash even when nobody deletes anything. */
+export async function runTrashPurge(now: Date = new Date()): Promise<void> {
+  const cutoff = new Date(now.getTime() - RETENTION_MS);
+  const keys = await prisma.$transaction((tx) => purgeExpired(tx, cutoff));
+  if (keys.length) await removeAttachmentFiles(keys);
 }
 
 async function withPurge(run: (tx: Tx) => Promise<string>): Promise<string> {

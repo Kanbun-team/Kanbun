@@ -29,8 +29,8 @@ import { useSyncedState } from "@/lib/use-synced-state";
 import { useStableHandlers, useStableValue } from "@/lib/use-stable";
 import { reconcileColumns } from "./reconcile";
 import { getViewingCard, markBoardRefreshed, refreshedSince, subscribeBoardStream } from "@/lib/board-stream";
-import { animateChanges, snapshotCards, type CardSnapshot } from "./live-changes";
-import { t, type Locale } from "@/lib/i18n";
+import { animateChanges, markLocalCards, snapshotCards, type CardSnapshot } from "./live-changes";
+import { t, tn, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   addColumnAction,
@@ -452,12 +452,13 @@ export default function Board({
       if (titles.length === 0) return false;
       const tempIds = titles.map(() => newId(TEMP_PREFIX));
       const result = await offline.run({ kind: "addCards", columnId: column.id, titles, tempIds }, titles.join(", "));
-      if (result.ok && titles.length > 1) ui.toast({ message: tr("cardsAdded", { count: titles.length }) });
+      if (result.ok && titles.length > 1) ui.toast({ message: tn("cardsAdded", titles.length, locale) });
       return result.ok;
     },
     addFromTemplate: async (column, template) => {
       if (!offline.guard()) return;
       const result = ui.report(await createCardFromTemplateAction({ templateId: template.id, columnId: column.id }));
+      if (result.ok) markLocalCards([result.data.cardId]);
       if (result.ok) ui.toast({ message: tr("cardFromTemplateToast", { name: template.name, column: column.name }) });
       router.refresh();
     },

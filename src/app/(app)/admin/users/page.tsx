@@ -19,8 +19,13 @@ import {
 import { adminResetTwoFactorAction } from "@/server/two-factor-actions";
 import { hasUsablePassword } from "@/lib/password";
 import { SSO_PROVIDER_ID } from "@/lib/sso";
+import { titleMetadata } from "@/server/page-title";
 
 export const dynamic = "force-dynamic";
+
+export function generateMetadata() {
+  return titleMetadata("adminUsers");
+}
 
 export default async function AdminUsersPage() {
   const session = await auth();
