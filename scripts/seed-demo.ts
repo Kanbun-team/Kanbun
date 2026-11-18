@@ -2,10 +2,9 @@
 // cards). Used for local development, screenshots and trying Kanbun out.
 // Every demo user's password is "demo1234". Refuses to run on a database that
 // already has users, so it can never touch real data.
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/lib/db-local";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
 const DAY = 24 * 60 * 60 * 1000;
 const inDays = (n: number) => new Date(Date.now() + n * DAY);
 

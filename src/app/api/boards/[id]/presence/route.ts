@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db-local";
 import { loadBoardAccess } from "@/server/board-access";
-import { setPresenceCard } from "@/lib/presence";
+import { setBoardPresenceCard } from "@/lib/presence-hub";
 import { isConnId } from "@/lib/presence-conn";
 
 export const runtime = "nodejs";
@@ -43,6 +43,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // An unknown connection (stream not open yet, or already closed) is not an
   // error: the client re-sends its card when the stream (re)opens.
-  setPresenceCard(id, connId, access.userId, cardId);
+  await setBoardPresenceCard(id, connId, access.userId, cardId);
   return new Response(null, { status: 204 });
 }

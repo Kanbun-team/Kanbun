@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db-local";
 import { loadBoardAccess } from "@/server/board-access";
 import { subscribeBoard, type BoardEvent } from "@/lib/realtime";
-import { joinPresence, type PresenceViewer } from "@/lib/presence";
+import type { PresenceViewer } from "@/lib/presence";
+import { joinBoardPresence } from "@/lib/presence-hub";
 import { isConnId } from "@/lib/presence-conn";
 
 export const runtime = "nodejs";
@@ -75,7 +76,7 @@ export async function GET(
       });
 
       if (user) {
-        leavePresence = joinPresence(id, {
+        leavePresence = joinBoardPresence(id, {
           connId,
           userId: access.userId,
           name: user.displayName || user.username,

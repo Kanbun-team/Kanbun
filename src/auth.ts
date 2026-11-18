@@ -114,11 +114,11 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
           });
         // Blocked attempts are not recorded one by one: the failures that led
         // to the block are, and a flood must not be able to fill the log.
-        if (isLoginBlocked(ip, username)) return null;
+        if (await isLoginBlocked(ip, username)) return null;
         const user = await prisma.user.findUnique({ where: { username } });
         const ok = user && hasUsablePassword(user.passwordHash) ? await bcrypt.compare(password, user.passwordHash) : false;
         if (!user || !ok || user.deactivatedAt) {
-          recordLoginFailure(ip, username);
+          await recordLoginFailure(ip, username);
           const reason = !user ? "unknownUser" : !ok ? "badPassword" : "deactivated";
           await failed(reason, user ? { id: user.id, name: user.username } : null);
           return null;
@@ -126,9 +126,9 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         // Single sign-on and two-factor checks (src/lib/sso.ts, src/server/two-factor.ts).
         if (!passwordLoginAllowed(user.role, sso)) return null;
         const second = await verifySecondFactor(user, parsed.data.code);
-        if (second === "invalid") recordLoginFailure(ip, username);
+        if (second === "invalid") await recordLoginFailure(ip, username);
         if (second !== "ok") throw new SecondFactorError(second === "required" ? "totp_required" : "totp_invalid");
-        recordLoginSuccess(ip, username);
+        await recordLoginSuccess(ip, username);
         await audit({
           action: "login.success",
           actor: { id: user.id, name: user.username },

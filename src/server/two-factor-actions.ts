@@ -29,18 +29,18 @@ async function loadUser(id: string) {
  */
 async function verifyCurrentFactor(user: Awaited<ReturnType<typeof loadUser>>, input: string): Promise<void> {
   const ip = clientIp(await headers());
-  if (isLoginBlocked(ip, user.username)) throw new ActionError("tooManyAttempts");
+  if (await isLoginBlocked(ip, user.username)) throw new ActionError("tooManyAttempts");
   const value = input.trim();
   let ok = false;
   if (value && normalizeTotpCode(value)) ok = await consumeTotpCode(user, value);
   if (!ok && value) ok = await consumeRecoveryCode(user.id, value);
   if (!ok && value && hasUsablePassword(user.passwordHash)) ok = await bcrypt.compare(value, user.passwordHash);
   if (!ok) {
-    recordLoginFailure(ip, user.username);
+    await recordLoginFailure(ip, user.username);
     await audit({ action: "2fa.failure", actor: { id: user.id, name: user.username }, target: { type: "user", id: user.id, name: user.username } });
     throw new ActionError("invalidCode");
   }
-  recordLoginSuccess(ip, user.username);
+  await recordLoginSuccess(ip, user.username);
 }
 
 /** Starts (or restarts) setup: stores a new, not yet enabled secret. */
@@ -76,10 +76,10 @@ export async function confirmTotpSetupAction(formData: FormData) {
     const user = await loadUser(me.id);
     if (user.totpEnabledAt || !user.totpSecret) throw new ActionError("invalid");
     const ip = clientIp(await headers());
-    if (isLoginBlocked(ip, user.username)) throw new ActionError("tooManyAttempts");
+    if (await isLoginBlocked(ip, user.username)) throw new ActionError("tooManyAttempts");
     const code = String(formData.get("code") ?? "");
     if (!(await consumeTotpCode(user, code))) {
-      recordLoginFailure(ip, user.username);
+      await recordLoginFailure(ip, user.username);
       throw new ActionError("invalidCode");
     }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabledAt: new Date() } });

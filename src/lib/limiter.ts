@@ -18,6 +18,9 @@ export interface Limiter {
   hit(key: string, limit: number, windowMs: number): Promise<LimitResult>;
 }
 
+import { counterStore, type CounterStore } from "./rate-limit-store";
+import { redisEnabled } from "./redis";
+
 type Bucket = { count: number; resetAt: number };
 
 export class MemoryLimiter implements Limiter {
@@ -52,8 +55,24 @@ export class MemoryLimiter implements Limiter {
 
 const globalForLimiter = globalThis as unknown as { __kanbunLimiter?: Limiter };
 
+/** Limiter on the shared counter store (Redis when REDIS_URL is set). */
+export class StoreLimiter implements Limiter {
+  constructor(private store: CounterStore, private now: () => number = Date.now) {}
+
+  async hit(key: string, limit: number, windowMs: number): Promise<LimitResult> {
+    const count = await this.store.increment(`limiter:${key}`, windowMs);
+    return {
+      allowed: count <= limit,
+      limit,
+      remaining: Math.max(0, limit - count),
+      // The store does not report the window start; the end is at most one window away.
+      resetAt: this.now() + windowMs,
+    };
+  }
+}
+
 export function getLimiter(): Limiter {
-  return (globalForLimiter.__kanbunLimiter ??= new MemoryLimiter());
+  return (globalForLimiter.__kanbunLimiter ??= redisEnabled() ? new StoreLimiter(counterStore()) : new MemoryLimiter());
 }
 
 /** Replace the process-wide limiter (for a shared store). */

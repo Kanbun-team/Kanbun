@@ -1,10 +1,13 @@
-// In-process pub/sub for live board updates.
+// Pub/sub for live board updates.
 //
-// Deliberately broker-free: a module-level map of boardId -> listeners, stored
-// on globalThis so it survives Next.js HMR in development. This works for a
-// single Node process, which matches Kanbun's single-binary, SQLite-backed
-// deployment model. Horizontal scaling would need an external broker; that is
-// out of scope on purpose.
+// In-process by default: a module-level map of key -> listeners, stored on
+// globalThis so it survives Next.js HMR in development. That is all a single
+// Kanbun process needs. With REDIS_URL set (several instances behind a load
+// balancer, see docs/SCALING.md) every publish is also sent over Redis, and
+// each instance delivers what the others publish to its own listeners, so an
+// SSE client on any instance hears about changes made on any other.
+
+import { onRemoteMessage, publishRemote } from "./redis-bus";
 
 export type BoardEvent = {
   type: "board";
@@ -21,12 +24,23 @@ const LIST_KEY = "__board_list__";
 
 const globalForBus = globalThis as unknown as {
   __kanbunBoardBus?: Map<string, Set<Listener>>;
+  __kanbunBoardBusRemote?: boolean;
 };
 
 const bus: Map<string, Set<Listener>> =
   globalForBus.__kanbunBoardBus ?? (globalForBus.__kanbunBoardBus = new Map());
 
+// Starts delivering other instances' events (Redis only, once per process).
+function listenRemote(): void {
+  if (globalForBus.__kanbunBoardBusRemote) return;
+  globalForBus.__kanbunBoardBusRemote = true;
+  onRemoteMessage((message) => {
+    if (message.kind === "event") emit(message.key);
+  });
+}
+
 export function subscribeBoard(boardId: string, listener: Listener): () => void {
+  listenRemote();
   let listeners = bus.get(boardId);
   if (!listeners) {
     listeners = new Set();
@@ -64,14 +78,19 @@ function emit(key: string): void {
   }
 }
 
+function publish(key: string): void {
+  emit(key);
+  publishRemote({ kind: "event", key });
+}
+
 export function publishBoard(boardId: string): void {
-  emit(boardId);
+  publish(boardId);
 }
 
 export function publishBoardList(): void {
-  emit(LIST_KEY);
+  publish(LIST_KEY);
 }
 
 export function publishUser(userId: string): void {
-  emit(`user:${userId}`);
+  publish(`user:${userId}`);
 }
