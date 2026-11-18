@@ -40,15 +40,21 @@ test("a watcher hears about comments, once even when also mentioned", async ({ p
   await expect(panel.getByRole("button", { name: "Watching" })).toBeVisible();
 
   let list = await openBell(julia);
-  await expect(list.getByText(`Ada Admin commented on "${title}"`)).toHaveCount(1);
+  await expect(async () => {
+    list = await openBell(julia);
+    await expect(list.getByText(`Ada Admin commented on "${title}"`)).toHaveCount(1, { timeout: 2000 });
+  }).toPass();
 
   // Mentioned and watching: one notification, the mention.
   await panel.getByLabel("Write a comment").fill(`Thanks @julia ${stamp}`);
   await panel.getByRole("button", { name: "Post comment" }).click();
   await expect(panel.getByText(`Thanks @julia ${stamp}`)).toBeVisible();
 
-  list = await openBell(julia);
-  await expect(list.getByText(`Ada Admin mentioned you in "${title}"`)).toHaveCount(1);
+  // Delivery can land a moment after the comment shows up: reopen the bell until it does.
+  await expect(async () => {
+    list = await openBell(julia);
+    await expect(list.getByText(`Ada Admin mentioned you in "${title}"`)).toHaveCount(1, { timeout: 2000 });
+  }).toPass();
   await expect(list.getByText(`Ada Admin commented on "${title}"`)).toHaveCount(1);
   await julia.close();
 });

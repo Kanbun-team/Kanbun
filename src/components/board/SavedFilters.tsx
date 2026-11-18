@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,10 +44,23 @@ export default function SavedFilters({
     router.refresh();
   }
 
-  /** Back on the row's rename button, which the rename form replaced. */
+  // Back on the row's rename button, which the rename form replaced. The
+  // refresh after a rename can re-sort the list and move the row, which drops
+  // focus, so it is put back once the new list has rendered too.
+  const pendingFocus = useRef<string | null>(null);
   function focusRename(id: string) {
+    pendingFocus.current = id;
     requestAnimationFrame(() => document.getElementById(`saved-filter-rename-${id}`)?.focus());
   }
+  useEffect(() => {
+    const id = pendingFocus.current;
+    if (!id) return;
+    pendingFocus.current = null;
+    const el = document.getElementById(`saved-filter-rename-${id}`);
+    const active = document.activeElement;
+    // Only when focus fell back to the page or to the surrounding popover.
+    if (el && active !== el && (!active || active === document.body || active.contains(el))) el.focus();
+  }, [saved]);
 
   async function rename(item: SavedFilterDTO, name: string) {
     if (name !== item.name) {
