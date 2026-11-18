@@ -10,6 +10,7 @@ import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { t, type Locale } from "@/lib/i18n";
 import CardFace from "./CardFace";
+import { CardFaceViewers } from "@/components/presence/Presence";
 import CardMenu, { type CardMenuHandlers } from "./CardMenu";
 import { columnKey, type CardDTO, type ColumnDTO, type MemberOption, type TagOption } from "./types";
 
@@ -243,6 +244,7 @@ function SortableCard({ card, columnId, shared }: { card: CardDTO; columnId: str
           <CardFace card={card} locale={locale} />
         </Link>
       )}
+      <CardFaceViewers boardId={boardId} cardId={card.id} currentUserId={shared.currentUserId} locale={locale} />
       {!editing && (
         <div
           className={cn(

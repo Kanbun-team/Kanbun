@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import {
@@ -26,6 +26,8 @@ import {
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CalendarDays, Columns3, Keyboard, List, Plus } from "lucide-react";
 import { useSyncedState } from "@/lib/use-synced-state";
+import { getViewingCard, subscribeBoardStream } from "@/lib/board-stream";
+import { animateChanges, snapshotCards, type CardSnapshot } from "./live-changes";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
@@ -195,6 +197,8 @@ export default function Board({
   const [collapsed, toggleCollapsed] = useCollapsedColumns(boardId);
   const dragStart = useRef<{ snapshot: ColumnDTO[]; columnId: string | null; index: number } | null>(null);
   const refreshPending = useRef(false);
+  const liveSnapshot = useRef<CardSnapshot | null>(null);
+  const columnsRef = useRef(serverColumns);
   const router = useRouter();
   const ui = useUi();
   const offerUndo = useUndo();
@@ -203,21 +207,39 @@ export default function Board({
 
   // Live updates: re-fetch when anyone changes the board. Deferred while a
   // drag is in progress so the list does not jump under the pointer.
+  // Before a live re-fetch, remember where every card is so teammates'
+  // changes can animate into place once the new data renders.
   useEffect(() => {
-    const source = new EventSource(`/api/boards/${boardId}/events`);
     let timer: ReturnType<typeof setTimeout> | undefined;
-    source.addEventListener("board", () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (dragStart.current) refreshPending.current = true;
-        else router.refresh();
-      }, 250);
+    const unsubscribe = subscribeBoardStream(boardId, {
+      onBoard: () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (dragStart.current) {
+            refreshPending.current = true;
+            return;
+          }
+          if (boardScroller.current) liveSnapshot.current = snapshotCards(boardScroller.current, columnsRef.current);
+          router.refresh();
+        }, 250);
+      },
     });
     return () => {
       if (timer) clearTimeout(timer);
-      source.close();
+      unsubscribe();
     };
   }, [boardId, router]);
+
+  useEffect(() => {
+    columnsRef.current = columns;
+  }, [columns]);
+
+  useLayoutEffect(() => {
+    const before = liveSnapshot.current;
+    liveSnapshot.current = null;
+    if (!before || !boardScroller.current || dragStart.current) return;
+    animateChanges(boardScroller.current, before, serverColumns, getViewingCard(boardId));
+  }, [serverColumns, boardId]);
 
   const allCards = useMemo(() => columns.flatMap((c) => c.cards), [columns]);
   const filtering = isFiltering(filters);

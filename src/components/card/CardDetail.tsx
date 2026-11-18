@@ -18,6 +18,7 @@ import {
 import SubtaskList from "@/components/SubtaskList";
 import { CardBlocks, CardTags } from "@/components/CardTagsBlocks";
 import Comments from "@/components/Comments";
+import { CardPresence } from "@/components/presence/Presence";
 import { deleteCardAction } from "@/server/tasks-actions";
 import { parseMentions } from "@/lib/notifications";
 import { parseActivityData } from "@/lib/activity";
@@ -132,6 +133,7 @@ export default async function CardDetail({
       </div>
 
       <CardTitleEditor cardId={card.id} initialTitle={card.title} locale={locale} />
+      <CardPresence boardId={boardId} cardId={card.id} currentUserId={me.id} locale={locale} />
 
       <div className={panel ? "grid gap-6" : "grid lg:grid-cols-3 gap-6"}>
         <div className={panel ? "space-y-6 order-2" : "lg:col-span-2 space-y-6"}>
