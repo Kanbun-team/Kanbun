@@ -35,6 +35,7 @@ model User {
   taskMoves         TaskCardMoveEvent[]  @relation("MoveActor")
   sessions          UserSession[]
   notifications     Notification[]       @relation("UserNotifications")
+  boardPins         BoardPin[]
 }
 
 model Board {
@@ -58,6 +59,7 @@ model Board {
 
   @@index([createdById])
   @@index([categoryId, position])
+  pins BoardPin[]
 }
 
 model BoardCategory {
@@ -268,4 +270,19 @@ model TrashItem {
 
   @@index([boardId, deletedAt])
   @@index([deletedAt])
+}
+
+// A board a user starred to keep at the top of the boards home. Pins are not
+// part of the trash snapshot: deleting a board drops them and a restore simply
+// comes back unpinned.
+model BoardPin {
+  userId    String
+  boardId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, boardId])
+  @@index([boardId])
 }

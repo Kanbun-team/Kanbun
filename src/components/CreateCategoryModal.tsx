@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { FolderPlus } from "lucide-react";
 import ColorPicker from "./ColorPicker";
 import { createBoardCategoryAction } from "@/server/tasks-actions";
 import { t, type Locale } from "@/lib/i18n";
@@ -44,15 +45,9 @@ export default function CreateCategoryModal({ locale }: { locale: Locale }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-center gap-2 rounded-panel border border-dashed border-line-strong text-ink-muted hover:text-ink hover:border-accent hover:bg-ink/5 transition px-4 py-3 text-sm"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        <span className="font-medium">{t("categoryCreate", locale)}</span>
+      <button type="button" onClick={() => setOpen(true)} className={buttonClass("secondary", "md")}>
+        <FolderPlus size={16} aria-hidden />
+        {t("categoryCreate", locale)}
       </button>
 
       {open && (

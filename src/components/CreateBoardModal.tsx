@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Plus } from "lucide-react";
 import Avatar from "./Avatar";
 import ColorPicker from "./ColorPicker";
 import { createBoardAction } from "@/server/tasks-actions";
@@ -27,7 +28,9 @@ interface Props {
   categories: CategoryOption[];
   defaultCategoryId?: string | null;
   locale: Locale;
-  variant?: "button" | "card";
+  variant?: "button" | "inline";
+  /** Accessible name for the inline variant, e.g. "New board in Product". */
+  inlineLabel?: string;
 }
 
 function SubmitButton({ label }: { label: string }) {
@@ -52,8 +55,10 @@ export default function CreateBoardModal({
   defaultCategoryId = null,
   locale,
   variant = "button",
+  inlineLabel,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const titleId = useId();
   const [search, setSearch] = useState("");
   const { report } = useUi();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -98,24 +103,24 @@ export default function CreateBoardModal({
 
   return (
     <>
-      {variant === "card" ? (
+      {variant === "inline" ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="h-full w-full min-h-[160px] flex flex-col items-center justify-center gap-2 rounded-panel border border-dashed border-line-strong text-ink-muted hover:text-ink hover:border-accent hover:bg-ink/5 transition"
+          aria-label={inlineLabel}
+          className={buttonClass("ghost", "sm")}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          <span className="text-sm font-medium">{t("boardCreate", locale)}</span>
+          <Plus size={14} aria-hidden />
+          {t("boardNew", locale)}
         </button>
       ) : (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={buttonClass("primary", "lg")}
+          className={buttonClass("primary", "md")}
         >
-          + {t("boardCreate", locale)}
+          <Plus size={16} aria-hidden />
+          {t("boardNew", locale)}
         </button>
       )}
 
@@ -126,7 +131,12 @@ export default function CreateBoardModal({
             onClick={close}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-lg bg-raised text-ink border border-line rounded-panel shadow-float flex flex-col max-h-[85vh]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            className="relative w-full max-w-lg bg-raised text-ink border border-line rounded-panel shadow-float flex flex-col max-h-[85vh]"
+          >
             <form
               action={async (fd) => {
                 report(await createBoardAction(fd));
@@ -134,7 +144,7 @@ export default function CreateBoardModal({
               className="flex flex-col flex-1 min-h-0"
             >
               <header className="flex items-center justify-between p-4 border-b border-line">
-                <h2 className="text-lg font-semibold">{t("boardCreate", locale)}</h2>
+                <h2 id={titleId} className="text-lg font-semibold">{t("boardNew", locale)}</h2>
                 <button
                   type="button"
                   onClick={close}
