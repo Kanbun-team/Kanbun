@@ -11,6 +11,7 @@ import { notify, notifyMany, parseMentions } from "@/lib/notifications";
 import { safeAction } from "@/server/safe-action";
 import { trashBoard, trashCard, trashColumn } from "@/server/trash";
 import { ActionError } from "@/lib/action-result";
+import { logActivity, type ActivityEntry } from "@/server/activity";
 
 // -----------------------------
 // Boards
@@ -503,6 +504,10 @@ export async function addCardAction(formData: FormData) {
         await tx.taskCardMoveEvent.create({
           data: { cardId: card.id, cardTitle: card.title, boardId: col.boardId, toColumnName: col.name, userId: user.id },
         });
+        await logActivity(
+          { cardId: card.id, boardId: col.boardId, actorId: user.id, type: "created", data: { column: col.name } },
+          tx
+        );
       }
     });
     revalidatePath(`/tasks/${col.boardId}`);
@@ -538,10 +543,16 @@ export async function updateCardAction(formData: FormData) {
     });
     const card = await prisma.taskCard.findUnique({
       where: { id: data.cardId },
-      select: { column: { select: { boardId: true } } },
+      select: {
+        title: true,
+        description: true,
+        priority: true,
+        deadline: true,
+        column: { select: { boardId: true } },
+      },
     });
     if (!card) throw new ActionError("notFound");
-    await loadBoardAccess(card.column.boardId);
+    const access = await loadBoardAccess(card.column.boardId);
 
     let deadline: Date | null | undefined = undefined;
     if (data.deadline === null || data.deadline === "") deadline = null;
@@ -550,15 +561,37 @@ export async function updateCardAction(formData: FormData) {
       deadline = Number.isNaN(d.getTime()) ? undefined : d;
     }
 
-    await prisma.taskCard.update({
-      where: { id: data.cardId },
-      data: {
-        title: data.title,
-        description: data.description ?? undefined,
-        priority: data.priority,
-        deadline,
-        coverColor: rawCover === undefined ? undefined : data.coverColor,
-      },
+    const base = { cardId: data.cardId, boardId: card.column.boardId, actorId: access.userId };
+    const activity: ActivityEntry[] = [];
+    if (data.title !== undefined && data.title !== card.title) {
+      activity.push({ ...base, type: "renamed", data: { from: card.title, to: data.title } });
+    }
+    if (data.priority !== undefined && data.priority !== card.priority) {
+      activity.push({ ...base, type: "priority", data: { from: card.priority, to: data.priority } });
+    }
+    if (deadline !== undefined && (deadline?.getTime() ?? null) !== (card.deadline?.getTime() ?? null)) {
+      activity.push({ ...base, type: "deadline", data: { to: deadline ? deadline.toISOString() : null } });
+    }
+    if (
+      data.description !== undefined &&
+      data.description !== null &&
+      data.description !== (card.description ?? "")
+    ) {
+      activity.push({ ...base, type: "description", data: {} });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.taskCard.update({
+        where: { id: data.cardId },
+        data: {
+          title: data.title,
+          description: data.description ?? undefined,
+          priority: data.priority,
+          deadline,
+          coverColor: rawCover === undefined ? undefined : data.coverColor,
+        },
+      });
+      await logActivity(activity, tx);
     });
     revalidatePath(`/tasks/${card.column.boardId}`);
     revalidatePath(`/tasks/${card.column.boardId}/cards/${data.cardId}`);
@@ -644,6 +677,16 @@ export async function moveCardAction(input: {
             userId: user.id,
           },
         });
+        await logActivity(
+          {
+            cardId: data.cardId,
+            boardId: card.column.boardId,
+            actorId: user.id,
+            type: "moved",
+            data: { from: card.column.name, to: toCol.name },
+          },
+          tx
+        );
       } else {
         const sameCol = await tx.taskCard.findMany({
           where: { columnId: data.toColumnId },
@@ -691,9 +734,18 @@ export async function toggleAssigneeAction(formData: FormData) {
     const existing = await prisma.taskCardAssignee.findUnique({
       where: { cardId_userId: { cardId: data.cardId, userId: data.userId } },
     });
+    const target = await prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { username: true, displayName: true },
+    });
+    const activityBase = { cardId: data.cardId, boardId: card.column.boardId, actorId: user.id };
+    const targetName = target ? target.displayName ?? target.username : "";
     if (existing) {
-      await prisma.taskCardAssignee.delete({
-        where: { cardId_userId: { cardId: data.cardId, userId: data.userId } },
+      await prisma.$transaction(async (tx) => {
+        await tx.taskCardAssignee.delete({
+          where: { cardId_userId: { cardId: data.cardId, userId: data.userId } },
+        });
+        await logActivity({ ...activityBase, type: "assigneeRemoved", data: { name: targetName } }, tx);
       });
     } else {
       // Only board members can be assigned: otherwise any member could assign
@@ -703,8 +755,11 @@ export async function toggleAssigneeAction(formData: FormData) {
         select: { userId: true, user: { select: { deactivatedAt: true } } },
       });
       if (!targetMember || targetMember.user.deactivatedAt) throw new ActionError("forbidden");
-      await prisma.taskCardAssignee.create({
-        data: { cardId: data.cardId, userId: data.userId },
+      await prisma.$transaction(async (tx) => {
+        await tx.taskCardAssignee.create({
+          data: { cardId: data.cardId, userId: data.userId },
+        });
+        await logActivity({ ...activityBase, type: "assigneeAdded", data: { name: targetName } }, tx);
       });
       await notify({
         recipientId: data.userId,
@@ -759,18 +814,37 @@ export async function toggleSubtaskAction(formData: FormData) {
     const subtaskId = String(formData.get("subtaskId") ?? "");
     const sub = await prisma.taskSubtask.findUnique({
       where: { id: subtaskId },
-      select: { done: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
+      select: {
+        done: true,
+        title: true,
+        cardId: true,
+        card: { select: { column: { select: { boardId: true } } } },
+      },
     });
     if (!sub) throw new ActionError("notFound");
     await loadBoardAccess(sub.card.column.boardId);
     const newDone = !sub.done;
-    await prisma.taskSubtask.update({
-      where: { id: subtaskId },
-      data: {
-        done: newDone,
-        completedAt: newDone ? new Date() : null,
-        completedById: newDone ? user.id : null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.taskSubtask.update({
+        where: { id: subtaskId },
+        data: {
+          done: newDone,
+          completedAt: newDone ? new Date() : null,
+          completedById: newDone ? user.id : null,
+        },
+      });
+      if (newDone) {
+        await logActivity(
+          {
+            cardId: sub.cardId,
+            boardId: sub.card.column.boardId,
+            actorId: user.id,
+            type: "subtaskDone",
+            data: { title: sub.title },
+          },
+          tx
+        );
+      }
     });
     revalidatePath(`/tasks/${sub.card.column.boardId}/cards/${sub.cardId}`);
   });
@@ -872,18 +946,30 @@ export async function toggleCardTagAction(formData: FormData) {
     });
     const tag = await prisma.boardTag.findUnique({
       where: { id: tagId },
-      select: { boardId: true },
+      select: { boardId: true, name: true },
     });
     if (!card || !tag || tag.boardId !== card.column.boardId) throw new ActionError("notFound");
-    await loadBoardAccess(card.column.boardId);
+    const access = await loadBoardAccess(card.column.boardId);
     const existing = await prisma.taskCardTag.findUnique({
       where: { cardId_tagId: { cardId, tagId } },
     });
-    if (existing) {
-      await prisma.taskCardTag.delete({ where: { cardId_tagId: { cardId, tagId } } });
-    } else {
-      await prisma.taskCardTag.create({ data: { cardId, tagId } });
-    }
+    await prisma.$transaction(async (tx) => {
+      if (existing) {
+        await tx.taskCardTag.delete({ where: { cardId_tagId: { cardId, tagId } } });
+      } else {
+        await tx.taskCardTag.create({ data: { cardId, tagId } });
+      }
+      await logActivity(
+        {
+          cardId,
+          boardId: card.column.boardId,
+          actorId: access.userId,
+          type: existing ? "tagRemoved" : "tagAdded",
+          data: { name: tag.name },
+        },
+        tx
+      );
+    });
     revalidatePath(`/tasks/${card.column.boardId}`);
     revalidatePath(`/tasks/${card.column.boardId}/cards/${cardId}`);
     publishBoard(card.column.boardId);
@@ -972,7 +1058,7 @@ export async function addBlockAction(formData: FormData) {
     const [a, b] = await Promise.all([
       prisma.taskCard.findUnique({
         where: { id: blockerId },
-        select: { column: { select: { boardId: true } } },
+        select: { title: true, column: { select: { boardId: true } } },
       }),
       prisma.taskCard.findUnique({
         where: { id: blockedId },
@@ -982,10 +1068,28 @@ export async function addBlockAction(formData: FormData) {
     if (!a || !b) throw new ActionError("notFound");
     if (a.column.boardId !== b.column.boardId) throw new ActionError("crossBoard");
     await loadBoardAccess(a.column.boardId);
-    await prisma.taskBlock.upsert({
+    const existing = await prisma.taskBlock.findUnique({
       where: { blockerId_blockedId: { blockerId, blockedId } },
-      update: {},
-      create: { blockerId, blockedId, createdById: user.id },
+      select: { id: true },
+    });
+    await prisma.$transaction(async (tx) => {
+      await tx.taskBlock.upsert({
+        where: { blockerId_blockedId: { blockerId, blockedId } },
+        update: {},
+        create: { blockerId, blockedId, createdById: user.id },
+      });
+      if (!existing) {
+        await logActivity(
+          {
+            cardId: blockedId,
+            boardId: a.column.boardId,
+            actorId: user.id,
+            type: "blocked",
+            data: { title: a.title },
+          },
+          tx
+        );
+      }
     });
 
     // Notify the assignees of the card that just became blocked.
@@ -1020,12 +1124,25 @@ export async function removeBlockAction(formData: FormData) {
       select: {
         blockerId: true,
         blockedId: true,
+        blocker: { select: { title: true } },
         blocked: { select: { column: { select: { boardId: true } } } },
       },
     });
     if (!block) throw new ActionError("notFound");
-    await loadBoardAccess(block.blocked.column.boardId);
-    await prisma.taskBlock.delete({ where: { id: blockId } });
+    const access = await loadBoardAccess(block.blocked.column.boardId);
+    await prisma.$transaction(async (tx) => {
+      await tx.taskBlock.delete({ where: { id: blockId } });
+      await logActivity(
+        {
+          cardId: block.blockedId,
+          boardId: block.blocked.column.boardId,
+          actorId: access.userId,
+          type: "unblocked",
+          data: { title: block.blocker.title },
+        },
+        tx
+      );
+    });
     revalidatePath(`/tasks/${block.blocked.column.boardId}/cards/${block.blockedId}`);
     revalidatePath(`/tasks/${block.blocked.column.boardId}/cards/${block.blockerId}`);
   });
