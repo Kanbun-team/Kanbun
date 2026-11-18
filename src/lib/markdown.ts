@@ -7,7 +7,9 @@
 //
 // Supported: headings (#, ##, ###), unordered (-, *) and ordered (1.) lists,
 // **bold**, *italic*/_italic_, `code`, ~~strikethrough~~, [text](url), and
-// single line breaks within a paragraph.
+// single line breaks within a paragraph. With `mentions`, @username for any
+// listed username becomes a highlighted link to that user's profile (same
+// rules as parseMentions in notifications.ts: "jan@example.com" is not one).
 
 function escapeHtml(s: string): string {
   return s
@@ -30,7 +32,14 @@ function emphasis(s: string): string {
 // Placeholder delimiter. NUL is stripped from input, so it cannot be forged.
 const PH = "\u0000";
 
-function inline(raw: string): string {
+export interface MarkdownOptions {
+  /** Usernames (any case) whose @mentions are highlighted and linked. */
+  mentions?: Iterable<string>;
+}
+
+const MENTION_CLASS = "mention rounded-control bg-accent-soft px-0.5 font-medium text-ink no-underline";
+
+function inlineHtml(raw: string, mentions: ReadonlySet<string>): string {
   const slots: string[] = [];
   const stash = (html: string) => `${PH}${slots.push(html) - 1}${PH}`;
 
@@ -54,6 +63,20 @@ function inline(raw: string): string {
       )
   );
 
+  // Mentions after links (a mention inside link text stays plain) and before
+  // emphasis, so underscores in usernames are never read as italics. Only
+  // [a-z0-9_.-] is captured, which HTML escaping never produces or changes.
+  if (mentions.size > 0) {
+    out = out.replace(/(?<![a-z0-9_])@([a-z0-9_.-]+)/gi, (m, name: string) => {
+      const username = name.replace(/[.-]+$/, "");
+      if (!username || !mentions.has(username.toLowerCase())) return m;
+      const rest = name.slice(username.length);
+      return (
+        stash(`<a href="/users/${username.toLowerCase()}" class="${MENTION_CLASS}">@${username}</a>`) + rest
+      );
+    });
+  }
+
   out = emphasis(out);
 
   // Restore until stable: link text may itself contain a stashed code span.
@@ -64,7 +87,9 @@ function inline(raw: string): string {
   return out;
 }
 
-export function renderMarkdownToHtml(src: string): string {
+export function renderMarkdownToHtml(src: string, options: MarkdownOptions = {}): string {
+  const mentions = new Set([...(options.mentions ?? [])].map((u) => u.toLowerCase()));
+  const inline = (raw: string) => inlineHtml(raw, mentions);
   const lines = src.replace(/\r\n/g, "\n").split("\n");
   const blocks: string[] = [];
   let para: string[] = [];

@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useOptimistic, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { chipStyle } from "@/lib/palette";
-import { buttonClass } from "./ui/button";
+import { Plus, X } from "lucide-react";
+import { buttonClass, iconButtonClass } from "./ui/button";
+import Combobox from "./ui/Combobox";
+import { useUi } from "./ui/UiProvider";
 import { addBlockAction, removeBlockAction, toggleCardTagAction } from "@/server/tasks-actions";
 
 export interface CardTagsProps {
@@ -17,86 +20,58 @@ export interface CardTagsProps {
 }
 
 export function CardTags({ cardId, boardTags, selectedTagIds, locale }: CardTagsProps) {
-  const [open, setOpen] = useState(false);
   const router = useRouter();
+  const ui = useUi();
   const [pending, startTransition] = useTransition();
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [selectedIds, toggleOptimistic] = useOptimistic(selectedTagIds, (ids: string[], tagId: string) =>
+    ids.includes(tagId) ? ids.filter((id) => id !== tagId) : [...ids, tagId]
+  );
   const set = new Set(selectedTagIds);
   const selected = boardTags.filter((tag) => set.has(tag.id));
 
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
-  }, [open]);
-
   function toggle(tagId: string) {
     startTransition(async () => {
+      toggleOptimistic(tagId);
       const fd = new FormData();
       fd.set("cardId", cardId);
       fd.set("tagId", tagId);
-      await toggleCardTagAction(fd);
+      ui.report(await toggleCardTagAction(fd));
       router.refresh();
     });
   }
 
   return (
-    <div className="relative" ref={wrapRef}>
-      <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
-        {selected.map((tag) => (
-          <button
-            key={tag.id}
-            type="button"
-            onClick={() => toggle(tag.id)}
-            title={`${t("remove", locale)}: ${tag.name}`}
-            className="chip group inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-control font-medium focus:outline-none focus:ring-2 focus:ring-accent"
-            style={chipStyle(tag.color) as CSSProperties}
-          >
-            {tag.name}
-            <span aria-hidden="true">&times;</span>
-          </button>
-        ))}
+    <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
+      {selected.map((tag) => (
         <button
+          key={tag.id}
           type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-label={t("add", locale)}
-          aria-expanded={open}
-          className="w-6 h-6 rounded-full border border-dashed border-line-strong flex items-center justify-center text-sm leading-none text-ink-muted hover:text-ink hover:border-accent"
+          onClick={() => toggle(tag.id)}
+          aria-label={`${t("remove", locale)}: ${tag.name}`}
+          title={`${t("remove", locale)}: ${tag.name}`}
+          className="chip group inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-control font-medium focus:outline-none focus:ring-2 focus:ring-accent"
+          style={chipStyle(tag.color) as CSSProperties}
         >
-          +
+          {tag.name}
+          <span aria-hidden="true">&times;</span>
         </button>
-        {selected.length === 0 && (
-          <span className="text-sm text-ink-muted">{t("cardNoTags", locale)}</span>
-        )}
-      </div>
-      {open && (
-        <div className="absolute mt-2 z-50 w-60 bg-raised border border-line rounded-panel shadow-float p-1 max-h-64 overflow-auto">
-          {boardTags.length === 0 && (
-            <p className="text-sm text-ink-muted px-2 py-1">{t("noResults", locale)}</p>
-          )}
-          {boardTags.map((tag) => {
-            const on = set.has(tag.id);
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => toggle(tag.id)}
-                className={cn(
-                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-control hover:bg-ink/5",
-                  on && "bg-accent-soft"
-                )}
-              >
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: tag.color }} />
-                <span className="text-sm flex-1 truncate">{tag.name}</span>
-                {on && <span className="text-accent">&#10003;</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      ))}
+      <Combobox
+        selectionMode="multiple"
+        label={t("cardAddTag", locale)}
+        searchLabel={t("pickerSearchTags", locale)}
+        emptyText={t("pickerNoMatches", locale)}
+        selectedIds={selectedIds}
+        onToggle={toggle}
+        options={boardTags.map((tag) => ({
+          id: tag.id,
+          label: tag.name,
+          leading: <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ background: tag.color }} />,
+        }))}
+        trigger={<Plus size={14} aria-hidden />}
+        triggerClassName="w-6 h-6 rounded-full border border-dashed border-line-strong flex items-center justify-center text-ink-muted hover:text-ink hover:border-accent"
+      />
+      {selected.length === 0 && <span className="text-sm text-ink-muted">{t("cardNoTags", locale)}</span>}
     </div>
   );
 }
@@ -106,7 +81,8 @@ export interface CardBlocksProps {
   cardId: string;
   blocking: { blockId: string; cardId: string; cardTitle: string }[];
   blockedBy: { blockId: string; cardId: string; cardTitle: string }[];
-  candidates: { id: string; title: string }[];
+  /** Cards on the board that can block this one (not itself, not already linked). */
+  candidates: { id: string; title: string; columnName: string }[];
   locale: Locale;
 }
 
@@ -119,43 +95,51 @@ export function CardBlocks({
   locale,
 }: CardBlocksProps) {
   const router = useRouter();
+  const ui = useUi();
+  const [pending, startTransition] = useTransition();
+
+  function addBlocker(blockerId: string) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("blockerId", blockerId);
+      fd.set("blockedId", cardId);
+      ui.report(await addBlockAction(fd));
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="grid sm:grid-cols-2 gap-4">
+    <div className={cn("grid sm:grid-cols-2 gap-4", pending && "opacity-60")}>
       <BlocksColumn
         title={t("cardBlockedBy", locale)}
         items={blockedBy}
         boardId={boardId}
         emptyText={t("none", locale)}
+        locale={locale}
       />
       <BlocksColumn
         title={t("cardBlocking", locale)}
         items={blocking}
         boardId={boardId}
         emptyText={t("none", locale)}
+        locale={locale}
       />
-      <form
-        action={async (fd) => {
-          await addBlockAction(fd);
-          router.refresh();
-        }}
-        className="sm:col-span-2 flex flex-wrap items-end gap-2 bg-surface border border-line rounded-panel p-3"
-      >
-        <input type="hidden" name="blockedId" value={cardId} />
-        <label className="flex-1 min-w-[200px]">
-          <span className="text-sm font-medium text-ink-muted">{t("cardBlockedBy", locale)}</span>
-          <select name="blockerId" required className="mt-1">
-            <option value="">{t("cardBlockSelectCard", locale)}</option>
-            {candidates.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className={buttonClass("primary")}>
-          {t("cardBlockAdd", locale)}
-        </button>
-      </form>
+      <div className="sm:col-span-2">
+        <Combobox
+          label={t("cardAddBlocker", locale)}
+          searchLabel={t("pickerSearchCards", locale)}
+          emptyText={t("pickerNoMatches", locale)}
+          onSelect={addBlocker}
+          options={candidates.map((c) => ({ id: c.id, label: c.title, description: c.columnName }))}
+          trigger={
+            <>
+              <Plus size={14} aria-hidden />
+              {t("cardAddBlocker", locale)}
+            </>
+          }
+          triggerClassName={buttonClass("secondary", "sm")}
+        />
+      </div>
     </div>
   );
 }
@@ -165,11 +149,13 @@ function BlocksColumn({
   items,
   boardId,
   emptyText,
+  locale,
 }: {
   title: string;
   items: { blockId: string; cardId: string; cardTitle: string }[];
   boardId: string;
   emptyText: string;
+  locale: Locale;
 }) {
   const router = useRouter();
   return (
@@ -194,7 +180,13 @@ function BlocksColumn({
                 }}
               >
                 <input type="hidden" name="blockId" value={it.blockId} />
-                <button className="text-xs text-ink-muted hover:text-ink">&times;</button>
+                <button
+                  aria-label={`${t("remove", locale)}: ${it.cardTitle}`}
+                  title={`${t("remove", locale)}: ${it.cardTitle}`}
+                  className={iconButtonClass("w-6 h-6 hover:text-danger")}
+                >
+                  <X size={14} aria-hidden />
+                </button>
               </form>
             </li>
           ))}
