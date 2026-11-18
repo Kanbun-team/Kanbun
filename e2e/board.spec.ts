@@ -94,7 +94,7 @@ test("keyboard shortcuts: help, search and rename", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await page.locator("body").press("/");
-  await expect(page.getByLabel(/search/i)).toBeFocused();
+  await expect(page.getByLabel("Search cards...")).toBeFocused();
   await page.keyboard.press("Escape");
 
   const link = card(page, "To do", "Newsletter signup endpoint").getByRole("link");
@@ -110,7 +110,7 @@ test("keyboard shortcuts: help, search and rename", async ({ page }) => {
 
 test("filter cards by text", async ({ page }) => {
   await page.getByRole("button", { name: "Filter" }).click();
-  await page.getByLabel(/search/i).fill("navigation");
+  await page.getByLabel("Search cards...").fill("navigation");
   await expect(page.getByRole("link", { name: /Responsive navigation/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Hero section illustrations/ })).toHaveCount(0);
 });

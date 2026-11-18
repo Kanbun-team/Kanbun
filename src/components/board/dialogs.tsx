@@ -116,6 +116,7 @@ export function MoveCardDialog({
 }
 
 const SHORTCUTS: [string[], DictKey][] = [
+  [["Ctrl", "K"], "shortcutPalette"],
   [["/"], "shortcutSearch"],
   [["N"], "shortcutNew"],
   [["E"], "shortcutEdit"],

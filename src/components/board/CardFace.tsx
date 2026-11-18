@@ -88,7 +88,7 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
                 />
               ))}
               {extra > 0 && (
-                <span className="w-[22px] h-[22px] rounded-full ring-2 ring-raised bg-line text-ink text-xs font-semibold flex items-center justify-center">
+                <span className="relative w-[22px] h-[22px] rounded-full ring-2 ring-raised bg-line text-ink text-xs font-semibold flex items-center justify-center">
                   +{extra}
                 </span>
               )}

@@ -81,7 +81,7 @@ test.describe("board views", () => {
   test("save a filter, apply it after a reload and delete it", async ({ page }) => {
     const name = `Navigation work ${Date.now()}`;
     await page.getByRole("button", { name: /^Filter/ }).click();
-    await page.getByLabel(/search/i).fill("navigation");
+    await page.getByLabel("Search cards...").fill("navigation");
     await page.getByRole("button", { name: "Save filter" }).click();
     await page.getByLabel("Filter name").fill(name);
     await page.getByLabel("Filter name").press("Enter");
@@ -107,10 +107,10 @@ test.describe("board views", () => {
   });
 
   test("set a deadline with the d shortcut", async ({ page }) => {
-    const target = card(page, "Backlog", "Audit current analytics events");
+    const target = card(page, "Done", "Sitemap and robots.txt");
     await target.getByRole("link").focus();
     await page.keyboard.press("d");
-    const picker = page.getByRole("dialog", { name: /Deadline for Audit current analytics events/ });
+    const picker = page.getByRole("dialog", { name: /Deadline for Sitemap and robots.txt/ });
     await expect(picker).toBeVisible();
     const saved = page.waitForResponse((r) => r.request().method() === "POST");
     await picker.getByRole("button", { name: /^Tomorrow/ }).click();
@@ -118,13 +118,13 @@ test.describe("board views", () => {
     await expect(target).toContainText("Tomorrow");
     await saved;
     await page.reload();
-    await expect(card(page, "Backlog", "Audit current analytics events")).toContainText("Tomorrow");
+    await expect(card(page, "Done", "Sitemap and robots.txt")).toContainText("Tomorrow");
 
     // The card menu opens the same picker; Clear removes the deadline.
-    await card(page, "Backlog", "Audit current analytics events").getByRole("button", { name: /Actions for/ }).click();
+    await card(page, "Done", "Sitemap and robots.txt").getByRole("button", { name: /Actions for/ }).click();
     await page.getByRole("menuitem", { name: "Set deadline" }).click();
     await page.getByRole("dialog", { name: /Deadline for/ }).getByRole("button", { name: "Clear" }).click();
-    await expect(card(page, "Backlog", "Audit current analytics events")).not.toContainText("Tomorrow");
+    await expect(card(page, "Done", "Sitemap and robots.txt")).not.toContainText("Tomorrow");
   });
 });
 

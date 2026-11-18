@@ -35,7 +35,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
     <header className="border-b border-line bg-surface sticky top-0 z-40">
       <div className="mx-auto max-w-7xl group-has-[[data-wide]]/app:max-w-none px-4 sm:px-6">
         <div className="flex items-center gap-3 h-14">
-          <Link href="/tasks" className="flex items-center gap-2 font-semibold">
+          <Link href="/tasks" aria-label={t("appName", locale)} className="flex items-center gap-2 font-semibold">
             <Logo size={26} />
             <span className="hidden sm:inline">{t("appName", locale)}</span>
           </Link>

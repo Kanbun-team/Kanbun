@@ -25,7 +25,7 @@ describe("translations", () => {
 
   it("no em dashes in any UI copy", () => {
     for (const dict of [en, ...Object.values(LOCALES)]) {
-      expect(Object.values(dict).filter((v) => String(v).includes("—"))).toEqual([]);
+      expect(Object.values(dict).filter((v) => String(v).includes("\u2014"))).toEqual([]);
     }
   });
 });

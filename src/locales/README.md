@@ -1,6 +1,6 @@
 # Locales
 
-Each `<locale>.json` file is a flat string-to-string map. English (`en.json`) is the source of truth: every key the UI ever uses lives there. Other locales are partial — any key missing from `<locale>.json` automatically falls back to English at runtime.
+Each `<locale>.json` file is a flat string-to-string map. English (`en.json`) is the source of truth: every key the UI ever uses lives there. Other locales are partial: any key missing from `<locale>.json` automatically falls back to English at runtime.
 
 ## Add a new language
 
@@ -14,7 +14,7 @@ Each `<locale>.json` file is a flat string-to-string map. English (`en.json`) is
 
 ## Update an existing language
 
-Just edit the file and open a PR. No code changes needed. Tip: run `npm run dev`, switch language in Settings, and watch the dev console — every fallback logs once with the missing key and target locale.
+Just edit the file and open a PR. No code changes needed. Tip: run `npm run dev`, switch language in Settings, and watch the dev console: every fallback logs once with the missing key and target locale.
 
 ## Coverage
 
