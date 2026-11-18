@@ -51,6 +51,11 @@ test.describe("board views", () => {
     const title = page.locator("#calendar-title");
     const thisMonth = await title.textContent();
 
+    // The month grid sits in a frame with rounded corners.
+    const frame = page.locator("table:has(td[data-date])").locator("xpath=..");
+    expect(parseFloat(await frame.evaluate((el) => getComputedStyle(el).borderTopLeftRadius))).toBeGreaterThan(0);
+    expect(await frame.evaluate((el) => getComputedStyle(el).overflow)).toBe("hidden");
+
     const target = dayKey(2);
     let cell = page.locator(`td[data-date="${target}"]`);
     if ((await cell.count()) === 0) {
