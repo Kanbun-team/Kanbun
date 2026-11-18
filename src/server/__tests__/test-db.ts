@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client";
  * A throwaway SQLite database with every migration applied, for tests of
  * server logic that needs real queries and transactions.
  */
-export function createTestDb(): { db: PrismaClient; cleanup: () => Promise<void> } {
+export function createTestDb(): { db: PrismaClient; url: string; cleanup: () => Promise<void> } {
   const dir = mkdtempSync(join(tmpdir(), "kanbun-test-"));
   const url = `file:${join(dir, "test.db")}`;
   execFileSync("npx", ["prisma", "migrate", "deploy"], {
@@ -18,6 +18,7 @@ export function createTestDb(): { db: PrismaClient; cleanup: () => Promise<void>
   const db = new PrismaClient({ datasources: { db: { url } } });
   return {
     db,
+    url,
     cleanup: async () => {
       await db.$disconnect();
       rmSync(dir, { recursive: true, force: true });

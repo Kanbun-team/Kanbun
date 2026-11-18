@@ -749,6 +749,7 @@
   "webhookColAttempts": "Próby",
   "webhookDeliveryOk": "Dostarczono",
   "webhookDeliveryFailed": "Nieudane",
+  "webhookDeliveryPending": "Oczekuje",
   "webhookDeliveriesCaption": "Ostatnie dostarczenia do {url}",
   "error_limitReached": "Osiągnięto limit. Najpierw usuń jeden.",
   "error_avatarUrl": "Awatar musi być adresem https obrazu.",

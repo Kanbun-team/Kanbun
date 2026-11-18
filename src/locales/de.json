@@ -728,6 +728,7 @@
   "webhookColAttempts": "Versuche",
   "webhookDeliveryOk": "Zugestellt",
   "webhookDeliveryFailed": "Fehlgeschlagen",
+  "webhookDeliveryPending": "Ausstehend",
   "webhookDeliveriesCaption": "Letzte Zustellungen an {url}",
   "error_limitReached": "Das Limit ist erreicht. Entferne zuerst einen Eintrag.",
   "error_avatarUrl": "Der Avatar muss eine https-Adresse eines Bildes sein.",

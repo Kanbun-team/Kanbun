@@ -30,6 +30,17 @@ const JOBS: Job[] = [
       await runDigest();
     },
   },
+  {
+    // Webhook outbox: deliveries left pending by a restart, a crash or
+    // another instance. New deliveries and retries are sent at once by the
+    // process that queued them; this is the safety net.
+    name: "webhooks",
+    everyMs: 15_000,
+    run: async () => {
+      const { runWebhookQueue } = await import("../webhooks");
+      await runWebhookQueue();
+    },
+  },
   // Recurring cards: due schedules create their card within a minute.
   { name: "recurring-cards", everyMs: 60_000, run: async () => void (await runRecurringCards()) },
   {

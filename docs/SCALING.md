@@ -44,6 +44,11 @@ the matching migrations first. Search uses PostgreSQL full-text search with the
 - **Background jobs** (deadline reminders, the daily digest, repeating cards).
   Every instance runs the scheduler, but each run first takes a short Redis lock
   per job, so only one instance does the work.
+- **Webhook deliveries** are stored in the database (an outbox), not in Redis.
+  The instance that queued a delivery sends it right away; the `webhooks` job
+  sends whatever another instance or a restart left waiting. Each attempt is
+  claimed with a conditional update first, so two instances never send the
+  same attempt, with or without Redis.
 
 Redis holds only short-lived state: it needs no persistence and no backups. If
 Redis is unreachable, Kanbun keeps working: actions still succeed, live updates

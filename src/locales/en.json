@@ -728,6 +728,7 @@
   "webhookColAttempts": "Attempts",
   "webhookDeliveryOk": "Delivered",
   "webhookDeliveryFailed": "Failed",
+  "webhookDeliveryPending": "Pending",
   "webhookDeliveriesCaption": "Recent deliveries of {url}",
   "error_limitReached": "You have reached the limit. Remove one first.",
   "error_avatarUrl": "The avatar must be an https address of an image.",
