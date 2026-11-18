@@ -417,25 +417,35 @@ function PaletteBody({ locale, onClose, onShortcuts }: { locale: Locale; onClose
     </ListBoxItem>
   );
 
+  /** In a sub-view, Escape goes back to the search instead of closing. */
+  function escapeBack(e: React.KeyboardEvent) {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    back();
+  }
+
   if (mode.kind === "newCard") {
     return (
-      <NewCardForm
-        locale={locale}
-        board={mode.board}
-        column={mode.column}
-        busy={busy}
-        onBack={back}
-        onSubmit={async (title) => {
-          if (busy) return;
-          setBusy(true);
-          const result = ui.report(await addCardAction(fd({ columnId: mode.column.id, title })));
-          setBusy(false);
-          if (!result.ok) return;
-          const [id] = result.data.ids;
-          markLocalCards(result.data.ids);
-          go(`/tasks/${mode.board.id}/cards/${id}`);
-        }}
-      />
+      <div onKeyDownCapture={escapeBack}>
+        <NewCardForm
+          locale={locale}
+          board={mode.board}
+          column={mode.column}
+          busy={busy}
+          onBack={back}
+          onSubmit={async (title) => {
+            if (busy) return;
+            setBusy(true);
+            const result = ui.report(await addCardAction(fd({ columnId: mode.column.id, title })));
+            setBusy(false);
+            if (!result.ok) return;
+            const [id] = result.data.ids;
+            markLocalCards(result.data.ids);
+            go(`/tasks/${mode.board.id}/cards/${id}`);
+          }}
+        />
+      </div>
     );
   }
 
@@ -444,117 +454,121 @@ function PaletteBody({ locale, onClose, onShortcuts }: { locale: Locale; onClose
   const inputLabel = scoped ? tr("paletteCardActionsLabel", { title: scopeTitle }) : t("paletteSearchLabel", locale);
 
   return (
-    <Autocomplete inputValue={query} onInputChange={setQuery}>
-      {scoped && <ScopeBar locale={locale} title={scopeTitle} onBack={back} />}
-      <TextField aria-label={inputLabel} autoFocus className="flex items-center gap-2 border-b border-line px-4 focus-within:shadow-[inset_0_-2px_0_rgb(var(--accent))]">
-        <Search size={18} aria-hidden className="text-ink-muted shrink-0" />
-        <Input
-          ref={inputRef}
-          placeholder={scoped ? t("paletteCardActionsPlaceholder", locale) : t("paletteSearchLabel", locale)}
-          className="flex-1 min-w-0 h-12 text-md text-ink placeholder:text-ink-muted !bg-transparent !border-0 !shadow-none !rounded-none !p-0 !outline-none"
-          onKeyDown={(e) => {
-            const input = e.currentTarget;
-            if (scoped && (e.key === "Escape" || (e.key === "Backspace" && input.value === ""))) {
-              // Back to the search instead of closing the palette.
-              e.preventDefault();
-              e.stopPropagation();
-              back();
-              return;
-            }
-            if (searching && e.key === "ArrowRight" && input.selectionStart === input.value.length) {
-              // Card actions for the highlighted card result.
-              const key = activeKey();
-              if (key?.startsWith("card:")) {
-                const card = cards.find((c) => `card:${c.id}` === key);
-                if (card) {
-                  e.preventDefault();
-                  void openCardMode(card.id, card.title);
-                }
+    <div onKeyDownCapture={scoped ? escapeBack : undefined}>
+      <Autocomplete inputValue={query} onInputChange={setQuery}>
+        {scoped && <ScopeBar locale={locale} title={scopeTitle} onBack={back} />}
+        <TextField aria-label={inputLabel} autoFocus className="flex items-center gap-2 border-b border-line px-4 focus-within:shadow-[inset_0_-2px_0_rgb(var(--accent))]">
+          <Search size={18} aria-hidden className="text-ink-muted shrink-0" />
+          <Input
+            ref={inputRef}
+            placeholder={scoped ? t("paletteCardActionsPlaceholder", locale) : t("paletteSearchLabel", locale)}
+            className="flex-1 min-w-0 h-12 text-md text-ink placeholder:text-ink-muted !bg-transparent !border-0 !shadow-none !rounded-none !p-0 !outline-none"
+            onKeyDown={(e) => {
+              const input = e.currentTarget;
+              if (scoped && e.key === "Backspace" && input.value === "") {
+                e.preventDefault();
+                back();
+                return;
               }
-              return;
-            }
-            // Enter with nothing highlighted (after pasting or deleting text)
-            // opens the top result.
-            if (e.key === "Enter" && firstKey && !input.getAttribute("aria-activedescendant")) {
-              e.preventDefault();
-              runKey(firstKey);
-            }
-          }}
-        />
-        <Kbd className="shrink-0 hidden sm:inline-flex">Esc</Kbd>
-      </TextField>
-      <ListBox
-        aria-label={scoped ? inputLabel : t("paletteLabel", locale)}
-        onAction={(key) => runKey(String(key))}
-        className="max-h-[min(60vh,28rem)] overflow-y-auto py-1 outline-none"
-        renderEmptyState={() => (
-          <p className="px-4 py-6 text-base text-ink-muted" role={pending || mode.kind === "loading" ? "status" : undefined}>
-            {pending || mode.kind === "loading"
-              ? t("paletteSearching", locale)
-              : t("paletteNoResults", locale).replace("{query}", trimmed)}
+              if (searching && e.key === "ArrowRight" && input.selectionStart === input.value.length) {
+                // Card actions for the highlighted card result.
+                const key = activeKey();
+                if (key?.startsWith("card:")) {
+                  const card = cards.find((c) => `card:${c.id}` === key);
+                  if (card) {
+                    e.preventDefault();
+                    void openCardMode(card.id, card.title);
+                  }
+                }
+                return;
+              }
+              // Enter with nothing highlighted (after pasting or deleting text)
+              // opens the top result.
+              if (e.key === "Enter" && firstKey && !input.getAttribute("aria-activedescendant")) {
+                e.preventDefault();
+                runKey(firstKey);
+              }
+            }}
+          />
+          <Kbd className="shrink-0 hidden sm:inline-flex">Esc</Kbd>
+        </TextField>
+        {/* The scroll container is focusable so the list can be scrolled from
+            the keyboard too (the options only get virtual focus). */}
+        <div className="max-h-[min(60vh,28rem)] overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" tabIndex={0}>
+          <ListBox
+            aria-label={scoped ? inputLabel : t("paletteLabel", locale)}
+            onAction={(key) => runKey(String(key))}
+            className="py-1 outline-none"
+            renderEmptyState={() => (
+              <p className="px-4 py-6 text-base text-ink-muted" role={pending || mode.kind === "loading" ? "status" : undefined}>
+                {pending || mode.kind === "loading"
+                  ? t("paletteSearching", locale)
+                  : t("paletteNoResults", locale).replace("{query}", trimmed)}
+              </p>
+            )}
+          >
+            {boards.length > 0 && (
+              <ListBoxSection id="boards" className={sectionClass}>
+                <Header className={headerClass}>{t("paletteGroupBoards", locale)}</Header>
+                {boards.map((b) => (
+                  <ListBoxItem key={b.id} id={`board:${b.id}`} textValue={b.name} className={itemClass}>
+                    <span hidden data-palette-key={`board:${b.id}`} />
+                    <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+                    <span className="flex-1 min-w-0 truncate">{b.name}</span>
+                    <ArrowRight size={16} aria-hidden className="text-ink-muted shrink-0" />
+                  </ListBoxItem>
+                ))}
+              </ListBoxSection>
+            )}
+            {cards.length > 0 && (
+              <ListBoxSection id="cards" className={sectionClass}>
+                <Header className={headerClass}>{t("paletteGroupCards", locale)}</Header>
+                {cards.map((c) => (
+                  <ListBoxItem key={c.id} id={`card:${c.id}`} textValue={c.title} className={itemClass}>
+                    <span hidden data-palette-key={`card:${c.id}`} />
+                    <FileText size={16} aria-hidden className="text-ink-muted shrink-0 self-start mt-0.5" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate font-medium">{c.title}</span>
+                      <span className="block truncate text-sm text-ink-muted">
+                        {t("paletteCardLocation", locale).replace("{column}", c.columnName).replace("{board}", c.boardName)}
+                      </span>
+                      {c.snippet && <Snippet text={c.snippet} />}
+                    </span>
+                  </ListBoxItem>
+                ))}
+              </ListBoxSection>
+            )}
+            {shownContext.length > 0 && contextCard && (
+              <ListBoxSection id="context" className={sectionClass}>
+                <Header className={headerClass}>{tr("paletteGroupThisCard", { title: contextCard.title })}</Header>
+                {shownContext.map((a) => itemRow("context", a))}
+              </ListBoxSection>
+            )}
+            {shownCardItems.length > 0 && (
+              <ListBoxSection id="card-actions" className={sectionClass}>
+                {shownCardItems.map((a) => itemRow("cardAction", a))}
+              </ListBoxSection>
+            )}
+            {shownActions.length > 0 && (
+              <ListBoxSection id="actions" className={sectionClass}>
+                <Header className={headerClass}>{t("paletteGroupActions", locale)}</Header>
+                {shownActions.map((a) => itemRow("action", a))}
+              </ListBoxSection>
+            )}
+          </ListBox>
+        </div>
+        {searching && !hasTerms && <p className="px-4 py-3 border-t border-line text-sm text-ink-muted">{t("paletteHint", locale)}</p>}
+        {searching && cards.length > 0 && (
+          <p className="hidden sm:flex items-center gap-1.5 px-4 py-2 border-t border-line text-sm text-ink-muted">
+            <Kbd>
+              <span aria-hidden>→</span>
+              <span className="sr-only">{t("paletteKeyRight", locale)}</span>
+            </Kbd>
+            {t("paletteCardActionsHint", locale)}
           </p>
         )}
-      >
-        {boards.length > 0 && (
-          <ListBoxSection id="boards" className={sectionClass}>
-            <Header className={headerClass}>{t("paletteGroupBoards", locale)}</Header>
-            {boards.map((b) => (
-              <ListBoxItem key={b.id} id={`board:${b.id}`} textValue={b.name} className={itemClass}>
-                <span hidden data-palette-key={`board:${b.id}`} />
-                <span aria-hidden className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
-                <span className="flex-1 min-w-0 truncate">{b.name}</span>
-                <ArrowRight size={16} aria-hidden className="text-ink-muted shrink-0" />
-              </ListBoxItem>
-            ))}
-          </ListBoxSection>
-        )}
-        {cards.length > 0 && (
-          <ListBoxSection id="cards" className={sectionClass}>
-            <Header className={headerClass}>{t("paletteGroupCards", locale)}</Header>
-            {cards.map((c) => (
-              <ListBoxItem key={c.id} id={`card:${c.id}`} textValue={c.title} className={itemClass}>
-                <span hidden data-palette-key={`card:${c.id}`} />
-                <FileText size={16} aria-hidden className="text-ink-muted shrink-0 self-start mt-0.5" />
-                <span className="flex-1 min-w-0">
-                  <span className="block truncate font-medium">{c.title}</span>
-                  <span className="block truncate text-sm text-ink-muted">
-                    {t("paletteCardLocation", locale).replace("{column}", c.columnName).replace("{board}", c.boardName)}
-                  </span>
-                  {c.snippet && <Snippet text={c.snippet} />}
-                </span>
-              </ListBoxItem>
-            ))}
-          </ListBoxSection>
-        )}
-        {shownContext.length > 0 && contextCard && (
-          <ListBoxSection id="context" className={sectionClass}>
-            <Header className={headerClass}>{tr("paletteGroupThisCard", { title: contextCard.title })}</Header>
-            {shownContext.map((a) => itemRow("context", a))}
-          </ListBoxSection>
-        )}
-        {shownCardItems.length > 0 && (
-          <ListBoxSection id="card-actions" className={sectionClass}>
-            {shownCardItems.map((a) => itemRow("cardAction", a))}
-          </ListBoxSection>
-        )}
-        {shownActions.length > 0 && (
-          <ListBoxSection id="actions" className={sectionClass}>
-            <Header className={headerClass}>{t("paletteGroupActions", locale)}</Header>
-            {shownActions.map((a) => itemRow("action", a))}
-          </ListBoxSection>
-        )}
-      </ListBox>
-      {searching && !hasTerms && <p className="px-4 py-3 border-t border-line text-sm text-ink-muted">{t("paletteHint", locale)}</p>}
-      {searching && cards.length > 0 && (
-        <p className="hidden sm:flex items-center gap-1.5 px-4 py-2 border-t border-line text-sm text-ink-muted">
-          <Kbd>
-            <span aria-hidden>→</span>
-            <span className="sr-only">{t("paletteKeyRight", locale)}</span>
-          </Kbd>
-          {t("paletteCardActionsHint", locale)}
-        </p>
-      )}
-    </Autocomplete>
+      </Autocomplete>
+    </div>
   );
 }
 
@@ -613,9 +627,8 @@ function NewCardForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Escape" || (e.key === "Backspace" && title === "")) {
+            if (e.key === "Backspace" && title === "") {
               e.preventDefault();
-              e.stopPropagation();
               onBack();
             }
           }}

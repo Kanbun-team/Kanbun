@@ -28,7 +28,7 @@ import { MenuButton, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import { useUi } from "@/components/ui/UiProvider";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDate, t, type Locale } from "@/lib/i18n";
+import { formatDate, t, tn, type Locale } from "@/lib/i18n";
 import { relativeDeadline } from "@/lib/deadline";
 import type { ActionResult } from "@/lib/action-result";
 import {
@@ -212,7 +212,7 @@ export default function Checklist({
               aria-valuemin={0}
               aria-valuemax={total}
               aria-valuenow={done}
-              aria-valuetext={t("cardSubtasksA11y", locale).replace("{done}", String(done)).replace("{total}", String(total))}
+              aria-valuetext={tn("cardSubtasksA11y", total, locale).replace("{done}", String(done))}
               className="flex-1 h-1.5 rounded-full bg-ink/10 overflow-hidden"
             >
               <div

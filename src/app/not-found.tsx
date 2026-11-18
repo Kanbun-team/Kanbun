@@ -3,12 +3,16 @@ import { t } from "@/lib/i18n";
 import { getLocale } from "@/lib/get-locale";
 import StatusPage from "@/components/StatusPage";
 import { buttonClass } from "@/components/ui/button";
+import { titleMetadata } from "@/server/page-title";
+
+export function generateMetadata() {
+  return titleMetadata("notFoundTitle");
+}
 
 export default async function NotFound() {
   const locale = await getLocale();
   return (
     <StatusPage title={t("notFoundTitle", locale)} body={t("notFoundBody", locale)}>
-      <title>{`${t("notFoundTitle", locale)} · Kanbun`}</title>
       <Link href="/tasks" className={buttonClass("primary")}>
         {t("backToBoards", locale)}
       </Link>

@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Clock, Lock } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import TagChip from "@/components/ui/TagChip";
 import { cn } from "@/lib/utils";
-import { formatDate, intlLocale, t, type DictKey, type Locale } from "@/lib/i18n";
+import { formatDate, intlLocale, t, tn, type DictKey, type Locale } from "@/lib/i18n";
 import { priorityLabel } from "@/lib/labels";
 import { relativeDeadline } from "@/lib/deadline";
 import { sortRows, type ListRow, type SortDirection, type SortKey } from "@/lib/board-views";
@@ -177,9 +177,7 @@ export default function ListView({
                         {card.subtasksDone}/{card.subtasksTotal}
                       </span>
                       <span className="sr-only">
-                        {t("cardSubtasksA11y", locale)
-                          .replace("{done}", String(card.subtasksDone))
-                          .replace("{total}", String(card.subtasksTotal))}
+                        {tn("cardSubtasksA11y", card.subtasksTotal, locale).replace("{done}", String(card.subtasksDone))}
                       </span>
                     </span>
                   )}

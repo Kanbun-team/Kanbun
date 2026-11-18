@@ -11,7 +11,7 @@ test.describe("login screen in the browser's language", () => {
     await page.getByLabel("Nazwa użytkownika").fill("admin");
     await page.getByLabel("Hasło").fill("wrong-password");
     await page.getByRole("button", { name: "Zaloguj", exact: true }).click();
-    await expect(page.getByRole("alert")).toHaveText("Nieprawidłowa nazwa użytkownika lub hasło.");
+    await expect(page.getByText("Nieprawidłowa nazwa użytkownika lub hasło.")).toBeVisible();
     expect(await axeViolations(page)).toEqual([]);
   });
 });

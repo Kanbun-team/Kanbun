@@ -56,9 +56,7 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
                   {card.subtasksDone}/{card.subtasksTotal}
                 </span>
                 <span className="sr-only">
-                  {t("cardSubtasksA11y", locale)
-                    .replace("{done}", String(card.subtasksDone))
-                    .replace("{total}", String(card.subtasksTotal))}
+                  {tn("cardSubtasksA11y", card.subtasksTotal, locale).replace("{done}", String(card.subtasksDone))}
                 </span>
               </span>
             )}

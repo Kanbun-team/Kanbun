@@ -145,9 +145,7 @@ export default function BoardCard({
             <div className="h-full rounded-full bg-success" style={{ width: `${progress}%` }} />
           </div>
           <span className="sr-only">
-            {t("boardProgressA11y", locale)
-              .replace("{done}", String(board.doneCount))
-              .replace("{total}", String(board.totalCount))}
+            {tn("boardProgressA11y", board.totalCount, locale).replace("{done}", String(board.doneCount))}
           </span>
         </div>
       )}

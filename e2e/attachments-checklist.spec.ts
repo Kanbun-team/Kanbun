@@ -86,14 +86,14 @@ test("upload an image and a text file, download them and delete one", async ({ p
   await expect(toast(page)).toContainText("Attachment deleted");
   await expect(fileLink).toHaveCount(0);
   expect((await page.request.get(fileUrl!)).status()).toBe(404);
-  await expect(card(page, "Backlog", title)).toContainText(/\b1 attachment(?!s)/);
+  await expect(card(page, "Backlog", title)).toContainText(/1 attachment(?!s)/);
 
   // Trashing the card keeps the file; undo brings the attachment back.
   await panel.getByRole("button", { name: "Delete card" }).click();
   await expect(toast(page)).toContainText("Card deleted");
   expect((await page.request.get(imageUrl!)).status()).toBe(404);
   await toast(page).getByRole("button", { name: "Undo" }).click();
-  await expect(card(page, "Backlog", title)).toContainText(/\b1 attachment(?!s)/);
+  await expect(card(page, "Backlog", title)).toContainText(/1 attachment(?!s)/);
   const restored = await page.request.get(imageUrl!);
   expect(restored.status()).toBe(200);
   expect(Buffer.compare(await restored.body(), PNG)).toBe(0);

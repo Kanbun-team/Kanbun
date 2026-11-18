@@ -76,7 +76,7 @@ test("a board watcher hears about new cards", async ({ page, browser }) => {
 
   // A pasted list of cards: one notification for all of them.
   const stamp = Date.now();
-  await backlog.getByRole("button", { name: "Add card" }).click();
+  // The add form stays open for the next card.
   await backlog.getByPlaceholder("Title").fill([1, 2, 3, 4, 5].map((i) => `Pasted ${i} ${stamp}`).join("\n"));
   await backlog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(card(page, "Backlog", `Pasted 5 ${stamp}`)).toBeVisible();
