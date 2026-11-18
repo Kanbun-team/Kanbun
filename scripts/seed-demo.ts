@@ -3,10 +3,17 @@
 // Every demo user's password is "demo1234". Refuses to run on a database that
 // already has users, so it can never touch real data.
 import { prisma } from "../src/lib/db-local";
+import { nextOccurrence } from "../src/lib/recurrence";
 import bcrypt from "bcryptjs";
 
 const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
 const inDays = (n: number) => new Date(Date.now() + n * DAY);
+/** A calendar date (UTC midnight) n days from today, like checklist due dates. */
+const dayUtc = (n: number) => {
+  const d = inDays(n);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+};
 
 async function main() {
   if ((await prisma.user.count()) > 0) {
@@ -81,7 +88,8 @@ async function main() {
     due?: number;
     cover?: string;
     description?: string;
-    subtasks?: [string, boolean][];
+    /** Title, done, and optionally an assignee and a due date (days from today). */
+    subtasks?: [string, boolean, string?, number?][];
     comments?: [string, string][];
   };
   const cards: Seed[] = [
@@ -110,8 +118,8 @@ async function main() {
       subtasks: [
         ["Drawer component", true],
         ["Focus trap", true],
-        ["Reduced motion", false],
-        ["Visual QA on iOS", false],
+        ["Reduced motion", false, "marta", 1],
+        ["Visual QA on iOS", false, "julia", 3],
       ],
       comments: [
         ["marta", "Designs are in the Figma file, page *Navigation v2*."],
@@ -126,7 +134,7 @@ async function main() {
       due: 7,
       subtasks: [
         ["Export old posts", true],
-        ["Convert embeds", false],
+        ["Convert embeds", false, "julia", 4],
       ],
     },
     {
@@ -147,9 +155,13 @@ async function main() {
 
   const positions = new Map<number, number>();
   const created: Record<string, string> = {};
-  for (const c of cards) {
+  for (const [index, c] of cards.entries()) {
     const position = positions.get(c.col) ?? 0;
     positions.set(c.col, position + 1);
+    // Cards were added over the last two weeks and worked through the
+    // columns since, which the card history (CardActivity) tells.
+    const createdAt = new Date(Date.now() - (14 - index) * DAY);
+    const doer = users[c.who?.[0] ?? "admin"];
     const card = await prisma.taskCard.create({
       data: {
         columnId: columns[c.col].id,
@@ -159,24 +171,63 @@ async function main() {
         priority: c.priority ?? "normal",
         coverColor: c.cover,
         deadline: c.due === undefined ? null : inDays(c.due),
+        createdAt,
         createdById: users.admin.id,
         assignees: { create: (c.who ?? []).map((u) => ({ userId: users[u].id })) },
         tags: { create: (c.tags ?? []).map((t) => ({ tagId: tag[t] })) },
         subtasks: {
-          create: (c.subtasks ?? []).map(([title, done], i) => ({
+          create: (c.subtasks ?? []).map(([title, done, who, due], i) => ({
             title,
             done,
             position: i,
             completedAt: done ? new Date() : null,
-            completedById: done ? users[c.who?.[0] ?? "admin"].id : null,
+            completedById: done ? doer.id : null,
+            assigneeId: who ? users[who].id : null,
+            dueDate: due === undefined ? null : dayUtc(due),
           })),
         },
         comments: {
           create: (c.comments ?? []).map(([author, body]) => ({ authorId: users[author].id, body })),
         },
+        // The creator and the assignees follow the card, as in the app.
+        watchers: {
+          create: [...new Set(["admin", ...(c.who ?? [])])].map((u) => ({ userId: users[u].id })),
+        },
       },
     });
     created[c.title] = card.id;
+
+    const startCol = Math.min(c.col, 1);
+    const at = (hours: number) => new Date(createdAt.getTime() + hours * HOUR);
+    const history: { type: string; data: Record<string, unknown>; actorId: string; createdAt: Date }[] = [
+      { type: "created", data: { column: columns[startCol].name }, actorId: users.admin.id, createdAt: at(0) },
+      ...(c.who ?? []).map((u) => ({
+        type: "assigneeAdded",
+        data: { name: users[u].displayName },
+        actorId: users.admin.id,
+        createdAt: at(1),
+      })),
+    ];
+    if (c.priority === "high" || c.priority === "critical") {
+      history.push({ type: "priority", data: { from: "normal", to: c.priority }, actorId: users.admin.id, createdAt: at(2) });
+    }
+    if (c.due !== undefined) {
+      history.push({ type: "deadline", data: { to: inDays(c.due).toISOString() }, actorId: users.admin.id, createdAt: at(3) });
+    }
+    for (let col = startCol + 1; col <= c.col; col++) {
+      history.push({
+        type: "moved",
+        data: { from: columns[col - 1].name, to: columns[col].name },
+        actorId: doer.id,
+        createdAt: at(24 * (col - startCol)),
+      });
+    }
+    for (const [title, done] of c.subtasks ?? []) {
+      if (done) history.push({ type: "subtaskDone", data: { title }, actorId: doer.id, createdAt: at(30) });
+    }
+    await prisma.cardActivity.createMany({
+      data: history.map((h) => ({ ...h, cardId: card.id, boardId: board.id, data: JSON.stringify(h.data) })),
+    });
     await prisma.taskCardMoveEvent.create({
       data: {
         cardId: card.id,
@@ -194,6 +245,54 @@ async function main() {
       blockerId: created["Contact form spam protection"],
       blockedId: created["Newsletter signup endpoint"],
       createdById: users.piotr.id,
+    },
+  });
+  await prisma.cardActivity.create({
+    data: {
+      cardId: created["Newsletter signup endpoint"],
+      boardId: board.id,
+      type: "blocked",
+      data: JSON.stringify({ title: "Contact form spam protection" }),
+      actorId: users.piotr.id,
+    },
+  });
+
+  // Card templates and a repeating schedule, so "New card from template" and
+  // Settings > Repeat have something to show.
+  await prisma.cardTemplate.create({
+    data: {
+      boardId: board.id,
+      name: "Bug triage",
+      title: "Bug: ",
+      description: "**Steps to reproduce**\n\n1. \n\n**Expected**\n\n**Actual**",
+      priority: "high",
+      tagIds: JSON.stringify([tag.Bug]),
+      checklist: JSON.stringify(["Reproduce", "Write a failing test", "Fix", "Verify on staging"]),
+      createdById: users.piotr.id,
+    },
+  });
+  const weekly = await prisma.cardTemplate.create({
+    data: {
+      boardId: board.id,
+      name: "Weekly analytics review",
+      title: "Analytics review",
+      description: "Look at last week's traffic and conversions, and note anything unusual.",
+      tagIds: JSON.stringify([tag.Content]),
+      checklist: JSON.stringify(["Traffic and sources", "Signup conversion"]),
+      createdById: users.julia.id,
+    },
+  });
+  const rule = { rule: "weekly" as const, weekday: 1, timeOfDay: "09:00" };
+  await prisma.cardRecurrence.create({
+    data: {
+      boardId: board.id,
+      templateId: weekly.id,
+      columnId: columns[1].id,
+      rule: rule.rule,
+      weekday: rule.weekday,
+      timeOfDay: rule.timeOfDay,
+      nextRunAt: nextOccurrence(rule, new Date()),
+      createdById: users.julia.id,
     },
   });
 
