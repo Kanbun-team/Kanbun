@@ -35,6 +35,7 @@ model User {
   taskMoves         TaskCardMoveEvent[]  @relation("MoveActor")
   sessions          UserSession[]
   notifications     Notification[]       @relation("UserNotifications")
+  savedFilters      SavedFilter[]        @relation("SavedFilterCreator")
 }
 
 model Board {
@@ -58,6 +59,7 @@ model Board {
 
   @@index([createdById])
   @@index([categoryId, position])
+  savedFilters SavedFilter[]
 }
 
 model BoardCategory {
@@ -268,4 +270,20 @@ model TrashItem {
 
   @@index([boardId, deletedAt])
   @@index([deletedAt])
+}
+
+// A named filter shared with everyone on the board. `filters` is the JSON of
+// the board filter state (validated with zod when read and written).
+model SavedFilter {
+  id          String   @id @default(cuid())
+  boardId     String
+  name        String
+  filters     String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  board     Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("SavedFilterCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
 }

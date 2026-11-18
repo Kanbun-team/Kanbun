@@ -15,6 +15,7 @@ export interface CardMenuHandlers {
   toggleTag: (card: CardDTO, tag: TagOption) => void;
   setPriority: (card: CardDTO, priority: string) => void;
   setCover: (card: CardDTO, color: string | null) => void;
+  setDeadline: (card: CardDTO) => void;
   remove: (card: CardDTO) => void;
 }
 
@@ -51,6 +52,7 @@ export default function CardMenu({
     >
       <MenuItem onAction={() => handlers.open(card)}>{t("cardOpen", locale)}</MenuItem>
       <MenuItem onAction={() => handlers.moveTo(card)}>{t("cardMoveTo", locale)}</MenuItem>
+      <MenuItem onAction={() => handlers.setDeadline(card)}>{t("cardSetDeadline", locale)}</MenuItem>
       {me && (
         <MenuItem onAction={() => handlers.toggleAssignee(card, me)}>
           {assigned.has(me.id) ? t("cardUnassignMe", locale) : t("cardAssignMe", locale)}

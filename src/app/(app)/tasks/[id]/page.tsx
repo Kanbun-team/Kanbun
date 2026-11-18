@@ -5,7 +5,8 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { loadBoardAccess, canManageBoard } from "@/server/board-access";
 import Board from "@/components/board/Board";
-import type { ColumnDTO } from "@/components/board/types";
+import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
+import { parseFilters } from "@/lib/board-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,19 @@ export default async function BoardPage({
     },
   });
   if (!board) notFound();
+
+  const canManage = canManageBoard(access);
+  const savedRows = await prisma.savedFilter.findMany({
+    where: { boardId: id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, filters: true, createdById: true },
+  });
+  const savedFilters: SavedFilterDTO[] = savedRows.flatMap((row) => {
+    const filters = parseFilters(row.filters);
+    return filters
+      ? [{ id: row.id, name: row.name, filters, canDelete: canManage || row.createdById === access.userId }]
+      : [];
+  });
 
   const dto: ColumnDTO[] = board.columns.map((c) => ({
     id: c.id,
@@ -128,6 +142,7 @@ export default async function BoardPage({
           avatarUrl: m.user.avatarUrl,
         }))}
         boardTags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
+        savedFilters={savedFilters}
       />
     </div>
   );
