@@ -14,7 +14,7 @@ import { canManageBoard, resolveBoardAccess, type BoardAccess } from "@/server/b
 import { logActivity, type ActivityEntry } from "@/server/activity";
 import { notifyComment, notifyMoved, notifyNewCards, watchCard } from "@/server/watchers";
 import { trashCard, trashColumn } from "@/server/trash";
-import { changedFields, emitBoardEvent } from "@/server/webhooks";
+import { changedFields, emitBoardEvent, emitColumnCardsDeleted } from "@/server/webhooks";
 import { ApiError, notFound, type ApiContext, type PageParams } from "./http";
 import {
   boardJson,
@@ -148,11 +148,15 @@ export async function updateColumn(ctx: ApiContext, columnId: string, body: unkn
 }
 
 export async function deleteColumn(ctx: ApiContext, columnId: string) {
-  const col = await prisma.boardColumn.findUnique({ where: { id: columnId }, select: { boardId: true } });
+  const col = await prisma.boardColumn.findUnique({
+    where: { id: columnId },
+    select: { boardId: true, name: true, cards: { select: { id: true } } },
+  });
   if (!col) throw notFound("Column");
   requireManage(await access(ctx, col.boardId));
   const trashId = await trashColumn(columnId, ctx.user.id);
   refresh(col.boardId);
+  emitColumnCardsDeleted(col.boardId, { id: columnId, name: col.name }, col.cards.map((c) => c.id), trashId, ctx.user.id);
   return { id: columnId, trashId };
 }
 
@@ -404,15 +408,18 @@ export async function updateCard(ctx: ApiContext, cardId: string, body: unknown)
   if (toColumn) await notifyMoved({ cardId, cardTitle: title, boardId, actorId: userId, actorName: actorName(ctx), toColumnName: toColumn.name });
 
   refresh(boardId, cardId);
+  // card.moved means another column; a new position within the same column
+  // is reported as card.updated with "position" in changes.
   const changes = changedFields(activity);
+  if (moving && !toColumn && data.position !== card.position) changes.push("position");
   if (changes.length) emitBoardEvent(boardId, "card.updated", { cardId, actorId: userId, extra: { changes } });
-  if (moving) {
+  if (toColumn) {
     emitBoardEvent(boardId, "card.moved", {
       cardId,
       actorId: userId,
       extra: {
         from: { columnId: card.columnId, columnName: fromColumn.name },
-        to: toColumn ? { columnId: toColumn.id, columnName: toColumn.name } : { columnId: card.columnId, columnName: fromColumn.name },
+        to: { columnId: toColumn.id, columnName: toColumn.name },
       },
     });
   }
