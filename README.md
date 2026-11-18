@@ -20,6 +20,9 @@
 ## Features
 
 - Boards, columns and cards with drag and drop that works with a mouse, on touch screens (long-press) and with the keyboard (Space, arrows), with screen-reader announcements. Every card also has a "Move to" action.
+- Search everything with Cmd/Ctrl+K: boards, card titles, descriptions and comments (SQLite FTS5), plus quick commands.
+- Board, list and calendar views, saved filters shared with the board, and a "My tasks" page grouped into overdue, today, upcoming and done this week.
+- Card history: moves, edits, assignees, tags and dependencies in one timeline with comments; @mention autocomplete; searchable pickers.
 - Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).
 - Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh.
 - Subtasks, tags, comments, blocking dependencies, priorities, deadlines.
@@ -128,6 +131,7 @@ scripts/
 - The session heartbeat creates a `panelSessionId` cookie scoped per browser.
 - Card moves are logged to `TaskCardMoveEvent` only when the column actually changes.
 - Deleted cards, columns and boards are stored as JSON snapshots in `TrashItem` and restored with their original ids (`src/server/trash.ts`). Items older than 30 days are purged on the next delete.
+- Search uses an FTS5 table (`CardSearch`) kept in sync by SQLite triggers (migration `20261118100000_card_search`). Prisma does not model it, so `prisma migrate dev` will propose `DROP TABLE "CardSearch..."` in new migrations: delete those lines. A migration that rebuilds `TaskCard` or `TaskCardComment` must recreate the triggers.
 - Server actions return typed results (`{ ok, error }`, see `src/lib/action-result.ts`); the UI turns error codes into translated toasts.
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
 - Sessions are JWTs, but the user is re-read from the database on every request, so deactivating or deleting a user, changing a role, or resetting a password applies immediately.

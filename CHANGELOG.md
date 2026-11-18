@@ -6,6 +6,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-18
+
+Phase 3 of the [roadmap](docs/ROADMAP.md): find and focus.
+
+### Added
+
+- Command palette (Cmd/Ctrl+K or the Search button): find boards and cards by title, description or comment text, with prefix matching and accent-insensitive search (including Polish ł), and jump to My tasks, Trash, Settings or the shortcut list. Results only include boards you can access.
+- List view (sortable table) and calendar view (month grid, agenda on phones) for every board, linkable with `?view=list` or `?view=calendar`.
+- Saved filters: name the current filter and share it with everyone on the board.
+- Card activity: moves, renames, priority, deadline, assignee, tag, dependency and subtask changes are recorded and shown in one timeline with the comments.
+- @mention suggestions while typing a comment; mentions are highlighted in comments.
+- Searchable pickers for assignees, tags and blocking cards (the blocking picker no longer lists every card in a long select).
+- Deadline picker with Today, Tomorrow, Next week and Clear, from the card menu or the `d` shortcut.
+- Pinned boards and a "Recently opened" row on the boards page.
+- An "Add card" bar at the bottom of the board on phones.
+
+### Changed
+
+- Boards page: one "New board" button (and one per category) instead of large empty tiles; board tiles show open and overdue cards, members and progress; archived boards sit in their own collapsed section.
+- My tasks is grouped into Overdue, Today, Upcoming, Later and Done this week, using the same card design as the board.
+
+### Fixed
+
+- The board no longer scrolls sideways on phones because of hidden screen-reader text.
+- The logo link in the top bar has an accessible name on small screens.
+
+### Upgrade notes
+
+- Three new tables and a search index are created automatically on start. The search index is filled from existing cards and comments during the migration.
+
 ## [0.4.0] - 2026-11-17
 
 Phase 2 of the [roadmap](docs/ROADMAP.md): a board that feels instant.
@@ -142,7 +172,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/Kanbun-team/Kanbun/compare/v0.2.2...v0.2.3

@@ -8,6 +8,36 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-18",
+    title: { en: "Version 0.5.0", it: "Versione 0.5.0", pl: "Wersja 0.5.0", de: "Version 0.5.0" },
+    items: [
+      {
+        en: "Press Ctrl+K (Cmd+K on a Mac) to search every board, card and comment.",
+        it: "Premi Ctrl+K (Cmd+K su Mac) per cercare in tutte le bacheche, card e commenti.",
+        pl: "Naciśnij Ctrl+K (Cmd+K na Macu), aby przeszukać wszystkie tablice, karty i komentarze.",
+        de: "Drücke Strg+K (Cmd+K auf dem Mac), um alle Boards, Karten und Kommentare zu durchsuchen.",
+      },
+      {
+        en: "List and calendar views for every board, and saved filters for the whole team.",
+        it: "Viste elenco e calendario per ogni bacheca e filtri salvati per tutto il team.",
+        pl: "Widok listy i kalendarza dla każdej tablicy oraz zapisane filtry dla całego zespołu.",
+        de: "Listen- und Kalenderansicht für jedes Board und gespeicherte Filter fürs ganze Team.",
+      },
+      {
+        en: "Each card now shows its history: who moved, renamed or assigned it, and when.",
+        it: "Ogni card mostra la sua cronologia: chi l'ha spostata, rinominata o assegnata, e quando.",
+        pl: "Każda karta pokazuje historię: kto ją przeniósł, zmienił nazwę lub przypisał, i kiedy.",
+        de: "Jede Karte zeigt ihren Verlauf: wer sie verschoben, umbenannt oder zugewiesen hat, und wann.",
+      },
+      {
+        en: "Pin your favourite boards, see what is overdue at a glance, and find your work grouped by due date.",
+        it: "Fissa le bacheche preferite, vedi subito cosa è scaduto e trova il tuo lavoro raggruppato per scadenza.",
+        pl: "Przypinaj ulubione tablice, od razu widź zaległości, a swoje zadania znajdziesz pogrupowane według terminu.",
+        de: "Hefte Lieblingsboards an, sieh Überfälliges auf einen Blick und finde deine Aufgaben nach Fälligkeit gruppiert.",
+      },
+    ],
+  },
+  {
     date: "2026-11-17",
     title: { en: "Version 0.4.0", it: "Versione 0.4.0", pl: "Wersja 0.4.0", de: "Version 0.4.0" },
     items: [

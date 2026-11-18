@@ -2,7 +2,7 @@
 
 Goal: the best self-hosted board for small teams. Fast enough that it never gets in the way, calm enough to leave open all day, and safe enough that nobody loses work. Visual and interaction rules are in [DESIGN.md](DESIGN.md); every item below follows them.
 
-Status as of v0.4.0 (November 2026): Next.js 16, React 19, SQLite, live updates over SSE, 4 languages, trash and undo, design tokens, keyboard and touch drag and drop, a card side panel, and lint, unit, end-to-end and accessibility tests in CI. The items below come from a hands-on review of the running app (demo workspace, desktop and phone, light and dark, Lighthouse) plus a code review.
+Status as of v0.5.0 (November 2026): Next.js 16, React 19, SQLite, live updates over SSE, 4 languages, trash and undo, design tokens, keyboard and touch drag and drop, a card side panel, global search, list and calendar views, card history, and lint, unit, end-to-end and accessibility tests in CI. The items below come from a hands-on review of the running app (demo workspace, desktop and phone, light and dark, Lighthouse) plus a code review.
 
 ## Where we stand
 
@@ -54,14 +54,17 @@ Shipped in v0.4.0. What landed, and what moved:
 7. **Mobile board.** Partly done: one column per screen with snap scrolling and a column switcher. The bottom "Add card" bar moves to Phase 3.
 8. **Keyboard shortcuts.** Done with a `?` sheet. `d` (set deadline) moves to Phase 3 with the shared date picker. *Part of F10.*
 
-## Phase 3: Find and focus (v0.5)
+## Phase 3: Find and focus (v0.5): done
 
-1. **Command palette and search (`/` or Ctrl/Cmd+K).** Jump to any board or card, run actions ("Move to Done", "Assign to me"). SQLite FTS5 index over titles, descriptions and comments. *Fixes F9, F10.*
-2. **My work.** Rebuild "My tasks" into Today, Overdue, Upcoming and Done this week, grouped across boards, with the same card face.
-3. **Saved filters and views.** Name and share a filter; add List view (sortable table) and Calendar view (by deadline) for every board.
-4. **Better pickers.** Searchable comboboxes for assignees, tags and blocking cards; @mention autocomplete in comments; mentions highlighted in rendered comments.
-5. **Boards home redesign.** Remove the empty "Create board" tiles in favor of one primary action; board tiles show open cards, overdue count and members; pin favorite boards; recently opened row. *Fixes F8.*
-6. **Card activity log.** Who changed what and when on each card (moves, assignment, deadline, edits), merged with comments in one timeline.
+Shipped in v0.5.0.
+
+1. **Command palette and search.** Done: Cmd/Ctrl+K palette, SQLite FTS5 over titles, descriptions and comments with triggers, accent-insensitive including Polish ł, access-filtered. Running card actions from the palette ("Move to Done") is not in yet. *Fixes F9, F10.*
+2. **My work.** Done: Overdue, Today, Upcoming, Later, Done this week, with the shared card face.
+3. **Saved filters and views.** Done: board, list and calendar views (`?view=`), saved filters shared per board.
+4. **Better pickers.** Done: searchable comboboxes for assignees, tags and blocking cards, @mention autocomplete and highlighting.
+5. **Boards home redesign.** Done: one primary action, tiles with open/overdue counts, members and progress, pins, recently opened. *Fixes F8.*
+6. **Card activity log.** Done, merged with comments in one timeline.
+7. **Moved from Phase 2.** Done: phone "Add card" bar, `d` shortcut with a shared date picker.
 
 ## Phase 4: Team and collaboration (v0.6)
 
