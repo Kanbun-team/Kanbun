@@ -79,14 +79,14 @@ export const { handlers, auth, signIn, signOut, unstable_update: refreshSession 
         const username = parsed.data.username.toLowerCase();
         const { password } = parsed.data;
         const ip = clientIp(request?.headers);
-        if (isLoginBlocked(ip, username)) return null;
+        if (await isLoginBlocked(ip, username)) return null;
         const user = await prisma.user.findUnique({ where: { username } });
         const ok = user ? await bcrypt.compare(password, user.passwordHash) : false;
         if (!user || !ok || user.deactivatedAt) {
-          recordLoginFailure(ip, username);
+          await recordLoginFailure(ip, username);
           return null;
         }
-        recordLoginSuccess(ip, username);
+        await recordLoginSuccess(ip, username);
         return {
           id: user.id,
           username: user.username,

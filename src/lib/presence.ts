@@ -1,6 +1,8 @@
 // In-memory presence: who is looking at which board, and which card they have
-// open. Like src/lib/realtime.ts it lives on globalThis (survives HMR) and is
-// scoped to a single Node process, which matches Kanbun's deployment model.
+// open. It lives on globalThis (survives HMR) and is scoped to a single Node
+// process, the default deployment. With REDIS_URL set, src/lib/presence-hub.ts
+// uses the Redis-backed version in src/lib/presence-redis.ts instead, so
+// viewers on every instance see each other.
 //
 // Each open board event stream is one connection. A person with three tabs
 // open has three connections but shows up once in the viewer list. Nothing is
@@ -37,8 +39,16 @@ const registry: Map<string, BoardConnections> =
 export function listViewers(boardId: string): PresenceViewer[] {
   const conns = registry.get(boardId);
   if (!conns) return [];
+  return viewersOf(conns.values());
+}
+
+type ViewerSource = Pick<PresenceConnection, "userId" | "name" | "avatarUrl" | "cardId">;
+
+/** One viewer per person from a list of connections (in arrival order). Also
+ * used by the Redis-backed presence in src/lib/presence-redis.ts. */
+export function viewersOf(conns: Iterable<ViewerSource>): PresenceViewer[] {
   const byUser = new Map<string, PresenceViewer>();
-  for (const conn of conns.values()) {
+  for (const conn of conns) {
     let viewer = byUser.get(conn.userId);
     if (!viewer) {
       viewer = { id: conn.userId, name: conn.name, avatarUrl: conn.avatarUrl, cardIds: [] };

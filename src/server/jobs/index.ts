@@ -1,6 +1,9 @@
-// Background jobs for the single Kanbun process. Each feature adds one entry
-// to JOBS. Started once from src/instrumentation.ts on the Node.js runtime.
+// Background jobs. Each feature adds one entry to JOBS. Started once per
+// process from src/instrumentation.ts on the Node.js runtime. With several
+// instances (REDIS_URL set) each run is claimed through a Redis lock first, so
+// only one instance runs it (see ./lock.ts).
 
+import { claimJobRun } from "./lock";
 import { runRecurringCards } from "./recurring";
 
 export interface Job {
@@ -42,6 +45,7 @@ export function startJobs(): void {
       if (running) return;
       running = true;
       try {
+        if (!(await claimJobRun(job.name, job.everyMs))) return;
         await job.run();
       } catch (err) {
         console.error(`[jobs] ${job.name} failed`, err);
