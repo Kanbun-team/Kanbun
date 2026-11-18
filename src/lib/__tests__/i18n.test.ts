@@ -29,6 +29,18 @@ describe("translations", () => {
       expect(Object.values(dict).filter((v) => String(v).includes("\u2014"))).toEqual([]);
     }
   });
+
+  // German addresses the user informally ("du"). Capitalized Sie/Ihr/Ihnen
+  // is the formal address; a third-person "sie" at the start of a sentence
+  // would also match, so such keys go in the allowlist (or get reworded).
+  it("de uses the informal du, never formal Sie", () => {
+    const FORMAL = /(^|[^\p{L}])(Sie|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres|Ihnen)(?![\p{L}])/u;
+    const ALLOW = new Set<string>([]);
+    const formal = Object.entries(de as Record<string, string>)
+      .filter(([k, v]) => !ALLOW.has(k) && FORMAL.test(v))
+      .map(([k, v]) => `${k}: ${v}`);
+    expect(formal).toEqual([]);
+  });
 });
 
 describe("plural forms", () => {
