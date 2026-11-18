@@ -60,10 +60,7 @@ test("a card opened online is readable offline, and checklist and comment edits 
   await expect.poll(() => storedJson(page, "bcards:")).toContain("Lighthouse pass on landing page");
   await panel.getByRole("button", { name: "Close" }).click();
   await expect(panel).toHaveCount(0);
-  // Closing the panel leaves an empty document title (a Next.js parallel
-  // route quirk); start from a fresh board page instead.
-  await page.reload();
-  await expect(card(page, "Backlog", title)).toBeVisible();
+  await expect(page).toHaveTitle("Website relaunch · Kanbun");
 
   await context.setOffline(true);
   await expect(page.getByRole("status").filter({ hasText: "Offline" }).first()).toBeVisible();

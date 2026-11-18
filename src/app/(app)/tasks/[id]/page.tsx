@@ -10,6 +10,7 @@ import WatchButton from "@/components/WatchButton";
 import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
 import { parseFilters } from "@/lib/board-filters-schema";
 import { boardTitle } from "@/server/page-title";
+import BoardTitleKeeper from "@/components/board/BoardTitleKeeper";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,7 @@ export default async function BoardPage({
           )}
         </div>
         <div className="flex items-center gap-2 text-sm">
+          <BoardTitleKeeper boardPath={`/tasks/${board.id}`} title={`${board.name} · Kanbun`} />
           <BoardPresence boardId={board.id} currentUserId={access.userId} locale={locale} />
           {board.archived && (
             <span className="px-2 py-0.5 rounded-control bg-ink/5 text-ink-muted">

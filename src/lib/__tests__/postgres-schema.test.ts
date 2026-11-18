@@ -63,3 +63,29 @@ describe("Postgres schema generation", () => {
     expect(stripSearchStatements(sql)).toBe('-- CreateTable\nCREATE TABLE "Webhook" ("id" TEXT NOT NULL);');
   });
 });
+
+describe("migrationFolderName", () => {
+  const name = gen.migrationFolderName as (
+    n: string,
+    o: { now: Date; pgFolders: string[]; sqliteFolders: string[] }
+  ) => string;
+  const pgFolders = ["20261120000000_baseline", "20261123090000_webhook_outbox", "migration_lock.toml"];
+
+  it("reuses the SQLite folder name when it comes after every PostgreSQL migration", () => {
+    expect(
+      name("add_things", { now: new Date("2026-01-01T00:00:00Z"), pgFolders, sqliteFolders: ["20261124100000_add_things"] })
+    ).toBe("20261124100000_add_things");
+  });
+
+  it("never sorts before the latest PostgreSQL migration, even with a clock behind it", () => {
+    expect(name("other", { now: new Date("2026-01-01T00:00:00Z"), pgFolders, sqliteFolders: [] })).toBe(
+      "20261123090001_other"
+    );
+  });
+
+  it("uses the clock when it is ahead", () => {
+    expect(name("later", { now: new Date("2027-03-04T05:06:07Z"), pgFolders, sqliteFolders: [] })).toBe(
+      "20270304050607_later"
+    );
+  });
+});

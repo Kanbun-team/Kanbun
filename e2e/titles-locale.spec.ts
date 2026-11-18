@@ -52,6 +52,17 @@ test("every page has its own document title", async ({ page }) => {
   await card(page, "In progress", "Responsive navigation").getByRole("link").click();
   await page.waitForURL(/\/cards\//);
   await expect(page).toHaveTitle("Responsive navigation · Website relaunch · Kanbun");
+  // Closing the panel brings the board's title back.
+  await page.keyboard.press("Escape");
+  await page.waitForURL(boardUrl);
+  await expect(page).toHaveTitle("Website relaunch · Kanbun");
+  await card(page, "In progress", "Responsive navigation").getByRole("link").click();
+  await page.waitForURL(/\/cards\//);
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+  await page.waitForURL(boardUrl);
+  await expect(page).toHaveTitle("Website relaunch · Kanbun");
+  await card(page, "In progress", "Responsive navigation").getByRole("link").click();
+  await page.waitForURL(/\/cards\//);
   await page.reload();
   await expect(page).toHaveTitle("Responsive navigation · Website relaunch · Kanbun");
 

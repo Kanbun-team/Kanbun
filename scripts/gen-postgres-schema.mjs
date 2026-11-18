@@ -25,6 +25,7 @@ export const SQLITE_SCHEMA = join(ROOT, "prisma", "schema.prisma");
 export const PG_DIR = join(ROOT, "prisma", "postgres");
 export const PG_SCHEMA = join(PG_DIR, "schema.prisma");
 export const PG_MIGRATIONS = join(PG_DIR, "migrations");
+export const SQLITE_MIGRATIONS = join(PG_DIR, "..", "migrations");
 export const PG_SEARCH_SQL = join(PG_DIR, "search.sql");
 /** v1.0 is the first release with Postgres, so everything up to it is one baseline. */
 export const BASELINE_NAME = "20261120000000_baseline";
@@ -148,10 +149,30 @@ export function writeBaseline() {
   writeLock();
 }
 
-function timestamp() {
-  const d = new Date();
+function stamp(d) {
   const p = (n) => String(n).padStart(2, "0");
   return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}`;
+}
+
+/**
+ * Folder name for a new PostgreSQL migration. Reuses the SQLite migration's
+ * folder when one has the same name (the two lists then line up), otherwise
+ * the current time, but always after every existing PostgreSQL migration:
+ * the repository's migration timestamps can be ahead of the clock.
+ */
+export function migrationFolderName(name, { now = new Date(), pgFolders, sqliteFolders } = {}) {
+  const pg = pgFolders ?? (existsSync(PG_MIGRATIONS) ? readdirSync(PG_MIGRATIONS) : []);
+  const sqlite = sqliteFolders ?? (existsSync(SQLITE_MIGRATIONS) ? readdirSync(SQLITE_MIGRATIONS) : []);
+  const latest = pg.filter((f) => /^\d{14}_/.test(f)).sort().at(-1)?.slice(0, 14) ?? "0";
+  const twin = sqlite.find((f) => f.slice(15) === name && /^\d{14}_/.test(f));
+  if (twin && twin.slice(0, 14) > latest) return twin;
+  let ts = stamp(now);
+  if (ts <= latest) {
+    const t = latest;
+    const d = new Date(Date.UTC(+t.slice(0, 4), +t.slice(4, 6) - 1, +t.slice(6, 8), +t.slice(8, 10), +t.slice(10, 12), +t.slice(12, 14) + 1));
+    ts = stamp(d);
+  }
+  return `${ts}_${name}`;
 }
 
 export function writeMigration(name) {
@@ -174,7 +195,7 @@ export function writeMigration(name) {
     console.log("No schema changes: nothing to add.");
     return null;
   }
-  const dir = join(PG_MIGRATIONS, `${timestamp()}_${name}`);
+  const dir = join(PG_MIGRATIONS, migrationFolderName(name));
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "migration.sql"), sql + "\n");
   return dir;
