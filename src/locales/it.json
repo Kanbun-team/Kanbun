@@ -801,7 +801,7 @@
   "importOpen": "Apri importazione",
   "importIntro": "Carica l'esportazione di una bacheca Trello o una bacheca esportata da Kanbun. Diventa una nuova bacheca di tua proprietà.",
   "importHelpTitle": "Cosa viene importato",
-  "importHelpTrello": "Trello: in Trello apri il menu della bacheca, poi Stampa, esporta e condividi, poi Esporta come JSON. Le liste aperte diventano colonne; liste e schede archiviate vengono escluse. Le etichette diventano tag, le checklist diventano la checklist della scheda e i commenti vengono aggiunti da te con autore e data originali. I membri delle schede diventano assegnatari se esiste un utente Kanbun con lo stesso nome utente.",
+  "importHelpTrello": "Trello: in Trello apri il menu della bacheca, poi Stampa, esporta e condividi, poi Esporta come JSON. Le liste aperte diventano colonne; liste e schede archiviate vengono escluse. Le etichette diventano tag, le checklist diventano la checklist della scheda e i commenti vengono importati con autore e data originali. I membri delle schede diventano assegnatari se esiste un utente Kanbun con lo stesso nome utente.",
   "importHelpKanbun": "Kanbun: un file JSON da Esporta nelle impostazioni di una bacheca (o l'esportazione completa dell'amministratore) viene importato come nuove bacheche, con membri, tag, checklist, commenti e modelli. I file allegati non fanno parte delle esportazioni.",
   "importHelpCsv": "CSV: per aggiungere schede da un foglio di calcolo a una bacheca esistente, usa Importa ed esporta nelle impostazioni della bacheca.",
   "importFileLabel": "File della bacheca (.json)",

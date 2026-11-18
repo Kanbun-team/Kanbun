@@ -824,7 +824,7 @@
   "importOpen": "Otwórz import",
   "importIntro": "Prześlij eksport tablicy z Trello lub tablicę wyeksportowaną z Kanbun. Powstanie nowa tablica, której jesteś właścicielem.",
   "importHelpTitle": "Co jest importowane",
-  "importHelpTrello": "Trello: w Trello otwórz menu tablicy, potem Drukuj, eksportuj i udostępnij, a następnie Eksportuj jako JSON. Otwarte listy stają się kolumnami; zarchiwizowane listy i karty są pomijane. Etykiety stają się tagami, listy kontrolne listą kontrolną karty, a komentarze dodajesz Ty z oryginalnym autorem i datą. Członkowie kart zostają przypisani, jeśli w Kanbun istnieje użytkownik o tej samej nazwie.",
+  "importHelpTrello": "Trello: w Trello otwórz menu tablicy, potem Drukuj, eksportuj i udostępnij, a następnie Eksportuj jako JSON. Otwarte listy stają się kolumnami; zarchiwizowane listy i karty są pomijane. Etykiety stają się tagami, listy kontrolne listą kontrolną karty, a komentarze są dodawane z oryginalnym autorem i datą. Członkowie kart zostają przypisani, jeśli w Kanbun istnieje użytkownik o tej samej nazwie.",
   "importHelpKanbun": "Kanbun: plik JSON z eksportu w ustawieniach tablicy (lub pełny eksport administratora) jest importowany jako nowe tablice z członkami, tagami, listami kontrolnymi, komentarzami i szablonami. Pliki załączników nie są częścią eksportu.",
   "importHelpCsv": "CSV: aby dodać karty z arkusza do istniejącej tablicy, użyj opcji Import i eksport w ustawieniach tej tablicy.",
   "importFileLabel": "Plik tablicy (.json)",
