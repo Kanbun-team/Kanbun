@@ -28,6 +28,10 @@ export function column(page: Page, name: string) {
 
 /** WCAG 2.2 A/AA violations on the current page, summarized. */
 export async function axeViolations(page: Page) {
+  // Next.js streams page metadata, so right after a client navigation the
+  // title can arrive a moment later. Give it that moment; axe still reports
+  // a page that really has no title.
+  await page.waitForFunction(() => document.title.trim() !== "", undefined, { timeout: 3000 }).catch(() => {});
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
