@@ -4,14 +4,14 @@ import { useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Plus, ChevronsLeftRight } from "lucide-react";
-import { MenuButton, MenuItem, MenuSeparator } from "@/components/ui/Menu";
+import { GripVertical, Plus, ChevronsLeftRight, LayoutTemplate } from "lucide-react";
+import { MenuButton, MenuItem, MenuSeparator, Submenu } from "@/components/ui/Menu";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { t, type Locale } from "@/lib/i18n";
 import CardFace from "./CardFace";
 import CardMenu, { type CardMenuHandlers } from "./CardMenu";
-import { columnKey, type CardDTO, type ColumnDTO, type MemberOption, type TagOption } from "./types";
+import { columnKey, type CardDTO, type ColumnDTO, type MemberOption, type TagOption, type TemplateOption } from "./types";
 
 export interface ColumnHandlers {
   rename: (column: ColumnDTO, name: string, wipLimit: number | null) => Promise<boolean>;
@@ -19,6 +19,7 @@ export interface ColumnHandlers {
   toggleCollapsed: (column: ColumnDTO) => void;
   remove: (column: ColumnDTO) => void;
   addCards: (column: ColumnDTO, text: string) => Promise<boolean>;
+  addFromTemplate: (column: ColumnDTO, template: TemplateOption) => void;
   setAdding: (columnId: string | null) => void;
   renameCard: (card: CardDTO, title: string) => void;
   setEditing: (cardId: string | null) => void;
@@ -31,6 +32,7 @@ interface Shared {
   dndDisabled: boolean;
   members: MemberOption[];
   boardTags: TagOption[];
+  templates: TemplateOption[];
   currentUserId: string;
   cardHandlers: CardMenuHandlers;
   columnHandlers: ColumnHandlers;
@@ -149,6 +151,15 @@ export default function Column({
               <MenuItem onAction={() => setEditing(true)}>{t("columnRename", locale)}</MenuItem>
               <MenuItem onAction={() => setEditing(true)}>{t("columnEditWip", locale)}</MenuItem>
               <MenuItem onAction={() => h.setAdding(column.id)}>{t("cardAdd", locale)}</MenuItem>
+              {shared.templates.length > 0 && (
+                <Submenu label={t("cardFromTemplate", locale)}>
+                  {shared.templates.map((tp) => (
+                    <MenuItem key={tp.id} textValue={tp.name} onAction={() => h.addFromTemplate(column, tp)}>
+                      {tp.name}
+                    </MenuItem>
+                  ))}
+                </Submenu>
+              )}
               {canManage && index > 0 && <MenuItem onAction={() => h.move(column, -1)}>{t("columnMoveLeft", locale)}</MenuItem>}
               {canManage && index < total - 1 && (
                 <MenuItem onAction={() => h.move(column, 1)}>{t("columnMoveRight", locale)}</MenuItem>
@@ -177,14 +188,29 @@ export default function Column({
           (adding ? (
             <AddCardForm column={column} locale={locale} onAdd={h.addCards} onClose={() => h.setAdding(null)} />
           ) : (
-            <button
-              type="button"
-              className="w-full flex items-center gap-2 rounded-card px-2 py-1.5 text-ink-muted hover:text-ink hover:bg-ink/5"
-              onClick={() => h.setAdding(column.id)}
-            >
-              <Plus size={16} aria-hidden />
-              {t("cardAdd", locale)}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="flex-1 flex items-center gap-2 rounded-card px-2 py-1.5 text-ink-muted hover:text-ink hover:bg-ink/5"
+                onClick={() => h.setAdding(column.id)}
+              >
+                <Plus size={16} aria-hidden />
+                {t("cardAdd", locale)}
+              </button>
+              {shared.templates.length > 0 && (
+                <MenuButton
+                  label={t("cardFromTemplateIn", locale).replace("{name}", column.name)}
+                  icon={<LayoutTemplate size={16} aria-hidden />}
+                  className="w-8 h-8"
+                >
+                  {shared.templates.map((tp) => (
+                    <MenuItem key={tp.id} textValue={tp.name} onAction={() => h.addFromTemplate(column, tp)}>
+                      {tp.name}
+                    </MenuItem>
+                  ))}
+                </MenuButton>
+              )}
+            </div>
           ))}
       </div>
     </section>
@@ -257,6 +283,7 @@ function SortableCard({ card, columnId, shared }: { card: CardDTO; columnId: str
             currentUserId={shared.currentUserId}
             locale={locale}
             handlers={shared.cardHandlers}
+            canManage={shared.canManage}
             isOpen={menuOpen}
             onOpenChange={setMenuOpen}
           />

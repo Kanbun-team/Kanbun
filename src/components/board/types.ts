@@ -11,6 +11,11 @@ export interface TagOption {
   color: string;
 }
 
+export interface TemplateOption {
+  id: string;
+  name: string;
+}
+
 export interface CardDTO {
   id: string;
   title: string;

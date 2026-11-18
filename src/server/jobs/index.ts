@@ -1,6 +1,8 @@
 // Background jobs for the single Kanbun process. Each feature adds one entry
 // to JOBS. Started once from src/instrumentation.ts on the Node.js runtime.
 
+import { runRecurringCards } from "./recurring";
+
 export interface Job {
   name: string;
   /** How often to run, in milliseconds. */
@@ -8,7 +10,10 @@ export interface Job {
   run: () => Promise<void>;
 }
 
-const JOBS: Job[] = [];
+const JOBS: Job[] = [
+  // Recurring cards: due schedules create their card within a minute.
+  { name: "recurring-cards", everyMs: 60_000, run: async () => void (await runRecurringCards()) },
+];
 
 const globalForJobs = globalThis as unknown as { __kanbunJobsStarted?: boolean };
 

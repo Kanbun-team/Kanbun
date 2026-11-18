@@ -14,6 +14,15 @@ describe("formatActivity", () => {
     );
   });
 
+  it("describes cards made from templates and schedules", () => {
+    expect(formatActivity("createdFromTemplate", { column: "To do", template: "Bug report" }, "Ada", "en")).toBe(
+      "Ada created this card in To do from the template Bug report"
+    );
+    expect(formatActivity("createdBySchedule", { column: "To do", template: "Weekly review" }, "Ada", "en")).toBe(
+      "Created in To do by the repeating schedule for Weekly review, set up by Ada"
+    );
+  });
+
   it("formats set and cleared deadlines as calendar dates", () => {
     expect(formatActivity("deadline", { to: "2026-12-03T00:00:00.000Z" }, "Ada", "en")).toBe(
       "Ada set the deadline to 3 Dec 2026"

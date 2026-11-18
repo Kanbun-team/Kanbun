@@ -24,7 +24,7 @@ import {
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { CalendarDays, Columns3, Keyboard, List, Plus } from "lucide-react";
+import { CalendarDays, Columns3, Keyboard, List, Plus, Sparkles } from "lucide-react";
 import { useSyncedState } from "@/lib/use-synced-state";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ import {
   toggleCardTagAction,
   updateCardAction,
 } from "@/server/tasks-actions";
+import { createCardFromTemplateAction, saveCardAsTemplateAction } from "@/server/template-actions";
 import { useUi } from "@/components/ui/UiProvider";
 import { useUndo } from "@/components/ui/useUndo";
 import { buttonClass } from "@/components/ui/button";
@@ -63,6 +64,7 @@ import {
   type MemberOption,
   type SavedFilterDTO,
   type TagOption,
+  type TemplateOption,
 } from "./types";
 
 export interface BoardProps {
@@ -74,6 +76,7 @@ export interface BoardProps {
   members: MemberOption[];
   boardTags: TagOption[];
   savedFilters: SavedFilterDTO[];
+  templates?: TemplateOption[];
 }
 
 const VIEW_ICONS = { board: Columns3, list: List, calendar: CalendarDays } as const;
@@ -174,6 +177,7 @@ export default function Board({
   members,
   boardTags,
   savedFilters,
+  templates = [],
 }: BoardProps) {
   const [columns, setColumns] = useSyncedState(serverColumns);
   const searchParams = useSearchParams();
@@ -324,6 +328,13 @@ export default function Board({
       runCardAction(updateCardAction, card.id, { coverColor: color ?? "" });
     },
     setDeadline: (card) => openDeadlinePicker(card),
+    saveAsTemplate: async (card) => {
+      const fd = new FormData();
+      fd.set("cardId", card.id);
+      const result = ui.report(await saveCardAsTemplateAction(fd));
+      if (result.ok) ui.toast({ message: tr("templateSavedToast", { name: result.data.name }) });
+      router.refresh();
+    },
     remove: async (card) => {
       setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== card.id) })));
       const fd = new FormData();
@@ -387,6 +398,11 @@ export default function Board({
       if (result.ok && result.data.count > 1) ui.toast({ message: tr("cardsAdded", { count: result.data.count }) });
       router.refresh();
       return result.ok;
+    },
+    addFromTemplate: async (column, template) => {
+      const result = ui.report(await createCardFromTemplateAction({ templateId: template.id, columnId: column.id }));
+      if (result.ok) ui.toast({ message: tr("cardFromTemplateToast", { name: template.name, column: column.name }) });
+      router.refresh();
     },
     setAdding: setAddingColumnId,
     renameCard: (card, title) => {
@@ -627,6 +643,7 @@ export default function Board({
     dndDisabled: filtering,
     members,
     boardTags,
+    templates,
     currentUserId,
     cardHandlers,
     columnHandlers,
@@ -708,6 +725,31 @@ export default function Board({
           noDeadlineHref="?view=list&deadline=none"
           onShowNoDeadline={showNoDeadlineList}
         />
+      )}
+
+      {view === "board" && !filtering && allCards.length === 0 && (
+        <div className="flex flex-wrap items-start gap-3 rounded-panel border border-dashed border-line-strong bg-surface px-4 py-3">
+          <Sparkles size={18} aria-hidden className="mt-0.5 text-accent shrink-0" />
+          <div className="flex-1 min-w-[14rem] space-y-0.5">
+            <h2 className="font-semibold">{t("boardEmptyTitle", locale)}</h2>
+            <p className="text-sm text-ink-muted">
+              {columns.length === 0 ? t("boardEmptyNoColumns", locale) : t("boardEmptyBody", locale)}
+            </p>
+          </div>
+          {columns.length > 0 && (
+            <button
+              type="button"
+              className={buttonClass("primary", "md")}
+              onClick={() => {
+                if (collapsed.has(columns[0].id)) toggleCollapsed(columns[0].id);
+                setAddingColumnId(columns[0].id);
+              }}
+            >
+              <Plus size={16} aria-hidden />
+              {tr("boardEmptyAction", { column: columns[0].name })}
+            </button>
+          )}
+        </div>
       )}
 
       {view === "board" && (
