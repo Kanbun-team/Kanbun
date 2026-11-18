@@ -128,7 +128,7 @@ npm run create-admin
 docker compose exec kanbun npm run create-admin
 ```
 
-You will be prompted for username, display name, and password. The script creates an `admin` user, or upgrades an existing user to admin and resets their password.
+You will be prompted for username, display name, and password. The script creates an `admin` user, or upgrades an existing user to admin and resets their password (and, if they have two-factor authentication on, offers to turn it off).
 
 ## Environment
 
@@ -145,6 +145,11 @@ You will be prompted for username, display name, and password. The script create
 - `TZ` - time zone for repeating card schedules, e.g. `Europe/Warsaw` (the server clock otherwise)
 - `API_RATE_LIMIT` - optional, REST API requests per token per minute, default `120`
 - `WEBHOOK_ALLOW_PRIVATE` - set to `1` to let webhooks post to private, loopback and link-local addresses (for receivers on your own network). Off by default, so a board owner can not make the server call internal services.
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_NAME` - optional single sign-on with an OpenID Connect provider (Authentik, Keycloak, Google Workspace, ...). Further options: `OIDC_SCOPES`, `OIDC_ALLOW_SIGNUP`, `OIDC_ADMIN_GROUP`, `OIDC_MATCH_USERNAME`, `OIDC_DISABLE_PASSWORD`. See [docs/SSO.md](docs/SSO.md).
+
+### Single sign-on and two-factor authentication
+
+Kanbun can sign people in through your identity provider (OpenID Connect) alongside passwords, and password accounts can turn on two-factor authentication with an authenticator app in Settings (with single-use recovery codes; admins can reset it from the users page). Setup for Authentik, Keycloak and Google Workspace, the account linking rules, the break-glass admin login and the 2FA details are in [docs/SSO.md](docs/SSO.md). The TOTP secrets are encrypted with a key derived from `AUTH_SECRET`, so changing `AUTH_SECRET` requires resetting existing 2FA setups.
 
 ### Notifications
 

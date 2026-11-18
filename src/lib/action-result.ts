@@ -16,6 +16,9 @@ export const ERROR_CODES = [
   "restoreBoardFirst",
   "limitReached",
   "webhookUrl",
+  "invalidCode",
+  "tooManyAttempts",
+  "lastSignInMethod",
   "unknown",
 ] as const;
 

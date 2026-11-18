@@ -25,6 +25,10 @@ async function main() {
 
     const existing = await prisma.user.findUnique({ where: { username } });
     if (existing) {
+      // Break-glass recovery for a lost authenticator: clear the 2FA setup too.
+      const reset2fa =
+        !!existing.totpEnabledAt &&
+        /^y(es)?$/i.test(await ask(rl, "This user has two-factor authentication on. Turn it off? [y/N]: ", "n"));
       await prisma.user.update({
         where: { username },
         data: {
@@ -32,9 +36,11 @@ async function main() {
           displayName,
           role: "admin",
           sessionVersion: { increment: 1 },
+          ...(reset2fa ? { totpSecret: null, totpEnabledAt: null, totpLastStep: null } : {}),
         },
       });
-      console.log(`Updated existing user '${username}' to admin.`);
+      if (reset2fa) await prisma.totpRecoveryCode.deleteMany({ where: { userId: existing.id } });
+      console.log(`Updated existing user '${username}' to admin${reset2fa ? " and turned off two-factor authentication" : ""}.`);
     } else {
       await prisma.user.create({
         data: {

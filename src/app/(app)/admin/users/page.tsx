@@ -16,6 +16,9 @@ import {
   adminSetUserActiveAction,
   adminUpdateUserAction,
 } from "@/server/actions";
+import { adminResetTwoFactorAction } from "@/server/two-factor-actions";
+import { hasUsablePassword } from "@/lib/password";
+import { SSO_PROVIDER_ID } from "@/lib/sso";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +36,7 @@ export default async function AdminUsersPage() {
         take: 1,
         select: { lastSeenAt: true },
       },
+      identities: { where: { provider: SSO_PROVIDER_ID }, select: { email: true }, take: 1 },
     },
   });
 
@@ -93,6 +97,8 @@ export default async function AdminUsersPage() {
           const isMe = u.id === me.id;
           const name = u.displayName ?? u.username;
           const deactivated = !!u.deactivatedAt;
+          const identity = u.identities[0] ?? null;
+          const twoFactor = !!u.totpEnabledAt;
           return (
             <li key={u.id}>
               <details className="group">
@@ -105,6 +111,16 @@ export default async function AdminUsersPage() {
                     </div>
                     <div className="text-xs text-ink-muted truncate">@{u.username}</div>
                   </div>
+                  {identity && (
+                    <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-control border border-line-strong text-ink-muted" title={t("adminSsoLinked", locale).replace("{email}", identity.email ?? "")}>
+                      {t("adminSsoBadge", locale)}
+                    </span>
+                  )}
+                  {twoFactor && (
+                    <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-control border border-success/50 text-success" title={t("admin2faOn", locale)}>
+                      {t("admin2faBadge", locale)}
+                    </span>
+                  )}
                   {deactivated && (
                     <span className="text-xs px-2 py-0.5 rounded-control border border-line-strong text-ink-muted">
                       {t("userDeactivated", locale)}
@@ -181,6 +197,34 @@ export default async function AdminUsersPage() {
                         {t("adminResetPassword", locale)}
                       </button>
                     </ActionForm>
+
+                    <div className="pt-3 mt-3 border-t border-line space-y-2">
+                      <h3 className="text-sm font-semibold">{t("adminSignIn", locale)}</h3>
+                      <ul className="text-sm text-ink-muted space-y-0.5">
+                        <li>
+                          {identity
+                            ? t("adminSsoLinked", locale).replace("{email}", identity.email ?? "-")
+                            : t("adminSsoNotLinked", locale)}
+                        </li>
+                        {!hasUsablePassword(u.passwordHash) && <li>{t("adminNoPassword", locale)}</li>}
+                        <li>{twoFactor ? t("admin2faOn", locale) : t("admin2faOff", locale)}</li>
+                      </ul>
+                      {(twoFactor || u.totpSecret) && (
+                        <ActionForm
+                          action={adminResetTwoFactorAction}
+                          success={t("adminReset2faToast", locale)}
+                          confirm={{
+                            title: t("adminReset2faConfirm", locale).replace("{name}", name),
+                            body: t("adminReset2faBody", locale),
+                            confirmLabel: t("adminReset2fa", locale),
+                            danger: true,
+                          }}
+                        >
+                          <input type="hidden" name="userId" value={u.id} />
+                          <button className={buttonClass("secondary", "sm")}>{t("adminReset2fa", locale)}</button>
+                        </ActionForm>
+                      )}
+                    </div>
 
                     {!isMe && (
                       <div className="pt-3 mt-3 border-t border-line flex flex-wrap gap-2">
