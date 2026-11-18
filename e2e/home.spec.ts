@@ -63,6 +63,10 @@ test("opened boards show up under Recently opened", async ({ page }) => {
   await page.goto("/tasks");
   await tile(page, page.getByRole("region", { name: "Operations" }), "Hiring").getByRole("link").click();
   await page.waitForURL(/\/tasks\/[^/]+$/);
+  // The board records the visit in a cookie once it has hydrated.
+  await expect
+    .poll(async () => (await page.context().cookies()).some((c) => c.name === "kanbun-recent-boards"))
+    .toBe(true);
   await page.goto("/tasks");
   const recent = page.getByRole("region", { name: "Recently opened" });
   await expect(recent.getByRole("link").first()).toHaveText("Hiring");

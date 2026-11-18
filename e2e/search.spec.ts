@@ -6,8 +6,11 @@ function palette(page: Page) {
 }
 
 async function openPalette(page: Page, key = "Control+K") {
-  await page.keyboard.press(key);
-  await expect(palette(page)).toBeVisible();
+  // The shortcut listener exists only after hydration: press again until it opens.
+  await expect(async () => {
+    if (!(await palette(page).isVisible())) await page.keyboard.press(key);
+    await expect(palette(page)).toBeVisible({ timeout: 1000 });
+  }).toPass();
   const input = palette(page).getByRole("textbox", { name: "Search boards, cards and comments" });
   await expect(input).toBeFocused();
   return input;
