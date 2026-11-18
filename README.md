@@ -186,6 +186,8 @@ scripts/
   create-admin.ts      optional CLI to create or reset an admin
   db.mjs               generate clients / migrate for the database in DATABASE_URL
   sqlite-to-postgres.ts copy a SQLite install into PostgreSQL
+  seed-large.ts        a 500-card board for performance testing (npm run seed:large)
+  perf-board.ts        measures that board on a production build
 ```
 
 ## Notes
@@ -201,6 +203,7 @@ scripts/
 - The admin audit log (`AuditLog`, `/admin/audit`) records security-relevant events through `audit()` in `src/server/audit.ts`. Failed sign-ins record the username that was tried, never the password. Old entries are purged by the `audit-purge` background job.
 - Failed logins are rate limited per IP and username (in memory, or in Redis when `REDIS_URL` is set). Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
 - Offline support needs HTTPS (or localhost) and an uncached `/sw.js`; see [docs/OFFLINE.md](docs/OFFLINE.md) for what is stored in the browser and when it is deleted.
+- Performance: the 500-card board budget, how to measure it and the rules that keep the board fast (memoized columns and cards, stable handlers) are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). `E2E_PERF=1 npx playwright test e2e/perf.spec.ts` runs the performance guard.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). In process by default; with `REDIS_URL` events go through Redis pub/sub so every instance delivers them ([docs/SCALING.md](docs/SCALING.md)).
 
 ## Pro modules (optional)
