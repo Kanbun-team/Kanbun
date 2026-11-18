@@ -14,6 +14,7 @@ import { ActionError } from "@/lib/action-result";
 import { hashToken, parseBearer, scopeAllows, tokenState, type TokenScope } from "@/lib/api-tokens";
 import { getLimiter } from "@/lib/limiter";
 import { clientIp } from "@/lib/rate-limit";
+import { readTextLimited } from "@/server/transfer/http";
 
 export interface ApiUser {
   id: string;
@@ -181,8 +182,9 @@ export async function readJson(req: NextRequest): Promise<Record<string, unknown
   if (!type.toLowerCase().includes("application/json")) {
     throw new ApiError(415, "unsupported_media_type", "Send the body as application/json.");
   }
-  const text = await req.text();
-  if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new ApiError(413, "payload_too_large", "The body is too large.");
+  // Read with a cap, so an oversized body is refused without holding it in memory.
+  const text = await readTextLimited(req, MAX_BODY_BYTES);
+  if (text === null) throw new ApiError(413, "payload_too_large", "The body is too large.");
   let value: unknown;
   try {
     value = JSON.parse(text);

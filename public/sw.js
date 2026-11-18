@@ -32,8 +32,12 @@ const MAX_STATIC_ENTRIES = 400;
 const MAX_PAGE_ENTRIES = 100;
 /** A page cached this recently is not fetched again by a "cache-page" message. */
 const PAGE_FRESH_MS = 60_000;
-/** Pages that are never stored (they belong to no user, or hold secrets). */
-const UNCACHED_PAGES = [/^\/login/, /^\/setup/, /^\/offline/, /^\/api\//];
+/**
+ * Pages that are never stored: they belong to no user, or hold secrets
+ * (settings can show a pending two-factor secret, admin pages the user list
+ * and the audit log).
+ */
+const UNCACHED_PAGES = [/^\/login/, /^\/setup/, /^\/offline/, /^\/api\//, /^\/settings/, /^\/admin/];
 
 let currentUser; // undefined: not read yet, null: nobody signed in
 // User changes run one after another, and readers wait for them, so a page
