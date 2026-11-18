@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { t, type Locale, type DictKey, formatDateTime } from "@/lib/i18n";
+import { t, type Locale, formatDateTime } from "@/lib/i18n";
+import { notificationText } from "@/lib/notification-prefs";
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
@@ -16,12 +17,7 @@ interface Props {
   locale: Locale;
 }
 
-function messageFor(n: NotificationView, locale: Locale): string {
-  const actor = n.actorName ?? t("notifSomeone", locale);
-  const key: DictKey =
-    n.type === "assigned" ? "notifAssigned" : n.type === "mention" ? "notifMention" : "notifBlocked";
-  return t(key, locale).replace("{actor}", actor).replace("{card}", `"${n.cardTitle}"`);
-}
+const messageFor = (n: NotificationView, locale: Locale) => notificationText(n, locale);
 
 export default function NotificationBell({ initial, locale }: Props) {
   const router = useRouter();
@@ -105,7 +101,7 @@ export default function NotificationBell({ initial, locale }: Props) {
               </button>
             )}
           </div>
-          <ul className="max-h-96 overflow-auto">
+          <ul className="max-h-96 overflow-auto" aria-label={t("notifTitle", locale)}>
             {items.length === 0 && (
               <li className="px-3 py-6 text-sm text-ink-muted text-center">{t("notifEmpty", locale)}</li>
             )}

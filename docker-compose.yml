@@ -11,6 +11,9 @@ services:
       AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET in .env}"
       AUTH_TRUST_HOST: "true"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+      # Optional email notifications and daily digest (off when SMTP_URL is unset):
+      # SMTP_URL: "smtp://user:pass@smtp.example.com:587"
+      # SMTP_FROM: "Kanbun <kanbun@example.com>"
     volumes:
       - kanbun-data:/data
 

@@ -22,6 +22,14 @@ model User {
   // Set when an admin deactivates the account: the user can no longer sign in
   // and is hidden from pickers, but everything they created stays.
   deactivatedAt    DateTime?
+  // Optional address for notification emails (only used when SMTP is set up).
+  email            String?
+  // JSON object { [notificationType]: "inapp" | "email" | "none" }. Missing
+  // types fall back to "inapp". See src/lib/notification-prefs.ts.
+  notificationPrefs String  @default("{}")
+  // Daily email summary of unread notifications, off by default.
+  digestEnabled    Boolean  @default(false)
+  digestSentAt     DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -38,6 +46,8 @@ model User {
   boardPins         BoardPin[]
   savedFilters      SavedFilter[]        @relation("SavedFilterCreator")
   cardActivities    CardActivity[]       @relation("CardActivityActor")
+  cardWatches       CardWatcher[]
+  boardWatches      BoardWatcher[]
 }
 
 model Board {
@@ -62,6 +72,7 @@ model Board {
   @@index([createdById])
   @@index([categoryId, position])
   pins BoardPin[]
+  watchers BoardWatcher[]
   savedFilters SavedFilter[]
 }
 
@@ -122,6 +133,7 @@ model TaskCard {
   tags       TaskCardTag[]
   blocking   TaskBlock[]        @relation("CardBlocker")
   blockedBy  TaskBlock[]        @relation("CardBlocked")
+  watchers   CardWatcher[]
 
   @@index([columnId, position])
   @@index([createdById])
@@ -321,4 +333,40 @@ model CardActivity {
   actor User? @relation("CardActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([cardId, createdAt])
+}
+
+// Users following a card: notified about new comments, moves to another
+// column and an approaching deadline. Part of the card trash snapshot.
+model CardWatcher {
+  cardId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  card TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
+
+// Users following a board: notified about new cards on it.
+model BoardWatcher {
+  boardId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@index([userId])
+}
+
+// Marker for the dueSoon job: the deadline value a card was last notified
+// about, so each deadline is announced once. No relation, so it survives the
+// card sitting in the trash; a changed deadline is announced again.
+model DueSoonNotice {
+  cardId   String   @id
+  deadline DateTime
+  sentAt   DateTime @default(now())
 }

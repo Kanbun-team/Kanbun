@@ -18,6 +18,7 @@ import {
 import SubtaskList from "@/components/SubtaskList";
 import { CardBlocks, CardTags } from "@/components/CardTagsBlocks";
 import Comments from "@/components/Comments";
+import CardWatchToggle from "@/components/card/CardWatchToggle";
 import { deleteCardAction } from "@/server/tasks-actions";
 import { parseMentions } from "@/lib/notifications";
 import { parseActivityData } from "@/lib/activity";
@@ -125,6 +126,7 @@ export default async function CardDetail({
             &larr; {board.name}, {card.column.name}
           </Link>
         )}
+        <CardWatchToggle cardId={card.id} userId={me.id} />
         <ActionForm action={deleteCardAction} undo success={t("cardDeleted", locale)} redirectTo={`/tasks/${boardId}`}>
           <input type="hidden" name="cardId" value={card.id} />
           <button className={buttonClass("ghost", "sm", "text-danger hover:text-danger")}>{t("cardDelete", locale)}</button>

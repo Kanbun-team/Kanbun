@@ -5,6 +5,7 @@ import { getLocale } from "@/lib/get-locale";
 import { t } from "@/lib/i18n";
 import { loadBoardAccess, canManageBoard } from "@/server/board-access";
 import Board from "@/components/board/Board";
+import WatchButton from "@/components/WatchButton";
 import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
 import { parseFilters } from "@/lib/board-filters";
 
@@ -32,6 +33,7 @@ export default async function BoardPage({
         include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
       },
       tags: { orderBy: { position: "asc" }, select: { id: true, name: true, color: true } },
+      watchers: { where: { userId: access.userId }, select: { userId: true } },
       columns: {
         orderBy: { position: "asc" },
         include: {
@@ -119,6 +121,7 @@ export default async function BoardPage({
               {t("boardArchived", locale)}
             </span>
           )}
+          <WatchButton kind="board" id={board.id} watching={board.watchers.length > 0} />
           {canManageBoard(access) && (
             <Link
               href={`/tasks/${board.id}/settings`}
