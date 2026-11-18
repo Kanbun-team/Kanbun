@@ -39,7 +39,7 @@
 - Deactivate users instead of deleting them: they can no longer sign in, but their work stays.
 - Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run.
 - Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German and Italian (see [src/locales](src/locales/README.md) to add a language). Login screen stays English.
-- Mobile responsive with hamburger drawer. PWA manifest + safe-area insets.
+- Mobile responsive with hamburger drawer and safe-area insets. Installable PWA that works offline: boards opened before stay readable, and card edits made offline sync when the connection returns ([docs/OFFLINE.md](docs/OFFLINE.md)).
 - Loading skeletons on every data-fetching page.
 
 ## Stack
@@ -140,6 +140,7 @@ prisma/
   schema.prisma        SQLite data model
 public/
   manifest.webmanifest PWA manifest
+  sw.js                service worker (offline support)
   icons/               app icons (PNG + SVG)
 scripts/
   create-admin.ts      optional CLI to create or reset an admin
@@ -156,6 +157,7 @@ scripts/
 - Card-to-card blocking is restricted to the same board and prevents self-cycles.
 - Sessions are JWTs, but the user is re-read from the database on every request, so deactivating or deleting a user, changing a role, or resetting a password applies immediately.
 - Failed logins are rate limited in memory per IP and username. Behind a reverse proxy the client IP comes from `X-Forwarded-For`, so make sure your proxy sets it and do not expose the app directly if you rely on the limit.
+- Offline support needs HTTPS (or localhost) and an uncached `/sw.js`; see [docs/OFFLINE.md](docs/OFFLINE.md) for what is stored in the browser and when it is deleted.
 - Live updates use an in-process event bus (`src/lib/realtime.ts`) and SSE endpoints at `/api/boards/<id>/events` (a single board) and `/api/boards/events` (the boards list). This is single-process by design; running multiple instances would need an external broker.
 
 ## Pro modules (optional)
