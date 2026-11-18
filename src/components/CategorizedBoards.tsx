@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import BoardCard, { type BoardCardData } from "./BoardCard";
+import BoardCard, { BOARD_GRID_CLASS, type BoardCardData } from "./BoardCard";
 import CreateBoardModal from "./CreateBoardModal";
 import { moveBoardAction } from "@/server/tasks-actions";
-import { type Locale } from "@/lib/i18n";
+import { ChevronRight } from "lucide-react";
+import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useSyncedState } from "@/lib/use-synced-state";
 
@@ -22,7 +23,7 @@ interface CategoryOption {
   color: string;
 }
 
-type Board = BoardCardData & { categoryId: string | null; position: number };
+type Board = BoardCardData;
 
 interface Props {
   boards: Board[];
@@ -31,7 +32,7 @@ interface Props {
   locale: Locale;
 }
 
-const GRID_CLASS = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr";
+const GRID_CLASS = BOARD_GRID_CLASS;
 
 function reorder(
   boards: Board[],
@@ -97,13 +98,17 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
     [boards, dragId]
   );
 
+  // Archived boards keep their category and position (the server orders
+  // them together with active ones), but they are listed in their own
+  // collapsed section instead of the draggable grids.
   const sections = useMemo(() => {
-    const general = boards
-      .filter((b) => !b.categoryId)
+    const active = boards.filter((b) => !b.archived);
+    const general = active
+      .filter((b) => !b.categoryId || !categories.some((c) => c.id === b.categoryId))
       .sort((a, b) => a.position - b.position);
     const byCat = new Map<string, Board[]>();
     for (const cat of categories) byCat.set(cat.id, []);
-    for (const b of boards) {
+    for (const b of active) {
       if (b.categoryId && byCat.has(b.categoryId)) {
         byCat.get(b.categoryId)!.push(b);
       }
@@ -111,7 +116,8 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
     for (const [k, list] of byCat) {
       byCat.set(k, list.sort((a, b) => a.position - b.position));
     }
-    return { general, byCat };
+    const archived = boards.filter((b) => b.archived);
+    return { general, byCat, archived };
   }, [boards, categories]);
 
   function commitMove(boardId: string, toCategoryId: string | null, position: number) {
@@ -144,7 +150,14 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
     const fullIdx =
       dragOver?.categoryId === categoryId ? dragOver.fullIndex : list.length;
     const filteredIdx = toFilteredIndex(fullIdx, list, dragId);
-    commitMove(dragId, categoryId, filteredIdx);
+    // The server counts every board in the category, archived ones included,
+    // so insert before the same neighbour in that complete list.
+    const before = list.filter((b) => b.id !== dragId)[filteredIdx];
+    const all = boards
+      .filter((b) => b.categoryId === categoryId && b.id !== dragId)
+      .sort((a, b) => a.position - b.position);
+    const position = before ? all.findIndex((b) => b.id === before.id) : all.length;
+    commitMove(dragId, categoryId, position < 0 ? all.length : position);
   }
 
   function renderGrid(list: Board[], categoryId: string | null) {
@@ -264,57 +277,97 @@ export default function CategorizedBoards({ boards: initial, categories, users, 
             </li>
           );
         })}
-        <li className="h-full">
-          <CreateBoardModal
-            users={users}
-            categories={categories}
-            defaultCategoryId={categoryId}
-            locale={locale}
-            variant="card"
-          />
-        </li>
+        {list.length === 0 && (
+          <li className="col-span-full rounded-panel border border-dashed border-line-strong px-4 py-5 text-sm text-ink-muted text-center">
+            {t("homeCategoryEmpty", locale)}
+          </li>
+        )}
       </ul>
     );
   }
 
+  const showGeneral = sections.general.length > 0 || (dragId !== null && categories.length > 0);
+
   return (
     <>
-      {renderGrid(sections.general, null)}
-
       {categories.map((cat) => {
         const list = sections.byCat.get(cat.id) ?? [];
         const isTargetEmpty =
           dragId !== null &&
           dragOver?.categoryId === cat.id &&
           list.filter((b) => b.id !== dragId).length === 0;
+        const headingId = `category-${cat.id}`;
         return (
           <section
             key={cat.id}
-            className={cn(
-              "space-y-3 rounded-panel transition-colors duration-150",
-              isTargetEmpty && "bg-ink/5 ring-2 ring-dashed"
-            )}
+            aria-labelledby={headingId}
+            className="space-y-3 rounded-panel transition-colors duration-150"
             style={
               isTargetEmpty
                 ? { boxShadow: `inset 0 0 0 2px ${draggedBoard?.color ?? "#2563eb"}` }
                 : undefined
             }
           >
-            <header className="flex items-center gap-2 px-1">
+            <header className="flex items-center gap-2 px-1 min-h-8">
               <span
                 aria-hidden="true"
-                className="w-2.5 h-2.5 rounded-full"
+                className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ background: cat.color }}
               />
-              <h2 className="text-md font-semibold">
+              <h2 id={headingId} className="text-md font-semibold">
                 {cat.name}
               </h2>
               <span className="text-sm text-ink-muted tabular-nums">{list.length}</span>
+              <span className="ml-auto">
+                <CreateBoardModal
+                  users={users}
+                  categories={categories}
+                  defaultCategoryId={cat.id}
+                  locale={locale}
+                  variant="inline"
+                  inlineLabel={t("boardNewIn", locale).replace("{category}", cat.name)}
+                />
+              </span>
             </header>
             {renderGrid(list, cat.id)}
           </section>
         );
       })}
+
+      {showGeneral && (
+        <section aria-labelledby={categories.length > 0 ? "category-none" : undefined} className="space-y-3">
+          {categories.length > 0 && (
+            <header className="flex items-center gap-2 px-1 min-h-8">
+              <h2 id="category-none" className="text-md font-semibold">
+                {t("homeOtherBoards", locale)}
+              </h2>
+              <span className="text-sm text-ink-muted tabular-nums">{sections.general.length}</span>
+            </header>
+          )}
+          {renderGrid(sections.general, null)}
+        </section>
+      )}
+
+      {sections.archived.length > 0 && (
+        <details className="group/archived rounded-panel border border-line">
+          <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden rounded-panel">
+            <ChevronRight
+              size={16}
+              aria-hidden
+              className="text-ink-muted transition-transform duration-[120ms] group-open/archived:rotate-90"
+            />
+            <span className="text-base font-medium text-ink-muted">{t("homeArchived", locale)}</span>
+            <span className="text-sm text-ink-muted tabular-nums">{sections.archived.length}</span>
+          </summary>
+          <ul className={cn(GRID_CLASS, "px-4 pb-4")}>
+            {sections.archived.map((b) => (
+              <li key={b.id} className="h-full">
+                <BoardCard board={b} locale={locale} muted />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </>
   );
 }
