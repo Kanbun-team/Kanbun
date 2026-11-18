@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buttonClass, iconButtonClass } from "./ui/button";
 import Avatar from "./Avatar";
+import Combobox from "./ui/Combobox";
+import { useUi } from "./ui/UiProvider";
 import { cn, isPast } from "@/lib/utils";
 import { useSyncedState } from "@/lib/use-synced-state";
 import { PALETTE } from "@/lib/palette";
@@ -310,85 +313,64 @@ export function CardAssignees({
   members,
   locale,
 }: Pick<CardEditorProps, "cardId" | "assignees" | "members" | "locale">) {
-  const [open, setOpen] = useState(false);
   const router = useRouter();
+  const ui = useUi();
   const [pending, startTransition] = useTransition();
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const assignedIds = new Set(assignees.map((a) => a.id));
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
-  }, [open]);
+  // Checked state in the picker updates at once; the server refresh catches up.
+  const [assignedIds, toggleOptimistic] = useOptimistic(
+    assignees.map((a) => a.id),
+    (ids: string[], userId: string) => (ids.includes(userId) ? ids.filter((id) => id !== userId) : [...ids, userId])
+  );
 
   function toggle(userId: string) {
     startTransition(async () => {
+      toggleOptimistic(userId);
       const fd = new FormData();
       fd.set("cardId", cardId);
       fd.set("userId", userId);
-      await toggleAssigneeAction(fd);
+      ui.report(await toggleAssigneeAction(fd));
       router.refresh();
     });
   }
 
   return (
-    <div className="relative" ref={wrapRef}>
-      <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
-        {assignees.map((u) => (
-          <button
-            key={u.id}
-            type="button"
-            onClick={() => toggle(u.id)}
-            title={`${t("remove", locale)}: ${u.displayName ?? u.username}`}
-            className="group relative rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
-          >
+    <div className={cn("flex items-center gap-1.5 flex-wrap", pending && "opacity-60")}>
+      {assignees.map((u) => (
+        <button
+          key={u.id}
+          type="button"
+          onClick={() => toggle(u.id)}
+          title={`${t("remove", locale)}: ${u.displayName ?? u.username}`}
+          className="group relative rounded-full focus:outline-none focus:ring-2 focus:ring-accent"
+        >
+          {/* Named by the hidden text; the initials would only add noise. */}
+          <span className="sr-only">{`${t("remove", locale)}: ${u.displayName ?? u.username}`}</span>
+          <span aria-hidden="true">
             <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={28} />
             <span className="absolute inset-0 rounded-full bg-black/55 text-white text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
               &times;
             </span>
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-label={t("add", locale)}
-          aria-expanded={open}
-          className="w-7 h-7 rounded-full border border-dashed border-line-strong flex items-center justify-center text-base leading-none text-ink-muted hover:text-ink hover:border-accent"
-        >
-          +
+          </span>
         </button>
-        {assignees.length === 0 && (
-          <span className="text-sm text-ink-muted">{t("cardNoAssignees", locale)}</span>
-        )}
-      </div>
-      {open && (
-        <div className="absolute mt-2 z-50 w-64 bg-raised border border-line rounded-panel shadow-float max-h-72 overflow-auto p-1">
-          {members.length === 0 && (
-            <div className="px-3 py-2 text-sm text-ink-muted">{t("noResults", locale)}</div>
-          )}
-          {members.map((u) => {
-            const on = assignedIds.has(u.id);
-            return (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => toggle(u.id)}
-                className={cn(
-                  "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-control hover:bg-ink/5",
-                  on && "bg-accent-soft"
-                )}
-              >
-                <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={22} />
-                <span className="text-sm flex-1 truncate">{u.displayName ?? u.username}</span>
-                {on && <span className="text-accent">&#10003;</span>}
-              </button>
-            );
-          })}
-        </div>
+      ))}
+      <Combobox
+        selectionMode="multiple"
+        label={t("cardAddAssignee", locale)}
+        searchLabel={t("pickerSearchMembers", locale)}
+        emptyText={t("pickerNoMatches", locale)}
+        selectedIds={assignedIds}
+        onToggle={toggle}
+        options={members.map((u) => ({
+          id: u.id,
+          label: u.displayName ?? u.username,
+          description: `@${u.username}`,
+          leading: <Avatar src={u.avatarUrl} name={u.displayName ?? u.username} size={22} />,
+        }))}
+        trigger={<Plus size={14} aria-hidden />}
+        triggerClassName="w-7 h-7 rounded-full border border-dashed border-line-strong flex items-center justify-center text-ink-muted hover:text-ink hover:border-accent"
+      />
+      {assignees.length === 0 && (
+        <span className="text-sm text-ink-muted">{t("cardNoAssignees", locale)}</span>
       )}
     </div>
   );

@@ -37,6 +37,7 @@ model User {
   notifications     Notification[]       @relation("UserNotifications")
   boardPins         BoardPin[]
   savedFilters      SavedFilter[]        @relation("SavedFilterCreator")
+  cardActivities    CardActivity[]       @relation("CardActivityActor")
 }
 
 model Board {
@@ -303,4 +304,21 @@ model SavedFilter {
   createdBy User? @relation("SavedFilterCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([boardId, createdAt])
+}
+
+// Card history: who changed what and when. No relation to TaskCard, so the
+// history survives while the card sits in the trash (it is restored with its
+// original id). `data` is a JSON object whose shape depends on `type`.
+model CardActivity {
+  id        String   @id @default(cuid())
+  cardId    String
+  boardId   String
+  type      String
+  data      String   @default("{}")
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("CardActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([cardId, createdAt])
 }

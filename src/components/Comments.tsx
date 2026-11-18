@@ -1,12 +1,17 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
+import MentionTextarea from "./MentionTextarea";
+import RelativeTime from "./ui/RelativeTime";
 import { addCommentAction, deleteCommentAction } from "@/server/tasks-actions";
-import { t, type Locale, formatDateTime } from "@/lib/i18n";
+import { t, type Locale } from "@/lib/i18n";
 import { renderMarkdownToHtml } from "@/lib/markdown";
+import { describeActivity } from "@/lib/activity";
+import type { MentionCandidate } from "@/lib/mentions";
+import { cn } from "@/lib/utils";
 import { useUi } from "./ui/UiProvider";
 import { buttonClass } from "./ui/button";
 
@@ -19,19 +24,46 @@ export interface CommentItem {
   canDelete: boolean;
 }
 
+export interface ActivityItem {
+  id: string;
+  type: string;
+  data: Record<string, unknown>;
+  createdAt: string;
+  /** Null when the actor's account was deleted. */
+  actor: { username: string; displayName: string | null } | null;
+}
+
+type TimelineEntry = ({ kind: "comment" } & CommentItem) | ({ kind: "activity" } & ActivityItem);
+
+// The card timeline: comments and history (moves, edits, assignments) in one
+// list, oldest first, with the comment box at the end.
 export default function Comments({
   cardId,
   comments,
+  activity = [],
+  members = [],
+  mentionable = [],
   locale,
 }: {
   cardId: string;
   comments: CommentItem[];
+  activity?: ActivityItem[];
+  /** Board members offered after "@" in the comment box. */
+  members?: MentionCandidate[];
+  /** Existing usernames whose @mentions are highlighted in comments. */
+  mentionable?: string[];
   locale: Locale;
 }) {
   const router = useRouter();
   const ui = useUi();
-  const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
+  const [body, setBody] = useState("");
+  const [commentsOnly, setCommentsOnly] = useState(false);
+
+  const entries: TimelineEntry[] = [
+    ...comments.map((c) => ({ kind: "comment" as const, ...c })),
+    ...(commentsOnly ? [] : activity.map((a) => ({ kind: "activity" as const, ...a }))),
+  ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   async function remove(commentId: string) {
     // Confirm first: state set inside an async transition commits only at its end.
@@ -53,67 +85,138 @@ export default function Comments({
 
   return (
     <div className="space-y-4">
-      <ul className="space-y-3">
-        {comments.length === 0 && <li className="text-ink-muted">{t("cardNoComments", locale)}</li>}
-        {comments.map((c) => {
-          const name = c.author ? c.author.displayName ?? c.author.username : t("deletedUser", locale);
-          return (
-            <li key={c.id} className="flex gap-3">
-              <Avatar src={c.author?.avatarUrl} name={name} size={32} />
-              <div className="flex-1 min-w-0 bg-surface border border-line rounded-card p-3">
-                <div className="flex items-center justify-between gap-2 text-sm text-ink-muted">
-                  {c.author ? (
-                    <Link
-                      href={`/users/${encodeURIComponent(c.author.username)}`}
-                      className="hover:underline font-medium text-ink"
-                    >
-                      {name}
-                    </Link>
-                  ) : (
-                    <span className="font-medium">{name}</span>
-                  )}
-                  <span className="tabular-nums">{formatDateTime(new Date(c.createdAt), locale)}</span>
-                </div>
-                <div
-                  className="text-md mt-1 max-w-[70ch] [&_a]:break-words [&_a]:text-accent [&_a]:underline [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_p]:my-1 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(c.body) }}
-                />
-                {c.canDelete && (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => remove(c.id)}
-                    className={buttonClass("ghost", "sm", "mt-1 -ml-2")}
-                  >
-                    {t("delete", locale)}
-                  </button>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="text-md font-semibold">{t("cardActivity", locale)}</h2>
+        {activity.length > 0 && (
+          <button
+            type="button"
+            aria-pressed={commentsOnly}
+            onClick={() => setCommentsOnly((v) => !v)}
+            className={cn(
+              "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border transition",
+              commentsOnly
+                ? "border-accent bg-accent-soft text-ink"
+                : "border-line text-ink-muted hover:text-ink hover:border-accent"
+            )}
+          >
+            {t("activityCommentsOnly", locale)}
+          </button>
+        )}
+      </div>
+      <ol className="space-y-3" aria-label={t("cardActivity", locale)}>
+        {entries.length === 0 && (
+          <li className="text-ink-muted">
+            {commentsOnly ? t("cardNoComments", locale) : t("activityEmpty", locale)}
+          </li>
+        )}
+        {entries.map((e) =>
+          e.kind === "activity" ? (
+            <ActivityRow key={`a-${e.id}`} entry={e} locale={locale} />
+          ) : (
+            <CommentRow
+              key={`c-${e.id}`}
+              comment={e}
+              locale={locale}
+              mentionable={mentionable}
+              pending={pending}
+              onDelete={() => remove(e.id)}
+            />
+          )
+        )}
+      </ol>
       <form
-        ref={formRef}
         action={async (fd) => {
           if (ui.report(await addCommentAction(fd)).ok) {
-            formRef.current?.reset();
+            setBody("");
             router.refresh();
           }
         }}
         className="space-y-2"
       >
         <input type="hidden" name="cardId" value={cardId} />
-        <textarea
+        <MentionTextarea
           name="body"
           required
           maxLength={5000}
           rows={3}
+          value={body}
+          onValueChange={setBody}
+          members={members}
+          locale={locale}
           aria-label={t("cardWriteComment", locale)}
           placeholder={t("cardWriteComment", locale)}
         />
         <button className={buttonClass("primary")}>{t("cardPostComment", locale)}</button>
       </form>
     </div>
+  );
+}
+
+function ActivityRow({ entry, locale }: { entry: ActivityItem; locale: Locale }) {
+  const [before, after] = describeActivity(entry.type, entry.data, locale);
+  const actor = entry.actor ? entry.actor.displayName ?? entry.actor.username : t("deletedUser", locale);
+  return (
+    <li className="flex items-start gap-3 text-sm text-ink-muted">
+      <span aria-hidden className="w-8 shrink-0 flex justify-center pt-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-ink-muted" />
+      </span>
+      <p className="flex-1 min-w-0 break-words">
+        {before}
+        <span className="font-medium text-ink">{actor}</span>
+        {after}
+        <span aria-hidden> · </span>
+        <RelativeTime iso={entry.createdAt} locale={locale} className="tabular-nums whitespace-nowrap" />
+      </p>
+    </li>
+  );
+}
+
+function CommentRow({
+  comment: c,
+  locale,
+  mentionable,
+  pending,
+  onDelete,
+}: {
+  comment: CommentItem;
+  locale: Locale;
+  mentionable: string[];
+  pending: boolean;
+  onDelete: () => void;
+}) {
+  const name = c.author ? c.author.displayName ?? c.author.username : t("deletedUser", locale);
+  return (
+    <li className="flex gap-3">
+      <Avatar src={c.author?.avatarUrl} name={name} size={32} />
+      <div className="flex-1 min-w-0 bg-surface border border-line rounded-card p-3">
+        <div className="flex items-center justify-between gap-2 text-sm text-ink-muted">
+          {c.author ? (
+            <Link
+              href={`/users/${encodeURIComponent(c.author.username)}`}
+              className="hover:underline font-medium text-ink"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span className="font-medium">{name}</span>
+          )}
+          <RelativeTime iso={c.createdAt} locale={locale} className="tabular-nums" />
+        </div>
+        <div
+          className="text-md mt-1 max-w-[70ch] [&_a]:break-words [&_a]:text-accent [&_a]:underline [&_a.mention]:text-ink [&_a.mention]:no-underline [&_a.mention:hover]:underline [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_p]:my-1 [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold"
+          dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(c.body, { mentions: mentionable }) }}
+        />
+        {c.canDelete && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onDelete}
+            className={buttonClass("ghost", "sm", "mt-1 -ml-2")}
+          >
+            {t("delete", locale)}
+          </button>
+        )}
+      </div>
+    </li>
   );
 }

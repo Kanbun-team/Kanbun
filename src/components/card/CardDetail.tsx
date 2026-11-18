@@ -19,6 +19,8 @@ import SubtaskList from "@/components/SubtaskList";
 import { CardBlocks, CardTags } from "@/components/CardTagsBlocks";
 import Comments from "@/components/Comments";
 import { deleteCardAction } from "@/server/tasks-actions";
+import { parseMentions } from "@/lib/notifications";
+import { parseActivityData } from "@/lib/activity";
 
 // The card view, shared by the full page (/tasks/[id]/cards/[cardId]) and the
 // side panel that opens over the board. In the panel the layout is a single
@@ -78,13 +80,16 @@ export default async function CardDetail({
       },
       tags: { orderBy: { position: "asc" } },
       columns: {
-        include: { cards: { select: { id: true, title: true } } },
+        orderBy: { position: "asc" },
+        include: { cards: { orderBy: { position: "asc" }, select: { id: true, title: true } } },
       },
     },
   });
   if (!board) notFound();
 
-  const allCards = board.columns.flatMap((c) => c.cards);
+  const allCards = board.columns.flatMap((c) =>
+    c.cards.map((cc) => ({ id: cc.id, title: cc.title, columnName: c.name }))
+  );
   const linkedIds = new Set([
     card.id,
     ...card.blocking.map((b) => b.blocked.id),
@@ -92,6 +97,21 @@ export default async function CardDetail({
   ]);
   const candidates = allCards.filter((c) => !linkedIds.has(c.id));
   const canManage = canManageBoard(access);
+
+  const [recentActivity, mentionedUsers] = await Promise.all([
+    // The newest 300 entries; the timeline shows them oldest first.
+    prisma.cardActivity.findMany({
+      where: { cardId: card.id },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+      include: { actor: { select: { username: true, displayName: true } } },
+    }),
+    // Only names of real accounts are highlighted as mentions.
+    prisma.user.findMany({
+      where: { username: { in: [...new Set(card.comments.flatMap((c) => parseMentions(c.body)))] } },
+      select: { username: true },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -138,9 +158,6 @@ export default async function CardDetail({
           </section>
 
           <section>
-            <h2 className="text-md font-semibold mb-2">
-              {t("cardComments", locale)}
-            </h2>
             <Comments
               cardId={card.id}
               locale={locale}
@@ -151,6 +168,15 @@ export default async function CardDetail({
                 author: c.author,
                 canDelete: c.authorId === me.id || canManage,
               }))}
+              activity={recentActivity.toReversed().map((a) => ({
+                id: a.id,
+                type: a.type,
+                data: parseActivityData(a.data),
+                createdAt: a.createdAt.toISOString(),
+                actor: a.actor,
+              }))}
+              members={board.members.map((m) => m.user)}
+              mentionable={mentionedUsers.map((u) => u.username)}
             />
           </section>
         </div>
