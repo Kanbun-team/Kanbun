@@ -85,7 +85,7 @@ docker compose up -d --build
 docker compose exec kanbun npm run create-admin
 ```
 
-Data persists in the `kanbun-data` volume at `/data/kanbun.db`.
+Data persists in the `kanbun-data` volume at `/data/kanbun.db`. Card attachments are stored next to the database in `/data/attachments`, so the same volume keeps them; back up the whole `/data` folder, not only the database file.
 
 ## Bootstrap an admin
 
@@ -101,6 +101,8 @@ You will be prompted for username, display name, and password. The script create
 - `AUTH_SECRET` - long random string used to sign JWT cookies
 - `AUTH_TRUST_HOST` - set to `true` when behind a proxy
 - `NEXTAUTH_URL` - public URL of the app
+- `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`)
+- `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
 
 ## Project layout
 

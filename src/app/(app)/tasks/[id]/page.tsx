@@ -45,7 +45,7 @@ export default async function BoardPage({
               },
               tags: { include: { tag: true } },
               subtasks: { select: { done: true } },
-              _count: { select: { comments: true, blockedBy: true } },
+              _count: { select: { comments: true, blockedBy: true, attachments: true } },
             },
           },
         },
@@ -94,6 +94,7 @@ export default async function BoardPage({
       subtasksDone: card.subtasks.filter((s) => s.done).length,
       commentsCount: card._count.comments,
       blockedByCount: card._count.blockedBy,
+      attachmentsCount: card._count.attachments,
     })),
   }));
 

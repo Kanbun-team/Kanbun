@@ -1,14 +1,18 @@
-import Link from "next/link";
 import { requirePageUser } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { getLocale } from "@/lib/get-locale";
-import { t, type DictKey } from "@/lib/i18n";
-import { daysUntil } from "@/lib/deadline";
+import { formatDate, t, type DictKey } from "@/lib/i18n";
+import { Clock, ListChecks } from "lucide-react";
+import { daysUntil, relativeDeadline } from "@/lib/deadline";
 import { cn } from "@/lib/utils";
 import CardFace from "@/components/board/CardFace";
 import type { CardDTO } from "@/components/board/types";
 
 export const dynamic = "force-dynamic";
+
+// Card links here are plain <a>, not <Link>: a soft navigation from /tasks/me
+// is caught by the board's card-panel interception (/tasks/[id] matches "me")
+// and ends on "Page not found". A full load opens the card page.
 
 const DAY = 24 * 60 * 60 * 1000;
 const PRIORITY_RANK: Record<string, number> = { critical: 3, high: 2, normal: 1, low: 0 };
@@ -70,7 +74,32 @@ export default async function MyWorkPage() {
       assignees: { include: { user: { select: userSelect } } },
       tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
       subtasks: { select: { done: true } },
-      _count: { select: { comments: true, blockedBy: true } },
+      _count: { select: { comments: true, blockedBy: true, attachments: true } },
+    },
+  });
+
+  // Open checklist items assigned to me, listed in their own group with a
+  // link to the parent card. Soonest due first, undated last.
+  const subtasks = await prisma.taskSubtask.findMany({
+    where: {
+      assigneeId: user.id,
+      done: false,
+      card: {
+        column: {
+          board: {
+            archived: false,
+            ...(user.role === "admin" ? {} : { members: { some: { userId: user.id } } }),
+          },
+        },
+      },
+    },
+    orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+    take: 200,
+    select: {
+      id: true,
+      title: true,
+      dueDate: true,
+      card: { select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true, color: true } } } } } },
     },
   });
 
@@ -121,6 +150,7 @@ export default async function MyWorkPage() {
         subtasksDone: c.subtasks.filter((s) => s.done).length,
         commentsCount: c._count.comments,
         blockedByCount: c._count.blockedBy,
+        attachmentsCount: c._count.attachments,
       },
     };
     if (isDone(c)) {
@@ -149,7 +179,7 @@ export default async function MyWorkPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-lg font-semibold">{t("myTasksTitle", locale)}</h1>
-      {visible.length === 0 ? (
+      {visible.length === 0 && subtasks.length === 0 ? (
         <p className="text-base text-ink-muted max-w-prose">{t("myTasksEmpty", locale)}</p>
       ) : (
         visible.map((section) => {
@@ -166,7 +196,7 @@ export default async function MyWorkPage() {
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((item) => (
                   <li key={item.card.id} className="flex flex-col">
-                    <Link
+                    <a
                       href={`/tasks/${item.boardId}/cards/${item.card.id}`}
                       data-card-id={item.card.id}
                       className={cn(
@@ -189,13 +219,62 @@ export default async function MyWorkPage() {
                             .replace("{column}", item.columnName)}
                         </span>
                       </span>
-                    </Link>
+                    </a>
                   </li>
                 ))}
               </ul>
             </section>
           );
         })
+      )}
+      {subtasks.length > 0 && (
+        <section aria-labelledby="my-work-subtasks" className="space-y-3">
+          <header className="flex items-center gap-2 px-1">
+            <h2 id="my-work-subtasks" className="text-md font-semibold">
+              {t("myWorkSubtasks", locale)}
+            </h2>
+            <span className="text-sm text-ink-muted tabular-nums">{subtasks.length}</span>
+          </header>
+          <ul className="rounded-card bg-raised border border-line shadow-card divide-y divide-line">
+            {subtasks.map((s) => {
+              const board = s.card.column.board;
+              const due = s.dueDate ? relativeDeadline(s.dueDate.toISOString(), locale, now) : null;
+              return (
+                <li key={s.id}>
+                  <a
+                    href={`/tasks/${board.id}/cards/${s.card.id}`}
+                    data-subtask-id={s.id}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-ink/[0.03] outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+                  >
+                    <ListChecks size={16} aria-hidden className="text-ink-muted shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-base font-medium break-words">{s.title}</span>
+                      <span className="flex items-center gap-1.5 min-w-0 text-sm text-ink-muted">
+                        <span aria-hidden="true" className="w-2 h-2 rounded-full shrink-0" style={{ background: board.color }} />
+                        <span className="truncate">
+                          {t("myWorkSubtaskOn", locale).replace("{card}", s.card.title)}, {board.name}
+                        </span>
+                      </span>
+                    </span>
+                    {due && (
+                      <span
+                        title={formatDate(s.dueDate!, locale)}
+                        className={cn(
+                          "inline-flex items-center gap-1 text-sm tabular-nums shrink-0",
+                          due.tone === "late" ? "text-danger font-medium" : due.tone === "soon" ? "text-warning font-medium" : "text-ink-muted"
+                        )}
+                      >
+                        <Clock size={14} aria-hidden />
+                        {due.tone === "late" && <span className="sr-only">{t("cardOverdue", locale)}: </span>}
+                        {due.label}
+                      </span>
+                    )}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </div>
   );

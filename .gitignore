@@ -19,3 +19,5 @@ prisma/e2e.db
 prisma/e2e.db-journal
 test-results
 playwright-report
+prisma/attachments
+prisma/e2e-attachments
