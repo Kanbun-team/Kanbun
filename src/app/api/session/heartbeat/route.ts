@@ -1,13 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { cookies, headers } from "next/headers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
+import { clientIp } from "@/lib/rate-limit";
 import { detectDeviceType } from "@/lib/sessions";
+import { sameOrigin } from "@/server/transfer/http";
 
 const COOKIE = "panelSessionId";
 const MAX_AGE = 60 * 60 * 24 * 30;
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  if (!sameOrigin(req)) return NextResponse.json({ ok: false }, { status: 403 });
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -15,10 +18,8 @@ export async function POST() {
   const userId = session.user.id;
   const hdrs = await headers();
   const ua = hdrs.get("user-agent");
-  const ip =
-    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    hdrs.get("x-real-ip") ??
-    null;
+  const address = clientIp(hdrs);
+  const ip = address === "unknown" ? null : address;
   const deviceType = detectDeviceType(ua);
 
   const cookieStore = await cookies();

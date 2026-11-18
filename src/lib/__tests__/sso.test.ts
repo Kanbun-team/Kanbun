@@ -35,7 +35,7 @@ const user = (over: Partial<SsoCandidate> = {}): SsoCandidate => ({
 
 const input = (over: Partial<SsoDecisionInput> = {}): SsoDecisionInput => ({
   claims: claims(),
-  config: { allowSignup: false, adminGroup: null, matchUsername: false },
+  config: { allowSignup: false, adminGroup: null, matchUsername: false, matchEmail: true },
   linked: null,
   linkTo: null,
   emailMatches: [],
@@ -112,6 +112,22 @@ describe("decideSsoSignIn", () => {
 
   it("auto-links one user with the same verified email", () => {
     expect(decideSsoSignIn(input({ emailMatches: [user()] }))).toEqual({ kind: "link", userId: "u1", role: null, auto: true });
+  });
+
+  it("never links by email unless OIDC_MATCH_EMAIL is on", () => {
+    // Users type their own email in Settings: a member who enters someone
+    // else's address must not receive that person's SSO login (or their admin group).
+    const off = { allowSignup: true, adminGroup: "kanbun-admins", matchUsername: false, matchEmail: false };
+    const d = decideSsoSignIn(input({ config: off, claims: claims({ groups: ["kanbun-admins"] }), emailMatches: [user()] }));
+    expect(d).toEqual({ kind: "create", role: "admin" });
+    expect(decideSsoSignIn(input({ config: { ...off, allowSignup: false }, emailMatches: [user()] }))).toEqual({
+      kind: "deny",
+      error: "SsoSignupDisabled",
+    });
+    expect(readSsoConfig({ OIDC_ISSUER: "i", OIDC_CLIENT_ID: "c", OIDC_CLIENT_SECRET: "s" })!.matchEmail).toBe(false);
+    expect(
+      readSsoConfig({ OIDC_ISSUER: "i", OIDC_CLIENT_ID: "c", OIDC_CLIENT_SECRET: "s", OIDC_MATCH_EMAIL: "true" })!.matchEmail,
+    ).toBe(true);
   });
 
   it("does not trust an unverified email", () => {

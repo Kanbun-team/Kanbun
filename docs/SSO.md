@@ -18,6 +18,7 @@ SSO is off until `OIDC_ISSUER`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` are se
 | `OIDC_ALLOW_SIGNUP` | no | `true` creates a member account on the first SSO login of someone without a Kanbun account. Default `false`: only existing users can sign in (see the linking rules). |
 | `OIDC_ADMIN_GROUP` | no | A value of the `groups` claim that makes the user an admin. When set, the IdP decides the role at every SSO login (see below). |
 | `OIDC_MATCH_USERNAME` | no | `true` also links an IdP account to the Kanbun user whose username equals `preferred_username`. Default `false`. Only enable it if users can not choose their own username in the IdP. |
+| `OIDC_MATCH_EMAIL` | no | `true` also links an IdP account to the Kanbun user with the same verified email address. Default `false`. Kanbun users type their own email address in Settings without a confirmation, so only enable it if you trust every user not to enter someone else's address (see the linking rules). |
 | `OIDC_DISABLE_PASSWORD` | no | `true` hides the password form. Admins keep a break-glass password login (see below). |
 
 Register this redirect URI (also called callback URL) in the IdP:
@@ -35,7 +36,7 @@ Restart Kanbun after changing these variables.
 Kanbun stores each linked IdP account as a (provider, subject) pair, where the subject is the IdP's stable `sub` claim. At an SSO login, the first matching rule wins:
 
 1. **Already linked**: the IdP account signs in as the user it is linked to.
-2. **Verified email**: if the IdP says the email is verified (`email_verified: true`) and exactly one Kanbun user has that email address (Settings, Notifications, compared without case), the account is linked to that user and signed in. Unverified emails are never used.
+2. **Verified email** (only with `OIDC_MATCH_EMAIL=true`): if the IdP says the email is verified (`email_verified: true`) and exactly one Kanbun user has that email address (Settings, Notifications, compared without case), the account is linked to that user and signed in. Unverified emails are never used. This is off by default because the Kanbun side of the match is not verified: a member who typed a colleague's address into their own Settings would receive that colleague's first SSO login, and with `OIDC_ADMIN_GROUP` their admin role. Without it, existing users link their IdP account once in **Settings, Connected accounts**.
 3. **Username** (only with `OIDC_MATCH_USERNAME=true`): `preferred_username` equal to a Kanbun username links that user.
 4. **Sign-up** (only with `OIDC_ALLOW_SIGNUP=true`): a new member account is created. The username comes from `preferred_username` or the part of the email before `@` (with `-2`, `-3`, ... added when taken), the display name from `name`, and the verified email is saved. These accounts have no password.
 5. Otherwise the login is refused with "There is no Kanbun account for this single sign-on user".
@@ -63,7 +64,7 @@ Only admin accounts are accepted there; members are refused. Keep at least one a
 The login page explains these SSO errors:
 
 - **Not linked**: the IdP account matched a user that can not be linked automatically (ambiguous email, or the user already has another IdP account). Sign in with the password and link it in Settings, or ask an admin.
-- **Sign-up disabled**: no matching Kanbun user and `OIDC_ALLOW_SIGNUP` is off. An admin creates the user (with the same email) first.
+- **Sign-up disabled**: no matching Kanbun user and `OIDC_ALLOW_SIGNUP` is off. An admin creates the user first, and the user links the IdP account in Settings (or, with `OIDC_MATCH_EMAIL=true`, enters the same email in Settings).
 - **Deactivated**: the account was deactivated by an admin.
 
 Other failures (wrong client secret, unreachable issuer, cancelled login) show a generic "Single sign-on failed" message; details are in the server log.
@@ -115,7 +116,7 @@ OIDC_CLIENT_SECRET="<secret>"
 OIDC_NAME="Google"
 ```
 
-Google sends verified emails, so existing users are linked by email once their Kanbun email matches. Google does not send groups, so `OIDC_ADMIN_GROUP` does not apply; manage roles in Kanbun.
+Google sends verified emails, so with `OIDC_MATCH_EMAIL=true` existing users are linked by email once their Kanbun email matches. Google does not send groups, so `OIDC_ADMIN_GROUP` does not apply; manage roles in Kanbun.
 
 ### SSO and two-factor authentication
 

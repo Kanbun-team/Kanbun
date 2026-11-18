@@ -4,6 +4,7 @@ import {
   isLoginBlocked,
   recordLoginFailure,
   recordLoginSuccess,
+  trustedProxies,
 } from "@/lib/rate-limit";
 
 let n = 0;
@@ -48,10 +49,36 @@ describe("login rate limit", () => {
     expect(await isLoginBlocked(ip, "erin")).toBe(false);
   });
 
+  it("blocks a username after 100 failures spread over many ips", async () => {
+    for (let i = 0; i < 99; i++) await recordLoginFailure(freshIp(), "frank");
+    expect(await isLoginBlocked(freshIp(), "frank")).toBe(false);
+    await recordLoginFailure(freshIp(), "frank");
+    expect(await isLoginBlocked(freshIp(), "frank")).toBe(true);
+    expect(await isLoginBlocked(freshIp(), "grace")).toBe(false);
+  });
+
   it("reads the client ip from proxy headers", async () => {
-    expect(clientIp(new Headers({ "x-forwarded-for": "1.2.3.4, 10.0.0.1" }))).toBe("1.2.3.4");
+    // One trusted proxy (the default): the entry it appended, on the right.
+    expect(clientIp(new Headers({ "x-forwarded-for": "1.2.3.4" }))).toBe("1.2.3.4");
     expect(clientIp(new Headers({ "x-real-ip": "5.6.7.8" }))).toBe("5.6.7.8");
     expect(clientIp(new Headers())).toBe("unknown");
     expect(clientIp(undefined)).toBe("unknown");
+  });
+
+  it("ignores X-Forwarded-For entries the client wrote itself", async () => {
+    // The client sent "6.6.6.6, 7.7.7.7"; the proxy appended the real address.
+    const spoofed = new Headers({ "x-forwarded-for": "6.6.6.6, 7.7.7.7, 203.0.113.9" });
+    expect(clientIp(spoofed, 1)).toBe("203.0.113.9");
+    // Two proxies (e.g. a CDN in front of nginx): the second entry from the right.
+    expect(clientIp(new Headers({ "x-forwarded-for": "6.6.6.6, 203.0.113.9, 10.0.0.2" }), 2)).toBe("203.0.113.9");
+    // More hops configured than entries present: the leftmost one.
+    expect(clientIp(new Headers({ "x-forwarded-for": "203.0.113.9" }), 3)).toBe("203.0.113.9");
+  });
+
+  it("reads TRUSTED_PROXIES", () => {
+    expect(trustedProxies({})).toBe(1);
+    expect(trustedProxies({ TRUSTED_PROXIES: "2" })).toBe(2);
+    expect(trustedProxies({ TRUSTED_PROXIES: "0" })).toBe(1);
+    expect(trustedProxies({ TRUSTED_PROXIES: "nope" })).toBe(1);
   });
 });

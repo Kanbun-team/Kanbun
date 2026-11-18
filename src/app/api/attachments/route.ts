@@ -64,11 +64,25 @@ export async function POST(req: NextRequest) {
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > max + 64 * 1024) return fail("tooLarge", 413);
 
+  // The declared length can be missing (chunked uploads) or wrong, so the body
+  // is also counted while it is read and the upload stops once it is too big.
+  const limit = max + 64 * 1024;
+  let received = 0;
+  const body = req.body?.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        received += chunk.byteLength;
+        if (received > limit) controller.error(new Error("tooLarge"));
+        else controller.enqueue(chunk);
+      },
+    })
+  );
   let file: FormDataEntryValue | null;
   try {
-    file = (await req.formData()).get("file");
+    const capped = new Request(req.url, { method: "POST", headers: req.headers, body, duplex: "half" } as RequestInit);
+    file = (await capped.formData()).get("file");
   } catch {
-    return fail("invalid");
+    return received > limit ? fail("tooLarge", 413) : fail("invalid");
   }
   if (!file || typeof file === "string") return fail("invalid");
   if (file.size === 0) return fail("empty", 400);

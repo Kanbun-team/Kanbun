@@ -145,7 +145,9 @@ export async function handleSsoSignIn(
     : null;
   const linked = linkedIdentity ? await candidate({ id: linkedIdentity.userId }) : null;
   const emailMatches =
-    !linkTo && !linked && claims?.email && claims.emailVerified ? await emailCandidates(claims.email) : [];
+    !linkTo && !linked && config.matchEmail && claims?.email && claims.emailVerified
+      ? await emailCandidates(claims.email)
+      : [];
   const usernameMatch =
     !linkTo && !linked && config.matchUsername && claims?.username
       ? await candidate({ username: claims.username.toLowerCase() })

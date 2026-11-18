@@ -25,7 +25,7 @@ The last write wins: a queued edit overwrites what others changed meanwhile on t
 ## Privacy and storage
 
 - What is stored, per browser: the HTML of pages you visited (Cache Storage, in a cache named after your user id), the latest data of each board you opened and the queue of unsynced edits (IndexedDB), and the app's static files (JavaScript, CSS, fonts, icons).
-- Never stored: API responses, sign-in routes, live event streams, attachment downloads and images, and server action responses.
+- Never stored: API responses, sign-in routes, the settings and admin pages (they can show a pending two-factor secret, the user list and the audit log), live event streams, attachment downloads and images, and server action responses.
 - **Logging out deletes the stored pages, board data and queue** of that browser. If there are unsynced edits, Kanbun asks first. Opening the login page also clears the stored pages, and data of any user other than the one signed in is deleted as soon as the app starts, so a second person on the same device never sees the first person's boards.
 - A session that simply expires (no logout) leaves the stored copies in place until the next sign-in on that browser: someone with access to the unlocked device could read boards offline. On shared devices, log out.
 

@@ -7,6 +7,9 @@ export function cn(...inputs: ClassValue[]): string {
 export function safeRedirect(target: string | null | undefined, fallback: string): string {
   if (!target) return fallback;
   if (!target.startsWith("/") || target.startsWith("//")) return fallback;
+  // Browsers read a backslash as "/", so "/\evil.example" would leave the
+  // site; control characters too (URL parsers drop tabs and line breaks).
+  if (/[\\\u0000-\u001f\u007f]/.test(target)) return fallback;
   return target;
 }
 
