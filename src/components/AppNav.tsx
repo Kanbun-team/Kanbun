@@ -4,6 +4,7 @@ import UserMenu from "./UserMenu";
 import MobileNav from "./MobileNav";
 import BoardSwitcher from "./BoardSwitcher";
 import NotificationBell from "./NotificationBell";
+import { SearchButton } from "./CommandPalette";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db-local";
 import { t, type Locale } from "@/lib/i18n";
@@ -62,6 +63,7 @@ export default async function AppNav({ locale }: { locale: Locale }) {
             {boards.length > 0 && <BoardSwitcher boards={boards} locale={locale} />}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <SearchButton locale={locale} />
             <NotificationBell initial={notifications} locale={locale} />
             <UserMenu
               user={{

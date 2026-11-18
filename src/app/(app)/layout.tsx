@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import SessionPing from "@/components/SessionPing";
 import { getLocale } from "@/lib/get-locale";
 import UiProvider from "@/components/ui/UiProvider";
+import CommandPalette from "@/components/CommandPalette";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const result = await safeAuth();
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </main>
       <Footer locale={locale} />
       <SessionPing />
+      <CommandPalette />
     </div>
     </UiProvider>
   );
