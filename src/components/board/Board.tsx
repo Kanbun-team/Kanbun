@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import {
   DndContext,
   DragOverlay,
@@ -23,7 +24,7 @@ import {
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { Keyboard, Plus } from "lucide-react";
+import { CalendarDays, Columns3, Keyboard, List, Plus } from "lucide-react";
 import { useSyncedState } from "@/lib/use-synced-state";
 import { t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,12 @@ import { useUndo } from "@/components/ui/useUndo";
 import { buttonClass } from "@/components/ui/button";
 import CardFace from "./CardFace";
 import Column, { type ColumnHandlers } from "./Column";
-import FilterBar, { EMPTY_FILTERS, type Filters } from "./FilterBar";
+import FilterBar from "./FilterBar";
+import ListView from "./ListView";
+import CalendarView from "./CalendarView";
+import { DatePickerPopover } from "@/components/ui/DatePicker";
+import { EMPTY_FILTERS, isFiltering, type Filters } from "@/lib/board-filters";
+import { deadlineKey, parseView, type BoardView } from "@/lib/board-views";
 import { MoveCardDialog, ShortcutsDialog } from "./dialogs";
 import type { CardMenuHandlers } from "./CardMenu";
 import {
@@ -55,6 +61,7 @@ import {
   type CardPatch,
   type ColumnDTO,
   type MemberOption,
+  type SavedFilterDTO,
   type TagOption,
 } from "./types";
 
@@ -66,7 +73,11 @@ export interface BoardProps {
   currentUserId: string;
   members: MemberOption[];
   boardTags: TagOption[];
+  savedFilters: SavedFilterDTO[];
 }
+
+const VIEW_ICONS = { board: Columns3, list: List, calendar: CalendarDays } as const;
+const VIEW_LABELS = { board: "viewBoard", list: "viewList", calendar: "viewCalendar" } as const;
 
 const COLLAPSE_EVENT = "kanbun:collapsed";
 
@@ -154,9 +165,27 @@ function moveCardLocally(columns: ColumnDTO[], cardId: string, toColumnId: strin
   });
 }
 
-export default function Board({ boardId, columns: serverColumns, locale, canManage, currentUserId, members, boardTags }: BoardProps) {
+export default function Board({
+  boardId,
+  columns: serverColumns,
+  locale,
+  canManage,
+  currentUserId,
+  members,
+  boardTags,
+  savedFilters,
+}: BoardProps) {
   const [columns, setColumns] = useSyncedState(serverColumns);
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const searchParams = useSearchParams();
+  const view = parseView(searchParams.get("view"));
+  // `?deadline=none` comes from the calendar's "Show in list" link.
+  const [filters, setFilters] = useState<Filters>(() =>
+    searchParams.get("deadline") === "none" ? { ...EMPTY_FILTERS, deadline: "none" } : EMPTY_FILTERS
+  );
+  const [deadlineCard, setDeadlineCard] = useState<CardDTO | null>(null);
+  const deadlineAnchor = useRef<HTMLElement | null>(null);
+  const boardScroller = useRef<HTMLDivElement>(null);
+  const [visibleColumnIndex, setVisibleColumnIndex] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [addingColumnId, setAddingColumnId] = useState<string | null>(null);
@@ -191,8 +220,7 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
   }, [boardId, router]);
 
   const allCards = useMemo(() => columns.flatMap((c) => c.cards), [columns]);
-  const filtering =
-    filters.query.trim() !== "" || !!filters.assigneeId || !!filters.tagId || !!filters.priority || !!filters.deadline || filters.mine;
+  const filtering = isFiltering(filters);
 
   const matches = useMemo(() => {
     const q = filters.query.trim().toLowerCase();
@@ -220,7 +248,42 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
     for (const card of allCards) for (const tg of card.tags) map.set(tg.id, { id: tg.id, name: tg.name });
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [allCards]);
-  const visibleCount = filtering ? allCards.filter(matches).length : allCards.length;
+  const visibleColumns = useMemo(
+    () => (filtering ? columns.map((c) => ({ ...c, cards: c.cards.filter(matches) })) : columns),
+    [columns, filtering, matches]
+  );
+  const visibleCards = useMemo(() => visibleColumns.flatMap((c) => c.cards), [visibleColumns]);
+  const visibleCount = visibleCards.length;
+
+  // The view lives in the URL (?view=list|calendar) so it can be linked and
+  // survives a reload. Next.js keeps useSearchParams in sync with
+  // history.replaceState, so switching views needs no server round trip.
+  function setView(next: BoardView) {
+    const params = new URLSearchParams(window.location.search);
+    if (next === "board") params.delete("view");
+    else params.set("view", next);
+    params.delete("deadline");
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }
+
+  function showNoDeadlineList() {
+    setFilters({ ...filters, deadline: "none" });
+    setView("list");
+  }
+
+  function openDeadlinePicker(card: CardDTO) {
+    // The popover is anchored to the card (or its row in the list view).
+    const anchor = document.querySelector<HTMLElement>(`[data-card-id="${card.id}"]`);
+    if (!anchor) return;
+    deadlineAnchor.current = anchor;
+    setDeadlineCard(card);
+  }
+
+  function setDeadline(card: CardDTO, value: string | null) {
+    patchCard(card.id, { deadline: value ? `${value}T00:00:00.000Z` : null });
+    runCardAction(updateCardAction, card.id, { deadline: value ?? "" });
+  }
 
   // ---------- Optimistic card edits ----------
 
@@ -260,6 +323,7 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
       patchCard(card.id, { coverColor: color });
       runCardAction(updateCardAction, card.id, { coverColor: color ?? "" });
     },
+    setDeadline: (card) => openDeadlinePicker(card),
     remove: async (card) => {
       setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== card.id) })));
       const fd = new FormData();
@@ -503,18 +567,24 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
       } else if (key === "?") {
         e.preventDefault();
         setShortcutsOpen(true);
-      } else if (key === "n" && !filtering) {
+      } else if (key === "d" && card) {
         e.preventDefault();
-        setAddingColumnId(columnEl?.getAttribute("data-column-id") ?? columns[0]?.id ?? null);
-      } else if (key === "e" && card) {
-        e.preventDefault();
-        setEditingCardId(card.id);
+        openDeadlinePicker(card);
       } else if (key === "a" && card) {
         const me = members.find((m) => m.id === currentUserId);
         if (me) {
           e.preventDefault();
           cardHandlers.toggleAssignee(card, me);
         }
+      } else if (view !== "board") {
+        // Adding, inline editing and j/k navigation belong to the board view.
+        return;
+      } else if (key === "n" && !filtering) {
+        e.preventDefault();
+        setAddingColumnId(columnEl?.getAttribute("data-column-id") ?? columns[0]?.id ?? null);
+      } else if (key === "e" && card) {
+        e.preventDefault();
+        setEditingCardId(card.id);
       } else if (["j", "k", "h", "l", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(key)) {
         const columnsEls = [...document.querySelectorAll("[data-column-id]")];
         if (!cardEl) {
@@ -563,9 +633,51 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
     editingCardId,
   };
 
+  const showAddBar = view === "board" && !filtering && columns.length > 0;
+  const addBarColumn = columns[Math.min(visibleColumnIndex, columns.length - 1)];
+
+  // Phones show one column at a time: track which one is in view so the
+  // bottom "Add card" bar adds to it.
+  function onBoardScroll() {
+    const scroller = boardScroller.current;
+    if (!scroller) return;
+    const left = scroller.getBoundingClientRect().left;
+    const els = [...scroller.querySelectorAll<HTMLElement>(":scope > [data-column-id]")];
+    let best = 0;
+    els.forEach((el, i) => {
+      if (Math.abs(el.getBoundingClientRect().left - left) < Math.abs(els[best].getBoundingClientRect().left - left)) best = i;
+    });
+    if (best !== visibleColumnIndex) setVisibleColumnIndex(best);
+  }
+
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", showAddBar && "pb-16 sm:pb-0")}>
       <div className="flex items-center gap-2 flex-wrap">
+        <ToggleButtonGroup
+          aria-label={t("viewSwitcher", locale)}
+          selectionMode="single"
+          disallowEmptySelection
+          selectedKeys={[view]}
+          onSelectionChange={(keys) => {
+            const next = [...keys][0];
+            if (next) setView(parseView(String(next)));
+          }}
+          className="inline-flex items-center gap-0.5 rounded-control border border-line-strong bg-surface p-0.5"
+        >
+          {(Object.keys(VIEW_ICONS) as BoardView[]).map((v) => {
+            const Icon = VIEW_ICONS[v];
+            return (
+              <ToggleButton
+                key={v}
+                id={v}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[4px] text-sm text-ink-muted cursor-default outline-none transition-colors duration-[120ms] data-[hovered]:text-ink data-[selected]:bg-accent-soft data-[selected]:text-accent data-[selected]:font-medium data-[focus-visible]:ring-2 data-[focus-visible]:ring-accent"
+              >
+                <Icon size={16} aria-hidden />
+                {t(VIEW_LABELS[v], locale)}
+              </ToggleButton>
+            );
+          })}
+        </ToggleButtonGroup>
         <FilterBar
           filters={filters}
           setFilters={setFilters}
@@ -576,6 +688,8 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
           locale={locale}
           open={filterOpen}
           setOpen={setFilterOpen}
+          boardId={boardId}
+          savedFilters={savedFilters}
         />
         <button type="button" className={buttonClass("ghost", "md", "hidden sm:inline-flex")} onClick={() => setShortcutsOpen(true)}>
           <Keyboard size={16} aria-hidden />
@@ -584,64 +698,114 @@ export default function Board({ boardId, columns: serverColumns, locale, canMana
         </button>
       </div>
 
-      <nav aria-label={t("columnJump", locale)} className="sm:hidden -mx-4 px-4 flex gap-1.5 overflow-x-auto pb-1">
-        {columns.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className="shrink-0 rounded-full border border-line bg-surface px-3 py-1 text-sm"
-            onClick={() =>
-              document
-                .querySelector(`[data-column-id="${c.id}"]`)
-                ?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })
-            }
-          >
-            {c.name} <span className="text-ink-muted tabular-nums">{c.cards.length}</span>
-          </button>
-        ))}
-      </nav>
+      {view === "list" && <ListView boardId={boardId} columns={visibleColumns} locale={locale} filtering={filtering} />}
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragEnd={onDragEnd}
-        onDragCancel={onDragCancel}
-        accessibility={{ announcements, screenReaderInstructions: { draggable: t("dndInstructions", locale) } }}
-      >
-        <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 flex items-start gap-3 overflow-x-auto pb-4 snap-x snap-mandatory sm:snap-none scroll-px-4">
-          <SortableContext items={columns.map((c) => columnKey(c.id))} strategy={horizontalListSortingStrategy}>
-            {columns.map((col, index) => (
-              <Column
-                key={col.id}
-                column={col}
-                visibleCards={filtering ? col.cards.filter(matches) : col.cards}
-                index={index}
-                total={columns.length}
-                collapsed={collapsed.has(col.id) && !filtering}
-                adding={addingColumnId === col.id}
-                shared={shared}
-              />
+      {view === "calendar" && (
+        <CalendarView
+          boardId={boardId}
+          cards={visibleCards}
+          locale={locale}
+          noDeadlineHref="?view=list&deadline=none"
+          onShowNoDeadline={showNoDeadlineList}
+        />
+      )}
+
+      {view === "board" && (
+        <>
+          <nav aria-label={t("columnJump", locale)} className="sm:hidden -mx-4 px-4 flex gap-1.5 overflow-x-auto pb-1">
+            {columns.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="shrink-0 rounded-full border border-line bg-surface px-3 py-1 text-sm"
+                onClick={() =>
+                  document
+                    .querySelector(`[data-column-id="${c.id}"]`)
+                    ?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })
+                }
+              >
+                {c.name} <span className="text-ink-muted tabular-nums">{c.cards.length}</span>
+              </button>
             ))}
-          </SortableContext>
-          {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
-        </div>
-        <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
-          {activeCard ? (
-            <div className="relative overflow-hidden rounded-card bg-raised border border-line-strong shadow-float px-3 pt-2.5 pb-2.5 rotate-[1.5deg] cursor-grabbing w-[85vw] sm:w-[16.5rem]">
-              <CardFace card={activeCard} locale={locale} />
+          </nav>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={collisionDetection}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            onDragCancel={onDragCancel}
+            accessibility={{ announcements, screenReaderInstructions: { draggable: t("dndInstructions", locale) } }}
+          >
+            <div
+              ref={boardScroller}
+              onScroll={onBoardScroll}
+              className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 flex items-start gap-3 overflow-x-auto pb-4 snap-x snap-mandatory sm:snap-none scroll-px-4"
+            >
+              <SortableContext items={columns.map((c) => columnKey(c.id))} strategy={horizontalListSortingStrategy}>
+                {visibleColumns.map((col, index) => (
+                  <Column
+                    key={col.id}
+                    column={columns[index]}
+                    visibleCards={col.cards}
+                    index={index}
+                    total={columns.length}
+                    collapsed={collapsed.has(col.id) && !filtering}
+                    adding={addingColumnId === col.id}
+                    shared={shared}
+                  />
+                ))}
+              </SortableContext>
+              {!filtering && canManage && <AddColumnForm boardId={boardId} locale={locale} />}
             </div>
-          ) : activeColumn ? (
-            <div className="w-72 rounded-panel bg-surface border border-line-strong shadow-float px-3 py-2 font-semibold cursor-grabbing">
-              {activeColumn.name}
-              <span className="ml-2 text-sm text-ink-muted tabular-nums">{activeColumn.cards.length}</span>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+            <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
+              {activeCard ? (
+                <div className="relative overflow-hidden rounded-card bg-raised border border-line-strong shadow-float px-3 pt-2.5 pb-2.5 rotate-[1.5deg] cursor-grabbing w-[85vw] sm:w-[16.5rem]">
+                  <CardFace card={activeCard} locale={locale} />
+                </div>
+              ) : activeColumn ? (
+                <div className="w-72 rounded-panel bg-surface border border-line-strong shadow-float px-3 py-2 font-semibold cursor-grabbing">
+                  {activeColumn.name}
+                  <span className="ml-2 text-sm text-ink-muted tabular-nums">{activeColumn.cards.length}</span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </>
+      )}
 
       {filtering && visibleCount === 0 && <p className="text-ink-muted px-1">{t("filterNoMatch", locale)}</p>}
+
+      {showAddBar && addBarColumn && (
+        <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface px-4 pt-2 pb-[calc(0.5rem+var(--safe-bottom))]">
+          <button
+            type="button"
+            className={buttonClass("primary", "lg", "w-full")}
+            onClick={() => {
+              if (collapsed.has(addBarColumn.id)) toggleCollapsed(addBarColumn.id);
+              setAddingColumnId(addBarColumn.id);
+            }}
+          >
+            <Plus size={18} aria-hidden />
+            <span className="truncate">{tr("mobileAddCard", { column: addBarColumn.name })}</span>
+          </button>
+        </div>
+      )}
+
+      <DatePickerPopover
+        triggerRef={deadlineAnchor}
+        isOpen={deadlineCard !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeadlineCard(null);
+        }}
+        title={deadlineCard ? tr("datePickerTitle", { title: deadlineCard.title }) : ""}
+        value={deadlineCard?.deadline ? deadlineKey(deadlineCard.deadline) : null}
+        onChange={(value) => {
+          if (deadlineCard) setDeadline(deadlineCard, value);
+        }}
+        locale={locale}
+      />
 
       <MoveCardDialog
         card={movingCard}

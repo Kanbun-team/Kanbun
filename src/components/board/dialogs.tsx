@@ -120,6 +120,7 @@ const SHORTCUTS: [string[], DictKey][] = [
   [["N"], "shortcutNew"],
   [["E"], "shortcutEdit"],
   [["A"], "shortcutAssign"],
+  [["D"], "shortcutDeadline"],
   [["Enter"], "shortcutOpen"],
   [["Space"], "shortcutLift"],
   [["J", "K", "H", "L"], "shortcutNavigate"],

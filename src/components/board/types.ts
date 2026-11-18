@@ -34,7 +34,15 @@ export interface ColumnDTO {
   cards: CardDTO[];
 }
 
-export type CardPatch = Partial<Pick<CardDTO, "title" | "priority" | "coverColor" | "assignees" | "tags">>;
+export type CardPatch = Partial<Pick<CardDTO, "title" | "priority" | "coverColor" | "deadline" | "assignees" | "tags">>;
+
+export interface SavedFilterDTO {
+  id: string;
+  name: string;
+  filters: import("@/lib/board-filters").Filters;
+  /** The creator and board managers can delete it. */
+  canDelete: boolean;
+}
 
 export const columnKey = (id: string) => `col:${id}`;
 export const isColumnKey = (id: string) => id.startsWith("col:");

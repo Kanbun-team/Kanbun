@@ -5,24 +5,11 @@ import { Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIORITIES, priorityLabel } from "@/lib/labels";
 import { t, type Locale } from "@/lib/i18n";
+import { EMPTY_FILTERS, type Filters } from "@/lib/board-filters";
+import SavedFilters from "./SavedFilters";
+import type { SavedFilterDTO } from "./types";
 
-export interface Filters {
-  query: string;
-  assigneeId: string;
-  tagId: string;
-  priority: string;
-  deadline: "" | "overdue" | "has" | "none";
-  mine: boolean;
-}
-
-export const EMPTY_FILTERS: Filters = {
-  query: "",
-  assigneeId: "",
-  tagId: "",
-  priority: "",
-  deadline: "",
-  mine: false,
-};
+export { EMPTY_FILTERS, type Filters } from "@/lib/board-filters";
 
 export default function FilterBar({
   filters,
@@ -34,6 +21,8 @@ export default function FilterBar({
   locale,
   open,
   setOpen,
+  boardId,
+  savedFilters,
 }: {
   filters: Filters;
   setFilters: (next: Filters) => void;
@@ -44,6 +33,8 @@ export default function FilterBar({
   locale: Locale;
   open: boolean;
   setOpen: (open: boolean) => void;
+  boardId: string;
+  savedFilters: SavedFilterDTO[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -90,7 +81,7 @@ export default function FilterBar({
         )}
       </button>
       {open && (
-        <div className="absolute left-0 z-50 mt-2 w-72 bg-raised border border-line rounded-panel shadow-float p-3 space-y-3">
+        <div className="absolute left-0 z-50 mt-2 w-72 max-h-[calc(100dvh-12rem)] overflow-y-auto bg-raised border border-line rounded-panel shadow-float p-3 space-y-3">
           <div>
             <input
               type="search"
@@ -171,6 +162,14 @@ export default function FilterBar({
           >
             {t("filterAssignedToMe", locale)}
           </button>
+          <SavedFilters
+            boardId={boardId}
+            saved={savedFilters}
+            filters={filters}
+            filtering={filtering}
+            setFilters={setFilters}
+            locale={locale}
+          />
           {filtering && (
             <div className="flex items-center justify-between pt-1 border-t border-line">
               <span className="text-xs text-ink-muted tabular-nums">{visibleCount}</span>
