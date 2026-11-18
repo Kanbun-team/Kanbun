@@ -406,6 +406,7 @@
   "cardDependencies": "Dipendenze",
   "tagName": "Nome del tag",
   "dndInstructions": "Per prendere una card o una colonna premi Spazio. Spostala con le frecce, premi Spazio per rilasciarla o Esc per annullare.",
+  "dndInstructionsFiltered": "Con un filtro attivo non si possono spostare le card. Rimuovi il filtro per spostarle.",
   "dndPickedUp": "Hai preso {title}.",
   "dndOver": "{title} è in {column}, posizione {position} di {count}.",
   "dndDropped": "{title} spostata in {column}, posizione {position} di {count}.",

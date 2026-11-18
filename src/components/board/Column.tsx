@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { memo, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import Link from "next/link";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -26,13 +26,14 @@ export interface ColumnHandlers {
   setEditing: (cardId: string | null) => void;
   /** Warms up the card's page when the pointer or focus reaches it. */
   prefetchCard: (card: CardDTO) => void;
+  /** Focus or a press reached this column: its cards may be picked up next. */
+  arm: (columnId: string) => void;
 }
 
 interface Shared {
   boardId: string;
   locale: Locale;
   canManage: boolean;
-  dndDisabled: boolean;
   members: MemberOption[];
   boardTags: TagOption[];
   templates: TemplateOption[];
@@ -52,27 +53,46 @@ export default memo(function Column({
   collapsed,
   adding,
   editingCardId,
+  armed,
+  dndDisabled,
   shared,
 }: {
   column: ColumnDTO;
+  /** The cards that match the filter (`column.cards` when not filtering). */
   visibleCards: CardDTO[];
   index: number;
   total: number;
   collapsed: boolean;
   adding: boolean;
   editingCardId: string | null;
+  /** Focus or the last press is in this column. */
+  armed: boolean;
+  /** While filtering: no moving, adding or reordering. */
+  dndDisabled: boolean;
   shared: Shared;
 }) {
-  const { locale, canManage, dndDisabled, columnHandlers: h } = shared;
-  const { setNodeRef, setActivatorNodeRef, attributes: handleAttributes, listeners: handleListeners, transform, transition, isDragging } = useSortable({
+  const { locale, canManage, columnHandlers: h } = shared;
+  const { setNodeRef, setActivatorNodeRef, attributes: handleAttributes, listeners: handleListeners, transform, transition, isDragging, active } = useSortable({
     id: columnKey(column.id),
-    data: { type: "column" },
+    data: COLUMN_DATA,
     disabled: { draggable: !canManage || dndDisabled, droppable: false },
   });
-  const [editing, setEditing] = useState(false);
   const count = column.cards.length;
-  const wip = column.wipLimit;
-  const wipState = wip == null ? null : count > wip ? "over" : count === wip ? "reached" : "ok";
+
+  // Which cards are drop targets. dnd-kit measures every drop target when a
+  // drag starts (and tests them while it runs), which is slow with 500 cards.
+  // Only the cards of the column where a drag can start (focus or the last
+  // press is in it) and of the columns the dragged card has been in are
+  // targets; a column the drag enters is a target itself, and its cards
+  // become targets once the card is in it (Board onDragOver).
+  const holdsActive = active != null && column.cards.some((c) => c.id === active.id);
+  const [visited, setVisited] = useState(false);
+  if (holdsActive && !visited) setVisited(true);
+  if (!active && visited) setVisited(false);
+  const cardsDroppable = armed || holdsActive || visited;
+  const arm = () => {
+    if (!armed) h.arm(column.id);
+  };
 
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -108,16 +128,86 @@ export default memo(function Column({
       style={style}
       aria-label={column.name}
       data-column-id={column.id}
+      onFocusCapture={arm}
+      onPointerDownCapture={arm}
       className={cn(
         "shrink-0 w-[85vw] sm:w-72 snap-start flex flex-col max-h-[calc(100dvh-14rem)] sm:max-h-[calc(100dvh-12rem)] bg-surface border border-line rounded-panel",
         isDragging && "opacity-40"
       )}
     >
+      <ColumnContent
+        column={column}
+        visibleCards={visibleCards}
+        index={index}
+        total={total}
+        adding={adding}
+        editingCardId={editingCardId}
+        cardsDroppable={cardsDroppable}
+        dndDisabled={dndDisabled}
+        shared={shared}
+        handleRef={setActivatorNodeRef}
+        handleAttributes={handleAttributes}
+        handleListeners={handleListeners}
+      />
+    </section>
+  );
+});
+
+const COLUMN_DATA = { type: "column" };
+
+type Sortable = ReturnType<typeof useSortable>;
+
+// Everything inside the column except its own drag state. dnd-kit re-renders
+// the column (it reads the drag context) several times per pick up; this part
+// only re-renders when its props change.
+const ColumnContent = memo(function ColumnContent({
+  column,
+  visibleCards,
+  index,
+  total,
+  adding,
+  editingCardId,
+  cardsDroppable,
+  dndDisabled,
+  shared,
+  handleRef,
+  handleAttributes,
+  handleListeners,
+}: {
+  column: ColumnDTO;
+  visibleCards: CardDTO[];
+  index: number;
+  total: number;
+  adding: boolean;
+  editingCardId: string | null;
+  cardsDroppable: boolean;
+  dndDisabled: boolean;
+  shared: Shared;
+  handleRef: Sortable["setActivatorNodeRef"];
+  handleAttributes: Sortable["attributes"];
+  handleListeners: Sortable["listeners"];
+}) {
+  const { locale, canManage, columnHandlers: h } = shared;
+  const [editing, setEditing] = useState(false);
+  // All cards stay mounted while filtering; the ones that do not match are
+  // hidden. Clearing a filter then only shows them again instead of creating
+  // hundreds of cards (and their drag and drop state) from scratch.
+  const cardIds = useMemo(() => column.cards.map((c) => c.id), [column.cards]);
+  const shown = useMemo(
+    () => (visibleCards === column.cards ? null : new Set(visibleCards.map((c) => c.id))),
+    [visibleCards, column.cards]
+  );
+  const count = column.cards.length;
+  const wip = column.wipLimit;
+  const wipState = wip == null ? null : count > wip ? "over" : count === wip ? "reached" : "ok";
+
+  return (
+    <>
       <header className="pl-1.5 pr-1.5 py-1.5 flex items-center gap-1 border-b border-line">
         {canManage && !dndDisabled ? (
           <button
             type="button"
-            ref={setActivatorNodeRef}
+            ref={handleRef}
             {...handleAttributes}
             {...handleListeners}
             aria-label={t("dragColumn", locale).replace("{name}", column.name)}
@@ -186,12 +276,20 @@ export default memo(function Column({
       </header>
 
       <div className="px-2 py-2 flex-1 overflow-y-auto space-y-2 min-h-12">
-        <SortableContext items={visibleCards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          {visibleCards.map((card) => (
-            <SortableCard key={card.id} card={card} columnId={column.id} editing={editingCardId === card.id} shared={shared} />
+        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+          {column.cards.map((card) => (
+            <SortableCard
+              key={card.id}
+              card={card}
+              columnId={column.id}
+              editing={editingCardId === card.id}
+              droppable={cardsDroppable}
+              hidden={shown != null && !shown.has(card.id)}
+              shared={shared}
+            />
           ))}
         </SortableContext>
-        {!shared.dndDisabled &&
+        {!dndDisabled &&
           (adding ? (
             <AddCardForm column={column} locale={locale} onAdd={h.addCards} onClose={() => h.setAdding(null)} />
           ) : (
@@ -220,7 +318,7 @@ export default memo(function Column({
             </div>
           ))}
       </div>
-    </section>
+    </>
   );
 });
 
@@ -235,25 +333,36 @@ const SortableCard = memo(function SortableCard({
   card,
   columnId,
   editing,
+  droppable,
+  hidden,
   shared,
 }: {
   card: CardDTO;
   columnId: string;
   editing: boolean;
+  droppable: boolean;
+  hidden: boolean;
   shared: Shared;
 }) {
-  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+  const data = useMemo(() => ({ type: "card", columnId }), [columnId]);
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging, activeIndex } = useSortable({
     id: card.id,
-    data: { type: "card", columnId },
-    disabled: shared.dndDisabled,
+    data,
+    // Cards stay draggable while filtering (Board blocks the sensors then):
+    // switching drag and drop off and on would re-render every card.
+    disabled: { draggable: false, droppable: !droppable },
     // dnd-kit would create a ResizeObserver per card on every drag start;
     // card sizes do not change mid-drag and columns still observe theirs.
     resizeObserverConfig: CARD_RESIZE_OBSERVER,
   });
 
+  // During a drag dnd-kit gives every card of the active column a transform,
+  // most of them zero: a translate3d(0, 0, 0) would still put each card on its
+  // own compositor layer. The transition only matters where cards can move
+  // (the dragged card's column, or a card that has a transform).
   const style: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition: transition,
+    transform: transform && (transform.x || transform.y) ? CSS.Translate.toString(transform) : undefined,
+    transition: activeIndex >= 0 || transform ? transition : undefined,
   };
 
   return (
@@ -261,6 +370,7 @@ const SortableCard = memo(function SortableCard({
       ref={setNodeRef}
       style={style}
       data-card-id={card.id}
+      hidden={hidden}
       className={cn("group relative", isDragging && "opacity-40")}
     >
       <CardBody card={card} editing={editing} attributes={attributes} listeners={listeners} shared={shared} />
@@ -281,7 +391,7 @@ const CardBody = memo(function CardBody({
   listeners: ReturnType<typeof useSortable>["listeners"];
   shared: Shared;
 }) {
-  const { boardId, locale, dndDisabled } = shared;
+  const { boardId, locale } = shared;
   const [menuOpen, setMenuOpen] = useState(false);
   // The card menu starts as a cheap stand-in (see CardMenu `active`) and
   // becomes the real menu once a mouse or focus reaches the card.
@@ -327,7 +437,7 @@ const CardBody = memo(function CardBody({
             activateMenu();
             setMenuOpen(true);
           }}
-          className={cn(faceClass, card.coverColor && "pt-3.5", !dndDisabled && "touch-manipulation")}
+          className={cn(faceClass, "touch-manipulation", card.coverColor && "pt-3.5")}
         >
           <CardFace card={card} locale={locale} />
         </Link>

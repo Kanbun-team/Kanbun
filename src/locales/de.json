@@ -406,6 +406,7 @@
   "cardDependencies": "Abhängigkeiten",
   "tagName": "Tag-Name",
   "dndInstructions": "Drücke die Leertaste, um eine Karte oder Spalte aufzunehmen. Bewege sie mit den Pfeiltasten, lege sie mit der Leertaste ab oder brich mit Escape ab.",
+  "dndInstructionsFiltered": "Solange ein Filter aktiv ist, lassen sich Karten nicht verschieben. Setze den Filter zurück, um Karten zu verschieben.",
   "dndPickedUp": "{title} aufgenommen.",
   "dndOver": "{title} ist in {column}, Position {position} von {count}.",
   "dndDropped": "{title} nach {column} verschoben, Position {position} von {count}.",

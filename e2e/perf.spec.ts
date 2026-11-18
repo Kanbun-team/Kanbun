@@ -8,12 +8,13 @@ import { loginAs } from "./helpers";
 //
 //   E2E_PERF=1 npx playwright test e2e/perf.spec.ts
 //
-// The budgets are 3-5 times the targets in docs/ROADMAP.md (first load under
-// 1.5s, interactions under 100ms) so that slow CI machines do not flake; a
-// real regression (for example every card re-rendering on a drag) is far
-// slower than that.
+// The budgets are about 3 times the targets in docs/ROADMAP.md (first load
+// under 1.5s, interactions under 100ms) so that slow CI machines do not flake;
+// a real regression (for example every card re-rendering on a drag, or a
+// filter that recreates every card) is slower than that. Times are taken
+// around Playwright calls, so they include a few milliseconds of round trips.
 const LOAD_BUDGET_MS = 5000;
-const INTERACTION_BUDGET_MS = 500;
+const INTERACTION_BUDGET_MS = 300;
 const BOARD = "Large board (performance)";
 
 test.skip(process.env.E2E_PERF !== "1", "set E2E_PERF=1 to run the 500-card performance guard");
@@ -41,7 +42,8 @@ test.describe("500-card board", () => {
     // First load: navigation start until the board is hydrated (a card can
     // be picked up), measured in the page.
     await page.goto(href!);
-    const cards = page.locator("[data-column-id] [data-card-id]");
+    // Cards hidden by a filter stay in the page.
+    const cards = page.locator("[data-column-id] [data-card-id]:not([hidden])");
     await expect(cards).toHaveCount(500);
     const first = page.getByRole("region", { name: "Backlog", exact: true }).locator("[data-card-id] a").first();
     await first.focus();
@@ -72,6 +74,34 @@ test.describe("500-card board", () => {
     for (const ms of [pickUp, move, drop]) expect(ms).toBeLessThan(INTERACTION_BUDGET_MS);
     await expect(page.getByRole("region", { name: "To do", exact: true }).getByRole("link", { name: title })).toBeVisible();
 
+    // Pointer drag start: press, move past the 6px activation distance, until
+    // the drag is announced, timed in the page (from the move that starts the
+    // drag to the announcement). Escape cancels it.
+    const box = (await cards.nth(3).boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.evaluate(() => {
+      const w = window as unknown as { __drag: { move?: number; announced?: number } };
+      w.__drag = {};
+      window.addEventListener("mousemove", () => (w.__drag.move ??= performance.now()), { capture: true, once: true });
+      const region = document.querySelector("[id^=DndLiveRegion]")!;
+      new MutationObserver((_, observer) => {
+        w.__drag.announced = performance.now();
+        observer.disconnect();
+      }).observe(region, { childList: true, characterData: true, subtree: true });
+    });
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 12, box.y + box.height / 2 + 12);
+    await expect(live).toContainText("is in");
+    const dragStart = await page.evaluate(() => {
+      const d = (window as unknown as { __drag: { move: number; announced: number } }).__drag;
+      return d.announced - d.move;
+    });
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect(live).toContainText("Move cancelled");
+    console.log(`pointer drag start ${Math.round(dragStart)}ms`);
+    expect(dragStart).toBeLessThan(INTERACTION_BUDGET_MS);
+
     // Typing in the filter narrows 500 cards on every key press.
     await page.locator("body").press("/");
     const search = page.getByRole("searchbox");
@@ -81,5 +111,13 @@ test.describe("500-card board", () => {
     const filterMs = (await page.evaluate(() => performance.now())) - t0;
     console.log(`filter typed and applied in ${Math.round(filterMs)}ms`);
     expect(filterMs).toBeLessThan(INTERACTION_BUDGET_MS * 3);
+
+    // Clearing the filter brings 499 cards back.
+    const c0 = await page.evaluate(() => performance.now());
+    await search.fill("");
+    await expect(cards).toHaveCount(500);
+    const clearMs = (await page.evaluate(() => performance.now())) - c0;
+    console.log(`filter cleared in ${Math.round(clearMs)}ms`);
+    expect(clearMs).toBeLessThan(INTERACTION_BUDGET_MS);
   });
 });

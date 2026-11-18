@@ -406,6 +406,7 @@
   "cardDependencies": "Dependencies",
   "tagName": "Tag name",
   "dndInstructions": "To pick up a card or column, press Space. Move it with the arrow keys, press Space to drop it, or Escape to cancel.",
+  "dndInstructionsFiltered": "Moving cards is off while a filter is active. Clear the filter to move cards.",
   "dndPickedUp": "Picked up {title}.",
   "dndOver": "{title} is in {column}, position {position} of {count}.",
   "dndDropped": "Moved {title} to {column}, position {position} of {count}.",

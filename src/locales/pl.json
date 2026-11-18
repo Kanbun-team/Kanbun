@@ -411,6 +411,7 @@
   "cardDependencies": "Zależności",
   "tagName": "Nazwa tagu",
   "dndInstructions": "Aby podnieść kartę lub kolumnę, naciśnij Spację. Przesuwaj strzałkami, Spacją upuść, Escape anuluje.",
+  "dndInstructionsFiltered": "Gdy filtr jest włączony, nie można przenosić kart. Wyczyść filtr, aby je przenieść.",
   "dndPickedUp": "Podniesiono: {title}.",
   "dndOver": "{title} jest w kolumnie {column}, pozycja {position} z {count}.",
   "dndDropped": "Przeniesiono {title} do kolumny {column}, pozycja {position} z {count}.",
