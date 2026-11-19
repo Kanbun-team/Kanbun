@@ -132,12 +132,22 @@ for (const colorScheme of ["light", "dark"] as const) {
     test("pass axe with pinned and recent boards", async ({ page, browser }) => {
       await loginAs(page, "admin");
       await page.goto("/tasks");
+      // A failed earlier attempt may have left the board pinned.
+      const pinned = page.getByRole("region", { name: "Pinned" });
+      if (await pinned.count()) {
+        await tile(page, pinned, "Customer support").getByRole("button", { name: "Pin Customer support" }).click();
+        await expect(pinned).toHaveCount(0);
+      }
       const operations = page.getByRole("region", { name: "Operations" });
       const pin = tile(page, operations, "Customer support").getByRole("button", { name: "Pin Customer support" });
       await pin.click();
       await expect(page.getByRole("region", { name: "Pinned" })).toBeVisible();
       await tile(page, operations, "Hiring").getByRole("link").click();
       await page.waitForURL(/\/tasks\/[^/]+$/);
+      // The board records the visit in a cookie once it has hydrated.
+      await expect
+        .poll(async () => (await page.context().cookies()).some((c) => c.name === "kanbun-recent-boards"))
+        .toBe(true);
       await page.goto("/tasks");
       await expect(page.getByRole("region", { name: "Recently opened" })).toBeVisible();
 
