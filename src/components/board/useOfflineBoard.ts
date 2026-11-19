@@ -124,8 +124,12 @@ export function useOfflineBoard({
     return { ok: true, queued: true };
   }
 
-  /** Sends a card edit now, or queues it. Shows the error toast on failure. */
-  async function run(op: OutboxOp, label: string): Promise<RunOutcome> {
+  /**
+   * Sends a card edit now, or queues it. Shows the error toast on failure.
+   * `refresh: false` leaves the refresh to the caller, for several edits that
+   * belong together (a move to another swimlane).
+   */
+  async function run(op: OutboxOp, label: string, { refresh = true }: { refresh?: boolean } = {}): Promise<RunOutcome> {
     const current = getOfflineState();
     if (!isOnline() || current.entries.length > 0 || current.syncing || referencesTempId(op)) {
       return queue(op, label);
@@ -140,8 +144,10 @@ export function useOfflineBoard({
     }
     if (!result.ok) ui.toast({ message: errorMessage(result.error, locale), tone: "error" });
     // On failure the refresh rolls the optimistic change back.
-    markBoardRefreshed(boardId);
-    router.refresh();
+    if (refresh) {
+      markBoardRefreshed(boardId);
+      router.refresh();
+    }
     return {
       ok: result.ok,
       queued: false,

@@ -1003,5 +1003,18 @@
   "audit_automation_create": "Regra de automação adicionada",
   "audit_automation_update": "Regra de automação alterada",
   "audit_automation_delete": "Regra de automação excluída",
-  "auditTarget_automation": "Regra de automação"
+  "auditTarget_automation": "Regra de automação",
+  "laneGroupButton": "Raias",
+  "laneGroupActive": "Raias: {group}",
+  "laneGroupLabel": "Agrupar o quadro em raias",
+  "laneGroupNone": "Sem raias",
+  "laneNoAssignee": "Sem responsável",
+  "laneNoTag": "Sem etiqueta",
+  "laneCards_one": "{count} cartão",
+  "laneCards_other": "{count} cartões",
+  "laneCopyHint": "Cópia. Mova o cartão na raia {lane}.",
+  "laneDndInstructions": "Para pegar um cartão, pressione Espaço. Mova com as setas, Shift com Cima ou Baixo leva o cartão para a raia de cima ou de baixo. Pressione Espaço para soltar ou Escape para cancelar.",
+  "laneDndOver": "{title} está em {column}, raia {lane}, posição {position} de {count}.",
+  "laneDndDropped": "{title} movido para {column}, raia {lane}, posição {position} de {count}.",
+  "shortcutLaneMove": "Ao mover um cartão em raias: para a raia de cima ou de baixo"
 }

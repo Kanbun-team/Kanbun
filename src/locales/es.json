@@ -1003,5 +1003,18 @@
   "audit_automation_create": "Regla de automatización añadida",
   "audit_automation_update": "Regla de automatización modificada",
   "audit_automation_delete": "Regla de automatización eliminada",
-  "auditTarget_automation": "Regla de automatización"
+  "auditTarget_automation": "Regla de automatización",
+  "laneGroupButton": "Carriles",
+  "laneGroupActive": "Carriles: {group}",
+  "laneGroupLabel": "Agrupar el tablero en carriles",
+  "laneGroupNone": "Sin carriles",
+  "laneNoAssignee": "Sin responsable",
+  "laneNoTag": "Sin etiqueta",
+  "laneCards_one": "{count} tarjeta",
+  "laneCards_other": "{count} tarjetas",
+  "laneCopyHint": "Copia. Mueve la tarjeta en el carril {lane}.",
+  "laneDndInstructions": "Para tomar una tarjeta, pulsa Espacio. Muévela con las flechas, Mayús con Arriba o Abajo la lleva al carril de arriba o de abajo. Pulsa Espacio para soltarla o Escape para cancelar.",
+  "laneDndOver": "{title} está en {column}, carril {lane}, posición {position} de {count}.",
+  "laneDndDropped": "{title} movida a {column}, carril {lane}, posición {position} de {count}.",
+  "shortcutLaneMove": "Al mover una tarjeta en carriles: al carril de arriba o de abajo"
 }

@@ -15,6 +15,9 @@ const USER = process.env.PERF_USER ?? "admin";
 const PASSWORD = process.env.PERF_PASSWORD ?? "demo1234";
 const BOARD = process.env.PERF_BOARD ?? "Large board (performance)";
 const RUNS = Number(process.env.PERF_RUNS ?? 5);
+// PERF_GROUP=assignee|priority|tag measures the board grouped into swimlanes.
+const GROUP = process.env.PERF_GROUP ?? "";
+const CARD = GROUP ? "[data-cell] [data-card-id]" : "[data-column-id] [data-card-id]";
 
 const median = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
@@ -98,7 +101,7 @@ async function main() {
   await page.waitForURL(/\/tasks/);
   await page.getByRole("link", { name: new RegExp(BOARD.replace(/[()]/g, "\\$&")) }).first().click();
   await page.waitForURL(/\/tasks\/[^/]+$/);
-  const boardUrl = page.url().split("?")[0];
+  const boardUrl = page.url().split("?")[0] + (GROUP ? `?group=${GROUP}` : "");
   const cookie = (await context.cookies()).map((c) => `${c.name}=${c.value}`).join("; ");
 
   // Server render: time to first byte and full HTML, with no browser involved.
@@ -135,7 +138,7 @@ async function main() {
     Object.keys(loads[0]).map((k) => [k, median(loads.map((l) => (l as Record<string, number>)[k] ?? NaN))])
   );
 
-  const cards = page.locator("[data-column-id] [data-card-id]");
+  const cards = page.locator(CARD);
   const cardCount = await cards.count();
   const results: Record<string, unknown> = {};
 
@@ -150,10 +153,19 @@ async function main() {
   results.keyboardPickUp = await measure(page, () => page.keyboard.press("Space"));
   results.keyboardMove = await measure(page, () => page.keyboard.press("ArrowRight"));
   results.keyboardDrop = await measure(page, () => page.keyboard.press("Space"), 800);
+  if (GROUP) {
+    // Into the lane below, then cancel (no write).
+    await cards.nth(1).locator("a").first().focus();
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(300);
+    results.keyboardLaneMove = await measure(page, () => page.keyboard.press("Shift+ArrowDown"));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+  }
 
   // Pointer drag from the first column to the third.
   const from = await cards.nth(3).boundingBox();
-  const target = await page.locator("[data-column-id]").nth(2).boundingBox();
+  const target = await page.locator(GROUP ? "[data-cell]" : "[data-column-id]").nth(2).boundingBox();
   if (from && target) {
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     results.dragStart = await measure(page, async () => {
@@ -198,7 +210,7 @@ async function main() {
   });
   results.boardView = await measure(page, async () => {
     await page.getByRole("radio", { name: "Board", exact: true }).click();
-    await page.locator("[data-column-id] [data-card-id]").first().waitFor();
+    await page.locator(CARD).first().waitFor();
   });
 
   // Command palette search.
@@ -233,6 +245,7 @@ async function main() {
     JSON.stringify(
       {
         cpuThrottle: CPU,
+        group: GROUP || "none",
         cards: cardCount,
         server: { ttfb: median(server.ttfb), total: median(server.total), bytes: server.bytes },
         boardLoad: load,

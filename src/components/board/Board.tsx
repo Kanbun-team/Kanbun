@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ToggleButton, ToggleButtonGroup } from "react-aria-components";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  Button as AriaButton,
+  Menu as AriaMenu,
+  MenuItem as AriaMenuItem,
+  MenuTrigger,
+  Popover,
+  ToggleButton,
+  ToggleButtonGroup,
+} from "react-aria-components";
 import {
   DndContext,
   DragOverlay,
@@ -27,7 +35,11 @@ import {
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { CalendarDays, Columns3, Keyboard, List, Plus, Sparkles } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, Columns3, Keyboard, List, Plus, Rows3, Sparkles } from "lucide-react";
+import { GROUPS, blankLane, buildLanes, laneChange, parseGroup, type GroupBy } from "@/lib/swimlanes";
+import Swimlanes, { laneKeyboardCoordinates, laneNavigate, type LaneHandlers } from "./Swimlanes";
+import { intlLocale } from "@/lib/i18n";
+import { blankCard, type OutboxOp } from "@/lib/outbox";
 import { useSyncedState } from "@/lib/use-synced-state";
 import { useStableHandlers, useStableValue } from "@/lib/use-stable";
 import { reconcileColumns } from "./reconcile";
@@ -171,17 +183,22 @@ const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
 
 const DROP_ANIMATION = { duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" };
 
+// Swimlanes have their own keyboard moves (between lanes too). The sensors
+// are created once, so the getter checks which board is on screen.
+const boardKeyboardCoordinates: KeyboardCoordinateGetter = (event, args) =>
+  document.querySelector("[data-swimlanes]") ? laneKeyboardCoordinates(event, args) : keyboardCoordinates(event, args);
+
 // Space lifts and drops; Enter is left to the link so it opens the card.
 const KEYBOARD_OPTIONS = {
-  coordinateGetter: keyboardCoordinates,
+  coordinateGetter: boardKeyboardCoordinates,
   keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
 };
 
 // Collapsed columns are a per-browser preference. useSyncExternalStore keeps
 // the server render and hydration identical (nothing collapsed) and then
 // applies the stored value without a mismatch.
-function useCollapsedColumns(boardId: string) {
-  const key = `kanbun:collapsed:${boardId}`;
+// The same goes for collapsed swimlanes (per board and grouping).
+function useCollapsedColumns(key: string) {
   const raw = useSyncExternalStore(
     (notify) => {
       window.addEventListener(COLLAPSE_EVENT, notify);
@@ -277,7 +294,14 @@ export default function Board({
   const boardTags = useStableValue(boardTagsProp);
   const templates = useStableValue(templatesProp);
   const searchParams = useSearchParams();
-  const view = parseView(searchParams.get("view"));
+  // While the card panel is open the URL is the card's, without ?view= and
+  // ?group=: the board underneath keeps the view and lanes it had.
+  const onBoardPath = usePathname() === `/tasks/${boardId}`;
+  const urlLayout = `${parseView(searchParams.get("view"))} ${parseGroup(searchParams.get("group"))}`;
+  const [keptLayout, setKeptLayout] = useState(urlLayout);
+  if (onBoardPath && keptLayout !== urlLayout) setKeptLayout(urlLayout);
+  const [viewParam, groupParam] = (onBoardPath ? urlLayout : keptLayout).split(" ");
+  const view = parseView(viewParam);
   // `?deadline=none` comes from the calendar's "Show in list" link.
   const [filters, setFilters] = useState<Filters>(() =>
     searchParams.get("deadline") === "none" ? { ...EMPTY_FILTERS, deadline: "none" } : EMPTY_FILTERS
@@ -293,7 +317,13 @@ export default function Board({
   const [armedColumnId, setArmedColumnId] = useState<string | null>(null);
   const [movingCard, setMovingCard] = useState<CardDTO | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [collapsed, toggleCollapsed] = useCollapsedColumns(boardId);
+  const [collapsed, toggleCollapsed] = useCollapsedColumns(`kanbun:collapsed:${boardId}`);
+  // Swimlanes (?group=), only in the board view.
+  const group: GroupBy = view === "board" ? parseGroup(groupParam) : "none";
+  const [collapsedLanes, toggleLane] = useCollapsedColumns(`kanbun:lanes:${boardId}:${group}`);
+  const [addingCell, setAddingCell] = useState<string | null>(null);
+  // Edits of a swimlane move in flight: live refreshes wait for them, like for a drag.
+  const laneBusy = useRef(0);
   const dragStart = useRef<{ snapshot: ColumnDTO[]; columnId: string | null; index: number } | null>(null);
   const refreshPending = useRef(false);
   const liveSnapshot = useRef<CardSnapshot | null>(null);
@@ -320,7 +350,7 @@ export default function Board({
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           if (refreshedSince(boardId, lastEventAt)) return;
-          if (dragStart.current) {
+          if (dragStart.current || laneBusy.current > 0) {
             refreshPending.current = true;
             return;
           }
@@ -382,6 +412,11 @@ export default function Board({
   );
   const visibleCards = useMemo(() => visibleColumns.flatMap((c) => c.cards), [visibleColumns]);
   const visibleCount = visibleCards.length;
+  const visibleIds = useMemo(() => (filtering ? new Set(visibleCards.map((c) => c.id)) : null), [filtering, visibleCards]);
+  // Same lanes, same object: the cells only re-render when their cards change.
+  const lanes = useStableValue(
+    useMemo(() => buildLanes(group, members, boardTags, allCards, intlLocale(locale)), [group, members, boardTags, allCards, locale])
+  );
 
   // The view lives in the URL (?view=list|calendar) so it can be linked and
   // survives a reload. Next.js keeps useSearchParams in sync with
@@ -391,6 +426,15 @@ export default function Board({
     if (next === "board") params.delete("view");
     else params.set("view", next);
     params.delete("deadline");
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }
+
+  // Swimlanes live in the URL too (?group=assignee|priority|tag).
+  function setGroup(next: GroupBy) {
+    const params = new URLSearchParams(window.location.search);
+    if (next === "none") params.delete("group");
+    else params.set("group", next);
     const query = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
   }
@@ -553,6 +597,71 @@ export default function Board({
   };
   const columnHandlers = useStableHandlers(latestColumnHandlers);
 
+  // Several edits that belong together (a move to another swimlane, or new
+  // cards and their lane), sent in order with one refresh at the end, so the
+  // card does not show a half-done state in between. New cards' temporary
+  // ids are swapped for the real ones as soon as the server has made them;
+  // offline, everything is queued and the outbox does that on sync.
+  async function runChain(ops: OutboxOp[], label: string): Promise<boolean> {
+    laneBusy.current += 1;
+    const ids: Record<string, string> = {};
+    let ok = true;
+    let sent = false;
+    try {
+      for (const raw of ops) {
+        const op = raw.kind !== "addCards" && ids[raw.cardId] ? { ...raw, cardId: ids[raw.cardId] } : raw;
+        const result = await offline.run(op, label, { refresh: false });
+        if (!result.queued) sent = true;
+        if (!result.ok) {
+          ok = false;
+          break;
+        }
+        if (op.kind === "addCards" && result.createdIds) {
+          markLocalCards(result.createdIds);
+          op.tempIds.forEach((tempId, i) => {
+            const real = result.createdIds?.[i];
+            if (real) ids[tempId] = real;
+          });
+        }
+      }
+    } finally {
+      laneBusy.current -= 1;
+      // Also covers live changes that arrived meanwhile (refreshPending),
+      // unless a new drag has started: that one refreshes when it ends.
+      if ((sent || refreshPending.current) && laneBusy.current === 0 && !dragStart.current) {
+        refreshPending.current = false;
+        markBoardRefreshed(boardId);
+        router.refresh();
+      } else if (sent) {
+        refreshPending.current = true;
+      }
+    }
+    return ok;
+  }
+
+  const latestLaneHandlers: LaneHandlers = {
+    toggleLane,
+    setAddingCell,
+    addToLane: async (column, lane, text) => {
+      const titles = splitTitles(text);
+      if (titles.length === 0) return false;
+      const tempIds = titles.map(() => newId(TEMP_PREFIX));
+      const ops: OutboxOp[] = [{ kind: "addCards", columnId: column.id, titles, tempIds }];
+      tempIds.forEach((id, i) => ops.push(...laneChange(blankCard(id, titles[i], 0), group, blankLane(group), lane, lanes).ops));
+      const ok = await runChain(ops, titles.join(", "));
+      if (ok && titles.length > 1) ui.toast({ message: tn("cardsAdded", titles.length, locale) });
+      return ok;
+    },
+    commit: (ops, label) => {
+      runChain(ops, label);
+    },
+    dragStarted: (snapshot, columnId, index) => {
+      dragStart.current = { snapshot, columnId, index };
+    },
+    dragEnded: () => finishDrag(),
+  };
+  const laneHandlers = useStableHandlers(latestLaneHandlers);
+
   // ---------- Drag and drop ----------
 
   const dndGate = useStableHandlers({ blocked: () => filtering });
@@ -618,7 +727,8 @@ export default function Board({
 
   function finishDrag() {
     dragStart.current = null;
-    if (refreshPending.current) {
+    // Swimlane edits still being sent refresh when they are done (runChain).
+    if (refreshPending.current && laneBusy.current === 0) {
       refreshPending.current = false;
       markBoardRefreshed(boardId);
       router.refresh();
@@ -745,12 +855,24 @@ export default function Board({
       } else if (view !== "board") {
         // Adding, inline editing and j/k navigation belong to the board view.
         return;
+      } else if (key === "n" && !filtering && group !== "none") {
+        // Into the focused cell, or the first open one.
+        const cell =
+          target.closest<HTMLElement>("[data-cell]")?.dataset.cell ??
+          document.querySelector<HTMLElement>("[data-cell]")?.dataset.cell ??
+          null;
+        if (cell) {
+          e.preventDefault();
+          setAddingCell(cell);
+        }
       } else if (key === "n" && !filtering) {
         e.preventDefault();
         setAddingColumnId(columnEl?.getAttribute("data-column-id") ?? columns[0]?.id ?? null);
       } else if (key === "e" && card) {
         e.preventDefault();
         setEditingCardId(card.id);
+      } else if (group !== "none" && cardEl && ["j", "k", "h", "l", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(key)) {
+        if (laneNavigate(key, cardEl)) e.preventDefault();
       } else if (["j", "k", "h", "l", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(key)) {
         const columnsEls = [...document.querySelectorAll("[data-column-id]")];
         if (!cardEl) {
@@ -798,7 +920,8 @@ export default function Board({
     [boardId, locale, canManage, members, boardTags, templates, currentUserId, cardHandlers, columnHandlers]
   );
 
-  const showAddBar = view === "board" && !filtering && columns.length > 0;
+  // With swimlanes every cell has its own "Add card".
+  const showAddBar = view === "board" && group === "none" && !filtering && columns.length > 0;
   const addBarColumn = columns[Math.min(visibleColumnIndex, columns.length - 1)];
 
   // Phones show one column at a time: track which one is in view so the
@@ -850,6 +973,7 @@ export default function Board({
             );
           })}
         </ToggleButtonGroup>
+        {view === "board" && <GroupPicker group={group} onChange={setGroup} locale={locale} />}
         <FilterBar
           filters={filters}
           setFilters={setFilters}
@@ -917,7 +1041,7 @@ export default function Board({
                 className="shrink-0 rounded-full border border-line bg-surface px-3 py-1 text-sm"
                 onClick={() =>
                   document
-                    .querySelector(`[data-column-id="${c.id}"]`)
+                    .querySelector(`[data-column-id="${c.id}"], [data-lane-column="${c.id}"]`)
                     ?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })
                 }
               >
@@ -926,6 +1050,30 @@ export default function Board({
             ))}
           </nav>
 
+          {group !== "none" ? (
+            <div
+              ref={boardScroller}
+              className="relative -mx-4 sm:-mx-6 px-4 sm:px-6 overflow-x-auto pb-4 snap-x snap-mandatory sm:snap-none scroll-px-4"
+            >
+              <Swimlanes
+                columns={columns}
+                setColumns={setColumns}
+                group={group}
+                lanes={lanes}
+                visibleIds={visibleIds}
+                filtering={filtering}
+                sensors={sensors}
+                shared={shared}
+                locale={locale}
+                editingCardId={editingCardId}
+                addingCell={addingCell}
+                collapsedLanes={collapsedLanes}
+                handlers={laneHandlers}
+              >
+                <DragPreview columns={columns} locale={locale} />
+              </Swimlanes>
+            </div>
+          ) : (
           <DndContext
             sensors={sensors}
             collisionDetection={collisionDetection}
@@ -964,6 +1112,7 @@ export default function Board({
             </div>
             <DragPreview columns={columns} locale={locale} />
           </DndContext>
+          )}
         </>
       )}
 
@@ -1065,6 +1214,64 @@ function DragPreview({ columns, locale }: { columns: ColumnDTO[]; locale: Locale
         ) : null}
       </DragOverlay>
     </div>
+  );
+}
+
+const GROUP_LABELS = {
+  none: "laneGroupNone",
+  assignee: "filterAssignee",
+  priority: "filterPriority",
+  tag: "filterTag",
+} as const;
+
+// "Swimlanes" menu in the toolbar: no lanes, or lanes by assignee, priority or tag.
+function GroupPicker({ group, onChange, locale }: { group: GroupBy; onChange: (group: GroupBy) => void; locale: Locale }) {
+  return (
+    <MenuTrigger>
+      <AriaButton
+        className={cn(
+          buttonClass("secondary", "md"),
+          group !== "none" && "bg-accent-soft text-accent border-accent/40"
+        )}
+      >
+        <Rows3 size={16} aria-hidden />
+        {group === "none"
+          ? t("laneGroupButton", locale)
+          : t("laneGroupActive", locale).replace("{group}", t(GROUP_LABELS[group], locale))}
+        <ChevronDown size={14} aria-hidden className="text-ink-muted" />
+      </AriaButton>
+      <Popover
+        placement="bottom start"
+        className="min-w-[12rem] rounded-panel border border-line bg-raised text-ink shadow-float py-1 outline-none"
+      >
+        <AriaMenu
+          aria-label={t("laneGroupLabel", locale)}
+          selectionMode="single"
+          disallowEmptySelection
+          selectedKeys={[group]}
+          onSelectionChange={(keys) => {
+            const next = [...(keys as Set<string>)][0];
+            if (next) onChange(parseGroup(next));
+          }}
+          className="outline-none"
+        >
+          {GROUPS.map((g) => (
+            <AriaMenuItem
+              key={g}
+              id={g}
+              className="flex items-center gap-2 px-3 py-1.5 cursor-default outline-none select-none focus:bg-ink/5 hover:bg-ink/5"
+            >
+              {({ isSelected }) => (
+                <>
+                  <span className="flex-1">{t(GROUP_LABELS[g], locale)}</span>
+                  {isSelected && <Check size={14} aria-hidden className="text-accent" />}
+                </>
+              )}
+            </AriaMenuItem>
+          ))}
+        </AriaMenu>
+      </Popover>
+    </MenuTrigger>
   );
 }
 

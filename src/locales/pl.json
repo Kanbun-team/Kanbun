@@ -1065,5 +1065,20 @@
   "audit_automation_create": "Dodano regułę automatyzacji",
   "audit_automation_update": "Zmieniono regułę automatyzacji",
   "audit_automation_delete": "Usunięto regułę automatyzacji",
-  "auditTarget_automation": "Reguła automatyzacji"
+  "auditTarget_automation": "Reguła automatyzacji",
+  "laneGroupButton": "Tory",
+  "laneGroupActive": "Tory: {group}",
+  "laneGroupLabel": "Podziel tablicę na tory",
+  "laneGroupNone": "Bez torów",
+  "laneNoAssignee": "Bez osoby",
+  "laneNoTag": "Bez tagu",
+  "laneCards_one": "{count} karta",
+  "laneCards_few": "{count} karty",
+  "laneCards_many": "{count} kart",
+  "laneCards_other": "{count} karty",
+  "laneCopyHint": "Kopia. Przenieś kartę w torze {lane}.",
+  "laneDndInstructions": "Aby podnieść kartę, naciśnij Spację. Przesuwaj strzałkami, Shift ze strzałką w górę lub w dół przenosi ją na tor wyżej lub niżej. Spacją upuść, Escape anuluje.",
+  "laneDndOver": "{title} jest w kolumnie {column}, tor {lane}, pozycja {position} z {count}.",
+  "laneDndDropped": "Przeniesiono {title} do kolumny {column}, tor {lane}, pozycja {position} z {count}.",
+  "shortcutLaneMove": "Podczas przenoszenia karty w torach: na tor wyżej lub niżej"
 }

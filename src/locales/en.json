@@ -1003,5 +1003,18 @@
   "audit_automation_create": "Automation rule added",
   "audit_automation_update": "Automation rule changed",
   "audit_automation_delete": "Automation rule deleted",
-  "auditTarget_automation": "Automation rule"
+  "auditTarget_automation": "Automation rule",
+  "laneGroupButton": "Lanes",
+  "laneGroupActive": "Lanes: {group}",
+  "laneGroupLabel": "Group the board into lanes",
+  "laneGroupNone": "No lanes",
+  "laneNoAssignee": "No assignee",
+  "laneNoTag": "No tag",
+  "laneCards_one": "{count} card",
+  "laneCards_other": "{count} cards",
+  "laneCopyHint": "Copy. Move the card in the {lane} lane.",
+  "laneDndInstructions": "To pick up a card, press Space. Move it with the arrow keys, or with Shift and Up or Down to the lane above or below. Press Space to drop it, or Escape to cancel.",
+  "laneDndOver": "{title} is in {column}, lane {lane}, position {position} of {count}.",
+  "laneDndDropped": "Moved {title} to {column}, lane {lane}, position {position} of {count}.",
+  "shortcutLaneMove": "While moving a card in lanes: to the lane above or below"
 }

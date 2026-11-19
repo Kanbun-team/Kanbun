@@ -30,7 +30,7 @@ export interface ColumnHandlers {
   arm: (columnId: string) => void;
 }
 
-interface Shared {
+export interface Shared {
   boardId: string;
   locale: Locale;
   canManage: boolean;
@@ -197,10 +197,6 @@ const ColumnContent = memo(function ColumnContent({
     () => (visibleCards === column.cards ? null : new Set(visibleCards.map((c) => c.id))),
     [visibleCards, column.cards]
   );
-  const count = column.cards.length;
-  const wip = column.wipLimit;
-  const wipState = wip == null ? null : count > wip ? "over" : count === wip ? "reached" : "ok";
-
   return (
     <>
       <header className="pl-1.5 pr-1.5 py-1.5 flex items-center gap-1 border-b border-line">
@@ -232,18 +228,7 @@ const ColumnContent = memo(function ColumnContent({
                 {column.name}
               </button>
             </h2>
-            <span
-              className={cn(
-                "text-sm tabular-nums px-1.5 rounded-control",
-                wipState === "over" ? "bg-danger/10 text-danger font-semibold" : wipState === "reached" ? "bg-warning/10 text-warning font-semibold" : "text-ink-muted"
-              )}
-              title={wipState === "over" ? t("columnWipOver", locale) : wipState === "reached" ? t("columnWipReached", locale) : undefined}
-            >
-              {count}
-              {wip != null && `/${wip}`}
-              {wipState === "over" && <span className="sr-only">, {t("columnWipOver", locale)}</span>}
-              {wipState === "reached" && <span className="sr-only">, {t("columnWipReached", locale)}</span>}
-            </span>
+            <ColumnCount count={column.cards.length} wipLimit={column.wipLimit} locale={locale} />
             <MenuButton label={t("columnActions", locale).replace("{name}", column.name)}>
               <MenuItem onAction={() => setEditing(true)}>{t("columnRename", locale)}</MenuItem>
               <MenuItem onAction={() => setEditing(true)}>{t("columnEditWip", locale)}</MenuItem>
@@ -322,6 +307,29 @@ const ColumnContent = memo(function ColumnContent({
   );
 });
 
+/** A column's card count with its WIP limit: amber at the limit, red above it. */
+export function ColumnCount({ count, wipLimit: wip, locale }: { count: number; wipLimit: number | null; locale: Locale }) {
+  const wipState = wip == null ? null : count > wip ? "over" : count === wip ? "reached" : "ok";
+  return (
+    <span
+      className={cn(
+        "text-sm tabular-nums px-1.5 rounded-control",
+        wipState === "over"
+          ? "bg-danger/10 text-danger font-semibold"
+          : wipState === "reached"
+            ? "bg-warning/10 text-warning font-semibold"
+            : "text-ink-muted"
+      )}
+      title={wipState === "over" ? t("columnWipOver", locale) : wipState === "reached" ? t("columnWipReached", locale) : undefined}
+    >
+      {count}
+      {wip != null && `/${wip}`}
+      {wipState === "over" && <span className="sr-only">, {t("columnWipOver", locale)}</span>}
+      {wipState === "reached" && <span className="sr-only">, {t("columnWipReached", locale)}</span>}
+    </span>
+  );
+}
+
 const CARD_RESIZE_OBSERVER = { disabled: true };
 
 const faceClass =
@@ -329,7 +337,7 @@ const faceClass =
 
 // The sortable wrapper re-renders whenever dnd-kit's context changes (every
 // card does during a drag); the card body below it only when its own props do.
-const SortableCard = memo(function SortableCard({
+export const SortableCard = memo(function SortableCard({
   card,
   columnId,
   editing,
@@ -514,7 +522,7 @@ function InlineTitleEditor({
   );
 }
 
-function AddCardForm({
+export function AddCardForm({
   column,
   locale,
   onAdd,

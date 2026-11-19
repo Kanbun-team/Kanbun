@@ -1065,5 +1065,20 @@
   "audit_automation_create": "Правило автоматизації додано",
   "audit_automation_update": "Правило автоматизації змінено",
   "audit_automation_delete": "Правило автоматизації видалено",
-  "auditTarget_automation": "Правило автоматизації"
+  "auditTarget_automation": "Правило автоматизації",
+  "laneGroupButton": "Доріжки",
+  "laneGroupActive": "Доріжки: {group}",
+  "laneGroupLabel": "Згрупувати дошку в доріжки",
+  "laneGroupNone": "Без доріжок",
+  "laneNoAssignee": "Без виконавця",
+  "laneNoTag": "Без мітки",
+  "laneCards_one": "{count} картка",
+  "laneCards_few": "{count} картки",
+  "laneCards_many": "{count} карток",
+  "laneCards_other": "{count} картки",
+  "laneCopyHint": "Копія. Переміщуй картку в доріжці {lane}.",
+  "laneDndInstructions": "Щоб підняти картку, натисни пробіл. Переміщуй стрілками, Shift зі стрілкою вгору чи вниз переносить її в доріжку вище чи нижче. Натисни пробіл, щоб відпустити, або Escape, щоб скасувати.",
+  "laneDndOver": "{title} у колонці {column}, доріжка {lane}, позиція {position} з {count}.",
+  "laneDndDropped": "{title} переміщено в колонку {column}, доріжка {lane}, позиція {position} з {count}.",
+  "shortcutLaneMove": "Під час переміщення картки в доріжках: у доріжку вище чи нижче"
 }

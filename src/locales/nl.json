@@ -1003,5 +1003,18 @@
   "audit_automation_create": "Automatiseringsregel toegevoegd",
   "audit_automation_update": "Automatiseringsregel gewijzigd",
   "audit_automation_delete": "Automatiseringsregel verwijderd",
-  "auditTarget_automation": "Automatiseringsregel"
+  "auditTarget_automation": "Automatiseringsregel",
+  "laneGroupButton": "Banen",
+  "laneGroupActive": "Banen: {group}",
+  "laneGroupLabel": "Bord in banen groeperen",
+  "laneGroupNone": "Geen banen",
+  "laneNoAssignee": "Geen uitvoerder",
+  "laneNoTag": "Geen tag",
+  "laneCards_one": "{count} kaart",
+  "laneCards_other": "{count} kaarten",
+  "laneCopyHint": "Kopie. Verplaats de kaart in de baan {lane}.",
+  "laneDndInstructions": "Druk op Spatie om een kaart op te pakken. Verplaats hem met de pijltjestoetsen, Shift met pijl omhoog of omlaag zet hem in de baan erboven of eronder. Druk op Spatie om hem neer te zetten of op Escape om te annuleren.",
+  "laneDndOver": "{title} staat in {column}, baan {lane}, positie {position} van {count}.",
+  "laneDndDropped": "{title} verplaatst naar {column}, baan {lane}, positie {position} van {count}.",
+  "shortcutLaneMove": "Tijdens het verplaatsen van een kaart in banen: naar de baan erboven of eronder"
 }

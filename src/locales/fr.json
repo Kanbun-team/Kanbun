@@ -1003,5 +1003,18 @@
   "audit_automation_create": "Règle d’automatisation ajoutée",
   "audit_automation_update": "Règle d’automatisation modifiée",
   "audit_automation_delete": "Règle d’automatisation supprimée",
-  "auditTarget_automation": "Règle d’automatisation"
+  "auditTarget_automation": "Règle d’automatisation",
+  "laneGroupButton": "Couloirs",
+  "laneGroupActive": "Couloirs : {group}",
+  "laneGroupLabel": "Regrouper le tableau en couloirs",
+  "laneGroupNone": "Sans couloirs",
+  "laneNoAssignee": "Sans responsable",
+  "laneNoTag": "Sans étiquette",
+  "laneCards_one": "{count} carte",
+  "laneCards_other": "{count} cartes",
+  "laneCopyHint": "Copie. Déplace la carte dans le couloir {lane}.",
+  "laneDndInstructions": "Pour prendre une carte, appuie sur Espace. Déplace-la avec les flèches, Maj avec Haut ou Bas la fait passer dans le couloir du dessus ou du dessous. Appuie sur Espace pour la déposer, ou sur Échap pour annuler.",
+  "laneDndOver": "{title} est dans {column}, couloir {lane}, position {position} sur {count}.",
+  "laneDndDropped": "{title} déplacée vers {column}, couloir {lane}, position {position} sur {count}.",
+  "shortcutLaneMove": "En déplaçant une carte dans les couloirs : vers le couloir du dessus ou du dessous"
 }

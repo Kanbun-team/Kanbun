@@ -170,6 +170,7 @@ Kanbun owns its components (in `src/components/ui/`), built on **React Aria Comp
 
 - **Drag and drop** uses `@dnd-kit`: pointer, touch (long-press to pick up) and keyboard (Space to lift, arrows to move, Space to drop, Esc to cancel), with screen-reader announcements ("Moved Responsive navigation to Review, position 2 of 3").
 - **Non-drag alternative:** every card menu has "Move to..." (column and position) so nobody has to drag.
+- **Swimlanes** (board grouped by assignee, priority or tag) keep the same gestures: dropping a card in another lane changes that field, Shift+Up/Down moves a picked-up card to the lane above or below, and announcements name the column and the lane. Lane headers are quiet (name, count, collapse); a card with several values shows a dashed read-only copy in its other lanes.
 - **Optimistic updates:** moves and edits apply instantly; on server failure the change rolls back and a toast explains why.
 - **Keyboard shortcuts** (shown in a `?` overlay): `/` search, `n` new card in focused column, `e` edit title, `a` assign to me, `d` set deadline, `Enter` open card, `Esc` close panel, `j`/`k` and arrows to move focus between cards. Shortcuts never fire while typing in a field.
 - **Live updates** from teammates animate into place and never steal focus or scroll.

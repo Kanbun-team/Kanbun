@@ -276,6 +276,55 @@ Tried and dropped, measured at 2x with 9 repetitions:
   one Event Timing step, but the server would render a filtered board
   (`?deadline=none`) unfiltered until hydration. Not worth it.
 
+### Swimlanes (v1.4)
+
+Swimlanes (`?group=`) render the board through `Swimlanes.tsx` instead of
+`Column`, so the plain board is unchanged. `scripts/perf-board.ts` measures
+the grouped board with `PERF_GROUP=assignee|priority|tag` (same steps; the
+keyboard move to the next column stays in the lane, the pointer drag goes
+from a card to the third cell of the first lane, and `keyboardLaneMove` is
+Shift+Down while a card is picked up). Same machine and setup as above,
+three runs per row (median, slowest input event with the longest long task
+in brackets). The 500-card board has 5 assignee lanes plus "No assignee"
+(36 cells) and 8 tag lanes plus "No tag" (54 cells, with a read-only copy for
+every extra tag of a card).
+
+| | No lanes 1x | No lanes 2x | Assignee 1x | Assignee 2x | Tag 1x | Tag 2x |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| First load: hydrated | none | none | none | none | none | none |
+| Keyboard pick up | 40 | 72 (55) | 32 | 64 (51) | 32 | 64 (53) |
+| Keyboard move to next column | 16 | 24 (66) | 16 | 24 (53) | 16 | 16 |
+| Keyboard move to the next lane | | | 24 | 48 | 24 | 64 |
+| Keyboard drop | 32 | 64 | 32 | 48 | 32 | 48 |
+| Pointer drag start | none over 50 | (54) | none over 50 | none over 50 | none over 50 | none over 50 |
+| Pointer drag move, longest frame | none over 50 | (65) | none over 50 | none over 50 | none over 50 | none over 50 |
+| Pointer drop | 24 | 48 | 24 | 48 | 24 | 40 |
+| Open card panel | 24 | 24 | 24 | 32 | 24 | 32 |
+| Type in the filter | 24 | 40 | 24 | 40 | 24 | 40 |
+| Clear the filter | 32 | 64 | 40 | 72 | 32 | 64 (57) |
+
+The "No lanes" columns match the filter clear pass above within one Event
+Timing step, so the plain board did not get slower. Everything with lanes
+is under 100ms at 2x.
+
+What keeps it there, following the rules below:
+
+- Cells (`LaneCell`, `CellContent`) are memoized like columns. The grouping
+  is recomputed on every change, but `shareCells` keeps the arrays of cells
+  whose cards did not change, and the lane list goes through
+  `useStableValue`, so a drag over a cell re-renders the two cells involved.
+- Only the cards of the armed cell and the cells the dragged card has been
+  in are drop targets, as with columns; collision detection finds the cell
+  first. Keyboard moves pick their target cell from the DOM and hand it to
+  collision detection (`keyboardTarget`), so they do not depend on card rects.
+- The dragged card keeps its fields until it is dropped (an override puts it
+  in the lane it is over), so a drag never re-renders card bodies.
+- Cards keep the `board-card` wrapper and cells are plain blocks with
+  `space-y-2`, so `content-visibility: auto` still skips cards off screen.
+- Before the fix that keeps the lanes under the card panel, opening a card
+  switched the board back to no lanes underneath (the card URL has no
+  `?group=`): a 142ms task at 2x. It is gone (32).
+
 ## What changed
 
 - **Memoized columns and cards.** The React Compiler is not enabled (only its
@@ -401,5 +450,10 @@ to 155ms including Playwright round trips).
   card face; build them when the user reaches the card, like the card menu.
 - New card fields: add them to `sameCard` in `reconcile.ts`, or cards will
   not update when only that field changes.
-- Check with `scripts/perf-board.ts` before and after changes to the board,
-  and run `E2E_PERF=1 npx playwright test e2e/perf.spec.ts`.
+- The same goes for swimlanes (`Swimlanes.tsx`): keep `LaneCell` and
+  `CellContent` memoized, pass cells through `shareCells`, and do not change
+  the dragged card's fields before it is dropped. Read-only copies have
+  `data-copy-of`, not `data-card-id`, so card lookups skip them.
+- Check with `scripts/perf-board.ts` before and after changes to the board
+  (also with `PERF_GROUP=assignee` when swimlanes are touched), and run
+  `E2E_PERF=1 npx playwright test e2e/perf.spec.ts`.

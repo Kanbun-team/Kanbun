@@ -22,6 +22,7 @@
 - Boards, columns and cards with drag and drop that works with a mouse, on touch screens (long-press) and with the keyboard (Space, arrows), with screen-reader announcements. Every card also has a "Move to" action.
 - Search everything with Cmd/Ctrl+K: boards, card titles, descriptions and comments (SQLite FTS5 or PostgreSQL full-text search), plus quick commands.
 - Board, list and calendar views, saved filters shared with the board, and a "My tasks" page grouped into overdue, today, upcoming and done this week.
+- Swimlanes: group the board into rows by assignee, priority or tag (`?group=` in the URL). Drag a card, or move it with the keyboard (Shift+Up/Down while moving), into another lane to change its assignee, priority or tag. A card with several assignees or tags is moved from the first lane it belongs to and shows a read-only copy in the others. WIP limits still count the whole column.
 - Card history: moves, edits, assignees, tags and dependencies in one timeline with comments; @mention autocomplete; searchable pickers.
 - Board insights from the card history: cycle time (median and 85th percentile, with its distribution), throughput per week, a cumulative flow chart over 30 or 90 days and aging work in progress, each chart also readable as a table. Cards that have sat in a column much longer than usual for that board get a quiet hourglass on the board.
 - Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).

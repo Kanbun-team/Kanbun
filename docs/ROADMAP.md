@@ -94,13 +94,13 @@ Closed in v1.2.0: S3 temporary credentials and IAM roles, MinIO in CI, idempoten
 
 Closed in v1.3.0: French, Spanish, Brazilian Portuguese, Dutch, Czech and Ukrainian, only the current language sent to the browser, and server-side image thumbnails.
 
-## Phase 6: Flow (v1.4)
+## Phase 6: Flow (v1.4): done
 
 Goal: help a team see how work moves and spend less time on bookkeeping, without turning the board into a project-management suite.
 
 1. **Board insights.** Done: `/tasks/<id>/insights`, linked from the board header and the command palette. Cycle time, throughput per week, a cumulative flow chart and aging work in progress, computed from the card history the board already keeps. Readable as tables too, in both themes and at 390px.
 2. **Card age on the board.** Done: an hourglass with the days on cards that have been in a work column longer than 85% of the cards that left it in the last 90 days (at least 3 days, with 5 or more of them), said in the card's accessible name.
-3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes.
+3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes. Done: a "Lanes" menu and `?group=` in the URL, collapsible lanes with counts, "No assignee" and "No tag" lanes, moves that change the grouped field (optimistic, queued offline), Shift+Up/Down while moving, WIP limits across lanes. A card with several assignees or tags is moved from its first lane and shown as a read-only copy in the others (rules in `src/lib/swimlanes.ts`).
 4. **Simple automations.** Done: per-board rules in board settings, listed in plain language. "When a card enters a column" (from any move, a new card, a template or a schedule) assigns or unassigns, adds or removes a tag, sets the priority, sets or clears the deadline and completes the checklist, inside the same transaction as the move; "when the deadline passes" (a background job, once per card and deadline) moves or tags. Every rule run is in the card history under the rule's name and can be undone from the toast or the history; a depth guard keeps rules from looping. Read-only in the REST API, part of board exports and the board trash.
 
 ## Quality bar for every release
