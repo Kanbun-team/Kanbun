@@ -35,6 +35,7 @@
 - Notifications for assignments, @mentions, blocked cards and watched cards and boards, each set to in-app, in-app + email (optional SMTP) or off, with an optional daily digest.
 - Trash with undo: deleted cards, columns and boards can be restored for 30 days.
 - Card templates (title, description, priority, tags, checklist) and repeating cards ("Every Monday", "Monthly on the 1st") per board.
+- Simple automations per board, written in plain language: "When a card enters Done: mark the checklist done, remove tag Blocked", or "When a card's deadline passes: move to Overdue". Rules can assign or unassign, add or remove a tag, set the priority, set or clear the deadline (today + N days) and complete the checklist. Every change shows in the card history under the rule's name and can be undone.
 - REST API with personal access tokens (read or read and write, optional expiry), an OpenAPI 3.1 description, and signed outgoing webhooks per board. See [docs/API.md](docs/API.md).
 - First-run setup in the browser and built-in board templates (Simple, Software, Personal).
 - Deactivate users instead of deleting them: they can no longer sign in, but their work stays.

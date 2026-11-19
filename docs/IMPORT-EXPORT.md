@@ -25,7 +25,7 @@ Attachments, custom fields, power-ups, stickers and votes are not imported.
 
 ### From a Kanbun export
 
-Any Kanbun JSON export (a single board, or the full admin export) can be imported. Each board in the file becomes a new board. Members, tags, columns, cards, checklists, comments, blockers and card templates are recreated. People are matched by username: comments by users who exist keep their author, others are posted by you with an "Originally by" line. If the file has card history (exported "with card history"), it is restored too; otherwise each card gets a "created" entry. Attachment files are not part of exports (use the backup for those).
+Any Kanbun JSON export (a single board, or the full admin export) can be imported. Each board in the file becomes a new board. Members, tags, columns, cards, checklists, comments, blockers, card templates and automation rules are recreated. People are matched by username: comments by users who exist keep their author, others are posted by you with an "Originally by" line. If the file has card history (exported "with card history"), it is restored too; otherwise each card gets a "created" entry. Attachment files are not part of exports (use the backup for those).
 
 ## Importing cards from CSV
 
@@ -75,6 +75,16 @@ Cards are added at the end of their columns. A CSV import holds at most 5000 row
       "templates": [
         { "name": "Bug", "title": "Bug: ", "description": null, "priority": "high", "tags": ["design"], "checklist": ["Reproduce"] }
       ],
+      "automations": [
+        {
+          "name": "Done cleanup",
+          "enabled": true,
+          "trigger": "cardEntersColumn",
+          "column": "Done",
+          "actions": [{ "type": "completeChecklist" }, { "type": "removeTag", "tag": "design" }, { "type": "assign", "users": ["marta"] }]
+        },
+        { "name": "Overdue", "enabled": true, "trigger": "deadlinePassed", "column": null, "actions": [{ "type": "moveToColumn", "column": "To do" }] }
+      ],
       "columns": [
         {
           "name": "To do",
@@ -112,6 +122,7 @@ Notes:
 - Card `id`s only link `blocks` (the cards this card blocks) inside the file. Importing creates new ids.
 - Dates are ISO 8601 in UTC; `deadline` and checklist `dueDate` are calendar dates (`YYYY-MM-DD`).
 - `activity` is only present in exports "with card history". `attachments` lists metadata only.
+- `automations` (added in Kanbun 1.4, still version 1: files without it import as before) name their column, tags (`tag`) and people (`users`, usernames) instead of ids; the other actions are as in the REST API (docs/API.md). On import, names are matched on the new board (people only if they are members of it); actions that do not resolve, and action types this Kanbun does not know, are left out, and a rule left without its column or any action is skipped.
 - A future incompatible change gets a new `version`. Kanbun refuses versions it does not know instead of guessing.
 
 ## Backup and restore

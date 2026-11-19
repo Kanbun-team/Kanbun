@@ -101,7 +101,7 @@ Goal: help a team see how work moves and spend less time on bookkeeping, without
 1. **Board insights.** Cycle time, throughput per week, a cumulative flow chart and aging work in progress, computed from the card history the board already keeps. Readable as tables too, in both themes and at 390px.
 2. **Card age on the board.** A quiet marker on cards that have sat in one column much longer than usual for that board.
 3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes.
-4. **Simple automations.** Per-board rules of the form "when a card enters a column, set or clear a field" (assignee, tag, priority, deadline, mark checklist done), and "when the deadline passes, move or tag". Every rule run is in the card history and can be undone.
+4. **Simple automations.** Done: per-board rules in board settings, listed in plain language. "When a card enters a column" (from any move, a new card, a template or a schedule) assigns or unassigns, adds or removes a tag, sets the priority, sets or clears the deadline and completes the checklist, inside the same transaction as the move; "when the deadline passes" (a background job, once per card and deadline) moves or tags. Every rule run is in the card history under the rule's name and can be undone from the toast or the history; a depth guard keeps rules from looping. Read-only in the REST API, part of board exports and the board trash.
 
 ## Quality bar for every release
 
