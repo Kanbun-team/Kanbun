@@ -76,7 +76,10 @@ export interface OutboxEntry {
 /** Temporary card id to the id the server gave it. */
 export type IdMap = Record<string, string>;
 
-export type RunResult = { ok: true; createdIds?: string[] } | { ok: false; error: string };
+/** `automation`: rules the edit set off (see useRuleUndo), when sent live. */
+export type RunResult =
+  | { ok: true; createdIds?: string[]; automation?: { runId: string; ruleName: string }[] }
+  | { ok: false; error: string };
 
 export function isTempId(id: string): boolean {
   return id.startsWith(TEMP_PREFIX);

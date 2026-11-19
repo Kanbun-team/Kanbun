@@ -10,6 +10,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 - Board insights (`/tasks/<id>/insights`, from the board header or the command palette): cycle time as median and 85th percentile with a distribution, throughput per week over 12 weeks, a cumulative flow chart over 30 or 90 days, aging work in progress and the usual time per column. Computed from the card history; the page says where the history starts and how many cards lack the start of theirs. Charts are hand-written SVG with a table and an accessible summary each, in both themes and at 390px. Same access as the board.
 - Cards that have been in a work column longer than usual for that board (longer than 85% of the cards that left it in the last 90 days, and at least 3 days) show a quiet hourglass with the number of days; the card's accessible name and tooltip say it in words.
+- Simple automations per board (board settings, **Automations**, for board owners and admins). A rule reads as one sentence, "When a card enters Done: mark the checklist done, remove tag Blocked":
+  - **When a card enters a column**, by any move (drag, keyboard, Move to, command palette, REST API, an edit made offline) or because it was created there (also from a template, a schedule or a checklist item): assign people, remove all assignees, add or remove a tag, set the priority, set the deadline to today + N days or clear it, mark the checklist done. The rule runs on the server in the same transaction as the move.
+  - **When a card's deadline passes** (checked every five minutes): move the card to a column, add a tag. Each rule runs once per card and deadline, also with several instances; cards in the last column and cards that were overdue before the rule existed are left alone.
+  - Every change appears in the card history under the rule's name ("Rule “Done cleanup” added the tag Blocked") and can be undone: from the toast after your move, or from the card history. Undo leaves alone what someone changed by hand since.
+  - Rules can not loop: a rule's own move sets off the next column's rules once, and no rule runs twice in a chain.
+  - Live updates, notifications and webhooks (`card.updated`, `card.moved`, with an `automation` field) work as for a person's change. Adding, changing and deleting rules is in the audit log.
+  - `GET /api/v1/boards/{boardId}/automations` lists a board's rules. Board JSON exports include them (by column, tag and user name, still format version 1), and importing a board recreates them. Deleting a board keeps its rules in the trash snapshot.
 
 ### Changed
 

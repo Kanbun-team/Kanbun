@@ -11,6 +11,7 @@ import { publishBoard } from "@/lib/realtime";
 import { emitBoardEvent } from "@/server/webhooks";
 import { requireUser } from "@/auth";
 import { notifySubtaskAssigned } from "@/server/watchers";
+import { publishRuleRuns, runEnterColumnRules } from "@/server/automations";
 
 // Checklists 2.0: per-item assignee and due date, reordering and turning an
 // item into a card of its own. Adding, ticking, renaming and deleting items
@@ -158,10 +159,13 @@ export async function convertSubtaskToCardAction(subtaskId: string) {
         ],
         tx
       );
-      return created;
+      // A new card in the parent's column: that column's rules run.
+      const runs = await runEnterColumnRules(tx, { cardId: created.id, boardId, columnId: parent.columnId, actorId: access.userId });
+      return { ...created, runs };
     });
     refresh(boardId, parent.id);
     emitBoardEvent(boardId, "card.created", { cardId: card.id, actorId: access.userId });
+    await publishRuleRuns(card.runs);
     return { cardId: card.id, boardId };
   });
 }

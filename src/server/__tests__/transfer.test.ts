@@ -100,6 +100,47 @@ describe("board import and export", () => {
     );
   });
 
+  it("carries automation rules through export and import by name", async () => {
+    const board = exportBoardSchema.parse({
+      name: "Rules",
+      members: [{ username: "marta", role: "member" }],
+      tags: [{ name: "Blocked", color: "#b4321f" }],
+      columns: [{ name: "Doing" }, { name: "Done" }],
+      automations: [
+        {
+          name: "Done cleanup",
+          trigger: "cardEntersColumn",
+          column: "Done",
+          actions: [
+            { type: "completeChecklist" },
+            { type: "removeTag", tag: "Blocked" },
+            { type: "assign", users: ["marta", "ghost_user"] },
+            { type: "fromTheFuture" },
+          ],
+        },
+        { name: "Overdue", enabled: false, trigger: "deadlinePassed", actions: [{ type: "moveToColumn", column: "Doing" }] },
+        { name: "Lost", trigger: "cardEntersColumn", column: "Nowhere", actions: [{ type: "completeChecklist" }] },
+      ],
+    });
+    const [imported] = await importBoards([board], admin, originallyBy);
+    const rules = await holder.db.automationRule.findMany({ where: { boardId: imported.boardId }, orderBy: { createdAt: "asc" } });
+    expect(rules.map((r) => r.name)).toEqual(["Done cleanup", "Overdue"]);
+
+    const exported = await exportBoard(imported.boardId);
+    expect(exported!.boards[0].automations).toEqual([
+      {
+        name: "Done cleanup",
+        enabled: true,
+        trigger: "cardEntersColumn",
+        column: "Done",
+        actions: [{ type: "completeChecklist" }, { type: "removeTag", tag: "Blocked" }, { type: "assign", users: ["marta"] }],
+      },
+      { name: "Overdue", enabled: false, trigger: "deadlinePassed", column: null, actions: [{ type: "moveToColumn", column: "Doing" }] },
+    ]);
+    // Files from before automations existed still import.
+    expect(exportBoardSchema.parse({ name: "Old", columns: [] }).automations).toEqual([]);
+  });
+
   it("exports cards as CSV that the CSV import reads back", async () => {
     const board = await holder.db.board.findFirstOrThrow({ where: { name: "Trello launch plan" } });
     const data = await exportBoard(board.id);

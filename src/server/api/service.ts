@@ -17,7 +17,9 @@ import { trashCard, trashColumn } from "@/server/trash";
 import { changedFields, emitBoardEvent, emitColumnCardsDeleted } from "@/server/webhooks";
 import { ApiError, notFound, type ApiContext, type PageParams } from "./http";
 import { CommentKeyError, createCommentOnce, parseClientKey } from "@/server/comments";
+import { publishRuleRuns, runEnterColumnRules, type RuleRun } from "@/server/automations";
 import {
+  automationJson,
   boardJson,
   cardInclude,
   cardJson,
@@ -94,6 +96,13 @@ export async function listTags(ctx: ApiContext, boardId: string) {
   await access(ctx, boardId);
   const tags = await prisma.boardTag.findMany({ where: { boardId }, orderBy: { position: "asc" } });
   return { data: tags.map(tagJson) };
+}
+
+/** Automation rules, read-only (they are managed in board settings). */
+export async function listAutomations(ctx: ApiContext, boardId: string) {
+  await access(ctx, boardId);
+  const rules = await prisma.automationRule.findMany({ where: { boardId }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  return { data: rules.map(automationJson) };
 }
 
 const columnCreateSchema = z.object({
@@ -280,6 +289,7 @@ export async function createCard(ctx: ApiContext, boardId: string, body: unknown
   const refs = await checkRefs(boardId, data.assigneeIds, data.tagIds);
   const userId = ctx.user.id;
 
+  const runs: RuleRun[] = [];
   const card = await prisma.$transaction(async (tx) => {
     const created = await tx.taskCard.create({
       data: {
@@ -301,6 +311,7 @@ export async function createCard(ctx: ApiContext, boardId: string, body: unknown
       data: { cardId: created.id, cardTitle: created.title, boardId, toColumnName: col.name, userId },
     });
     await logActivity({ cardId: created.id, boardId, actorId: userId, type: "created", data: { column: col.name, columnId: data.columnId } }, tx);
+    runs.push(...(await runEnterColumnRules(tx, { cardId: created.id, boardId, columnId: data.columnId, actorId: userId })));
     return created;
   });
 
@@ -311,6 +322,7 @@ export async function createCard(ctx: ApiContext, boardId: string, body: unknown
   }
   refresh(boardId);
   emitBoardEvent(boardId, "card.created", { cardId: card.id, actorId: userId });
+  await publishRuleRuns(runs);
   return cardJson(await prisma.taskCard.findUniqueOrThrow({ where: { id: card.id }, include: cardInclude }));
 }
 
@@ -380,6 +392,7 @@ export async function updateCard(ctx: ApiContext, cardId: string, body: unknown)
   const moving = toColumn !== null || data.position !== undefined;
   if (toColumn) activity.push({ ...base, type: "moved", data: { from: fromColumn.name, to: toColumn.name, fromId: card.columnId, toId: toColumn.id } });
 
+  const runs: RuleRun[] = [];
   await prisma.$transaction(async (tx) => {
     if (Object.keys(fields).length) await tx.taskCard.update({ where: { id: cardId }, data: fields });
     if (dropUsers.length) await tx.taskCardAssignee.deleteMany({ where: { cardId, userId: { in: dropUsers } } });
@@ -400,6 +413,8 @@ export async function updateCard(ctx: ApiContext, cardId: string, body: unknown)
       await tx.taskCard.update({ where: { id: cardId }, data: { updatedAt: new Date() } });
     }
     await logActivity(activity, tx);
+    // After the request's own changes, so the rules see the card as sent.
+    if (toColumn) runs.push(...(await runEnterColumnRules(tx, { cardId, boardId, columnId: toColumn.id, actorId: userId })));
   });
 
   const title = (fields.title as string | undefined) ?? card.title;
@@ -424,6 +439,7 @@ export async function updateCard(ctx: ApiContext, cardId: string, body: unknown)
       },
     });
   }
+  await publishRuleRuns(runs);
   return cardJson(await prisma.taskCard.findUniqueOrThrow({ where: { id: cardId }, include: cardInclude }));
 }
 

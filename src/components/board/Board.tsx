@@ -50,6 +50,7 @@ import type { BoardCardFallback } from "@/components/card/OfflineCardView";
 import { createCardFromTemplateAction, saveCardAsTemplateAction } from "@/server/template-actions";
 import { useUi } from "@/components/ui/UiProvider";
 import { useUndo } from "@/components/ui/useUndo";
+import { useRuleUndo } from "@/components/ui/useRuleUndo";
 import { buttonClass } from "@/components/ui/button";
 import CardFace from "./CardFace";
 import Column, { type ColumnHandlers } from "./Column";
@@ -300,6 +301,7 @@ export default function Board({
   const router = useRouter();
   const ui = useUi();
   const offerUndo = useUndo();
+  const offerRuleUndo = useRuleUndo();
   const tr = (key: Parameters<typeof t>[0], vars: Record<string, string | number> = {}) =>
     Object.entries(vars).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), t(key, locale));
 
@@ -471,6 +473,8 @@ export default function Board({
   async function moveCard(card: CardDTO, toColumnId: string, position: number, announce = true) {
     setColumns((prev) => moveCardLocally(prev, card.id, toColumnId, position));
     const result = await offline.run({ kind: "move", cardId: card.id, toColumnId, position }, card.title);
+    // Rules that ran on the move get the toast, with Undo for their changes.
+    if (result.ok && offerRuleUndo(result.automation)) return;
     if (result.ok && announce) {
       const column = columns.find((c) => c.id === toColumnId);
       if (column) ui.toast({ message: tr("cardMovedToast", { column: column.name }) });
@@ -523,6 +527,7 @@ export default function Board({
       if (titles.length === 0) return false;
       const tempIds = titles.map(() => newId(TEMP_PREFIX));
       const result = await offline.run({ kind: "addCards", columnId: column.id, titles, tempIds }, titles.join(", "));
+      if (result.ok && offerRuleUndo(result.automation)) return result.ok;
       if (result.ok && titles.length > 1) ui.toast({ message: tn("cardsAdded", titles.length, locale) });
       return result.ok;
     },
@@ -530,7 +535,9 @@ export default function Board({
       if (!offline.guard()) return;
       const result = ui.report(await createCardFromTemplateAction({ templateId: template.id, columnId: column.id }));
       if (result.ok) markLocalCards([result.data.cardId]);
-      if (result.ok) ui.toast({ message: tr("cardFromTemplateToast", { name: template.name, column: column.name }) });
+      if (result.ok && !offerRuleUndo(result.data.automation)) {
+        ui.toast({ message: tr("cardFromTemplateToast", { name: template.name, column: column.name }) });
+      }
       router.refresh();
     },
     setAdding: setAddingColumnId,
@@ -650,7 +657,10 @@ export default function Board({
     }
     finishDrag();
     if (column.id !== start.columnId || index !== start.index) {
-      offline.run({ kind: "move", cardId: id, toColumnId: column.id, position: index }, titleOf(id));
+      // Drops are silent, unless rules ran: their toast offers Undo.
+      void offline
+        .run({ kind: "move", cardId: id, toColumnId: column.id, position: index }, titleOf(id))
+        .then((result) => offerRuleUndo(result.automation));
     }
   }
 

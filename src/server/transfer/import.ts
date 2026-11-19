@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db-local";
 import { PALETTE } from "@/lib/palette";
 import type { ImportBoard } from "@/lib/transfer/format";
 import type { CsvPlan } from "@/lib/transfer/csv-import";
+import { automationFromExport } from "@/lib/automations";
 
 // Writes imported boards and CSV rows. Every import runs in one transaction:
 // a file either lands completely or not at all. Server-only.
@@ -232,6 +233,38 @@ export async function writeBoard(
         priority: tpl.priority,
         tagIds: JSON.stringify(tpl.tags.map((n) => tagIds.get(tagKey(n))).filter(Boolean)),
         checklist: JSON.stringify(tpl.checklist.map((s) => clip(s, 500))),
+        createdById: importer.id,
+      },
+    });
+  }
+
+  // Automation rules: by column, tag and member name on the new board.
+  const columnIdByName = new Map<string, string>();
+  for (const col of await tx.boardColumn.findMany({ where: { boardId }, orderBy: { position: "asc" } })) {
+    if (!columnIdByName.has(col.name.toLowerCase())) columnIdByName.set(col.name.toLowerCase(), col.id);
+  }
+  for (const exp of board.automations) {
+    const rule = automationFromExport(
+      { ...exp, column: exp.column ?? null },
+      {
+        column: (name) => columnIdByName.get(name.toLowerCase()),
+        tag: (name) => tagIds.get(tagKey(name)),
+        // Only people who are members of the imported board anyway.
+        user: (username) => {
+          const user = users.get(username.toLowerCase());
+          return user?.active && memberRoles.has(user.id) ? user.id : undefined;
+        },
+      }
+    );
+    if (!rule) continue;
+    await tx.automationRule.create({
+      data: {
+        boardId,
+        name: rule.name,
+        trigger: rule.trigger,
+        columnId: rule.columnId,
+        actions: JSON.stringify(rule.actions),
+        enabled: rule.enabled,
         createdById: importer.id,
       },
     });

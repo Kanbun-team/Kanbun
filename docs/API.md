@@ -33,10 +33,31 @@ The API never reads the session cookie, so it is not exposed to cross-site reque
 | GET, PATCH, DELETE | `/cards/{cardId}` | Read, change or move, delete to the trash |
 | GET, POST | `/cards/{cardId}/comments` | List comments (oldest first, paginated), add one |
 | GET | `/boards/{boardId}/tags` | Tags of a board |
+| GET | `/boards/{boardId}/automations` | Automation rules of a board (read-only) |
 
 Card filters on `GET /boards/{boardId}/cards`: `column` (column id), `assignee` (user id or username), `tag` (tag id or exact name), `updatedSince` (ISO 8601 date-time).
 
-Changes made through the API behave like the same change in the browser: card history, watchers and notifications, live updates on open boards, the trash (deleted cards and columns can be restored for 30 days) and webhooks.
+Changes made through the API behave like the same change in the browser: card history, watchers and notifications, live updates on open boards, the trash (deleted cards and columns can be restored for 30 days) and webhooks. That includes automation rules: creating a card in a column, or moving one there with `PATCH /cards/{cardId}`, runs that column's rules in the same request, and the card in the response already shows what they changed.
+
+### Automation rules
+
+`GET /boards/{boardId}/automations` returns `{ "data": [ ... ] }` with every rule of the board, oldest first (the order they run in). Rules are managed in board settings by owners and admins; the API only reads them.
+
+```json
+{
+  "id": "cm...",
+  "boardId": "cm...",
+  "name": "Done cleanup",
+  "trigger": "cardEntersColumn",
+  "columnId": "cm...",
+  "actions": [{ "type": "completeChecklist" }, { "type": "removeTag", "tagId": "cm..." }],
+  "enabled": true,
+  "createdAt": "2026-11-19T10:00:00.000Z",
+  "updatedAt": "2026-11-19T10:00:00.000Z"
+}
+```
+
+`trigger` is `cardEntersColumn` (with `columnId`) or `deadlinePassed` (`columnId` is null). Actions: `assign` (`userIds`), `unassignAll`, `addTag` and `removeTag` (`tagId`), `setPriority` (`priority`), `setDeadline` (`days`: today, in UTC, plus that many days), `clearDeadline` and `completeChecklist` for column rules; `moveToColumn` (`columnId`) and `addTag` for deadline rules.
 
 ### Examples
 
@@ -141,11 +162,13 @@ Events:
 | Event | When |
 | --- | --- |
 | `card.created` | A card is created (in the board, from a template, from a checklist item, by a schedule or through the API) |
-| `card.updated` | Title, description, priority, deadline, assignees, tags or the position within its column change; `changes` lists which (`title`, `description`, `priority`, `deadline`, `assignees`, `tags`, `position`) |
+| `card.updated` | Title, description, priority, deadline, assignees, tags or the position within its column change, or an automation rule marks the checklist done; `changes` lists which (`title`, `description`, `priority`, `deadline`, `assignees`, `tags`, `position`, `checklist`) |
 | `card.moved` | A card is moved to another column; `from` and `to` name the columns. Reordering within a column is a `card.updated` with `position` in `changes` |
 | `card.deleted` | A card is moved to the trash, on its own or with its column. When its column was deleted, the payload has `reason: "column.deleted"` and `column` (`columnId`, `columnName`); one event is sent per card |
 | `comment.created` | Someone comments on a card; the payload has `comment` |
 | `ping` | The **Send test** button |
+
+Changes made by an automation rule send the same events as a person's change, with `automation` in the payload: `{ "ruleId": "cm...", "ruleName": "Done cleanup", "runId": "cm..." }`. `actor` is the person whose action set the rule off, or null for deadline rules (run by the server). A rule's changes come as their own `card.updated` (and `card.moved`, for a deadline rule's move) after the event of the action that set them off.
 
 Each delivery is a `POST` with a JSON body:
 
@@ -201,7 +224,7 @@ app.listen(3000);
 - Each attempt times out after 10 seconds. A 2xx response counts as delivered; redirects are not followed. Failed attempts are retried, 3 attempts in total: the second about 5 seconds after the first, the third about 30 seconds after the second. 4xx answers other than 408 and 429 are not retried. The **Send test** ping is tried once.
 - After 10 failed deliveries in a row the webhook is switched off. Turn it back on in board settings once the receiver is fixed.
 - Board settings list the last 20 finished deliveries per webhook, and any still waiting, with the result, status code, duration and attempts.
-- Adding and deleting webhooks is recorded in the audit log (`webhook.create`, `webhook.delete`).
+- Adding and deleting webhooks is recorded in the audit log (`webhook.create`, `webhook.delete`), and so are adding, changing (including switching on or off) and deleting automation rules (`automation.create`, `automation.update`, `automation.delete`).
 
 ### Allowed addresses
 

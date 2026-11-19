@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs build script without type declarations
@@ -44,11 +44,17 @@ describe("Postgres schema generation", () => {
     expect(readFileSync(join(root, "prisma", "postgres", "schema.prisma"), "utf8")).toBe(pg);
   });
 
-  it("the baseline creates every table (run npm run db:pg:baseline after schema changes)", () => {
-    const baseline = readFileSync(join(root, "prisma", "postgres", "migrations", BASELINE_NAME, "migration.sql"), "utf8");
+  it("the migrations create every table (run npm run db:pg:migration after schema changes)", () => {
+    const dir = join(root, "prisma", "postgres", "migrations");
+    const baseline = readFileSync(join(dir, BASELINE_NAME, "migration.sql"), "utf8");
+    // Tables added after the baseline come in their own migrations.
+    const all = readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => readFileSync(join(dir, d.name, "migration.sql"), "utf8"))
+      .join("\n");
     for (const block of modelBlocks(sqlite)) {
       const name = block.match(/^model\s+(\w+)/)?.[1];
-      if (name) expect(baseline, `CREATE TABLE "${name}"`).toContain(`CREATE TABLE "${name}"`);
+      if (name) expect(all, `CREATE TABLE "${name}"`).toContain(`CREATE TABLE "${name}"`);
     }
     expect(baseline).toContain('CREATE TABLE "CardSearch"');
   });

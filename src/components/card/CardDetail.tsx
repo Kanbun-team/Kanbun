@@ -24,7 +24,7 @@ import { CardPresence } from "@/components/presence/Presence";
 import CardWatchToggle from "@/components/card/CardWatchToggle";
 import { deleteCardAction } from "@/server/tasks-actions";
 import { parseMentions } from "@/lib/notifications";
-import { parseActivityData } from "@/lib/activity";
+import { activityRule, parseActivityData } from "@/lib/activity";
 import { FULL_LIMITS, toOfflineCard, type StoredCard } from "@/lib/offline-card";
 import CardOffline from "@/components/card/CardOffline";
 
@@ -133,6 +133,24 @@ export default async function CardDetail({
     createdAt: a.createdAt.toISOString(),
     actor: a.actor,
   }));
+  // Automation rule runs that can still be undone: their last history entry
+  // gets the Undo button.
+  const runIds = [...new Set(activity.map((a) => activityRule(a.data)?.runId).filter((id): id is string => !!id))];
+  const undoable = runIds.length
+    ? new Set(
+        (await prisma.automationRun.findMany({ where: { id: { in: runIds }, undoneAt: null }, select: { id: true } })).map(
+          (r) => r.id
+        )
+      )
+    : new Set<string>();
+  const lastOfRun = new Map(activity.flatMap((a) => {
+    const runId = activityRule(a.data)?.runId;
+    return runId && undoable.has(runId) ? [[runId, a.id] as const] : [];
+  }));
+  const timeline = activity.map((a) => {
+    const runId = activityRule(a.data)?.runId;
+    return runId && lastOfRun.get(runId) === a.id ? { ...a, undoRunId: runId } : a;
+  });
   const members = board.members.map((m) => m.user);
   // Stored on the device for offline reading (CardOffline).
   const offlineRecord: StoredCard = {
@@ -222,7 +240,7 @@ export default async function CardDetail({
                   author: c.author,
                   canDelete: c.authorId === me.id || canManage,
                 }))}
-                activity={activity}
+                activity={timeline}
                 members={board.members.map((m) => m.user)}
                 mentionable={mentionedUsers.map((u) => u.username)}
               />

@@ -14,7 +14,8 @@
     { "name": "Columns" },
     { "name": "Cards" },
     { "name": "Comments" },
-    { "name": "Tags" }
+    { "name": "Tags" },
+    { "name": "Automations" }
   ],
   "paths": {
     "/me": {
@@ -362,6 +363,33 @@
         }
       }
     },
+    "/boards/{boardId}/automations": {
+      "parameters": [{ "$ref": "#/components/parameters/BoardId" }],
+      "get": {
+        "tags": ["Automations"],
+        "operationId": "listAutomations",
+        "summary": "Automation rules of a board",
+        "description": "Read-only: rules are added and changed in the board settings by board owners and admins. Every board member can read them.",
+        "responses": {
+          "200": {
+            "description": "All rules, oldest first (the order they run in).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Automation" } } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
     "/openapi.json": {
       "get": {
         "tags": ["Account"],
@@ -539,6 +567,41 @@
           "boardId": { "type": "string" },
           "name": { "type": "string" },
           "color": { "type": "string" }
+        }
+      },
+      "Automation": {
+        "type": "object",
+        "required": ["id", "boardId", "name", "trigger", "columnId", "actions", "enabled", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "boardId": { "type": "string" },
+          "name": { "type": "string" },
+          "trigger": {
+            "type": "string",
+            "enum": ["cardEntersColumn", "deadlinePassed"],
+            "description": "cardEntersColumn: a card is moved into (or created in) `columnId`. deadlinePassed: the day of a card's deadline is over (checked every few minutes)."
+          },
+          "columnId": { "type": ["string", "null"], "description": "The column of a cardEntersColumn rule; null for deadlinePassed." },
+          "actions": { "type": "array", "items": { "$ref": "#/components/schemas/AutomationAction" } },
+          "enabled": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AutomationAction": {
+        "type": "object",
+        "required": ["type"],
+        "description": "What a rule does. cardEntersColumn rules use assign, unassignAll, addTag, removeTag, setPriority, setDeadline, clearDeadline and completeChecklist; deadlinePassed rules use moveToColumn and addTag.",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["assign", "unassignAll", "addTag", "removeTag", "setPriority", "setDeadline", "clearDeadline", "completeChecklist", "moveToColumn"]
+          },
+          "userIds": { "type": "array", "items": { "type": "string" }, "description": "assign: board members to add as assignees." },
+          "tagId": { "type": "string", "description": "addTag, removeTag." },
+          "priority": { "$ref": "#/components/schemas/Priority" },
+          "days": { "type": "integer", "minimum": 0, "maximum": 365, "description": "setDeadline: today (UTC) plus this many days." },
+          "columnId": { "type": "string", "description": "moveToColumn." }
         }
       },
       "Priority": { "type": "string", "enum": ["low", "normal", "high", "critical"] },

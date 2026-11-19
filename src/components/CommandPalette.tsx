@@ -42,6 +42,8 @@ import { addCardAction, moveCardAction, toggleAssigneeAction, updateCardAction }
 import { PRIORITIES, priorityLabel } from "@/lib/labels";
 import { markLocalCards } from "@/components/board/live-changes";
 import type { ActionResult } from "@/lib/action-result";
+import type { RuleRunNotice } from "@/lib/automations";
+import { useRuleUndo } from "@/components/ui/useRuleUndo";
 
 // Global search and command palette (Cmd/Ctrl+K). Boards and cards come from
 // the server (FTS5, see src/server/search-actions.ts); actions are filtered
@@ -214,6 +216,7 @@ function PaletteBody({ locale, onClose, onShortcuts }: { locale: Locale; onClose
   const router = useRouter();
   const pathname = usePathname();
   const ui = useUi();
+  const offerRuleUndo = useRuleUndo();
   const { report } = ui;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ query: string; data: SearchResults } | null>(null);
@@ -280,7 +283,9 @@ function PaletteBody({ locale, onClose, onShortcuts }: { locale: Locale; onClose
     setBusy(false);
     if (!result.ok) return;
     onClose();
-    ui.toast({ message });
+    // A move can set off automation rules: their toast offers Undo.
+    const notices = (result.data as { automation?: RuleRunNotice[] } | undefined)?.automation;
+    if (!offerRuleUndo(notices)) ui.toast({ message });
     router.refresh();
   }
 

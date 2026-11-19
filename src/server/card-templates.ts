@@ -5,6 +5,7 @@ import type { CardTemplate, Prisma, PrismaClient } from "@prisma/client";
 import { logActivity } from "@/server/activity";
 import { parseStringArray } from "@/lib/card-templates";
 import { watchCard } from "@/server/watchers";
+import { runEnterColumnRules, type RuleRun } from "@/server/automations";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -12,6 +13,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * Creates a card at the bottom of `column` with the template's title,
  * description, priority, tags (those still on the board) and checklist.
  * Run it inside a transaction so the card and its history land together.
+ * The column's automation rules run too; publish `runs` after the commit.
  */
 export async function createCardFromTemplate(
   tx: Db,
@@ -26,7 +28,7 @@ export async function createCardFromTemplate(
     actorId: string | null;
     source: "template" | "schedule";
   }
-): Promise<{ id: string; title: string }> {
+): Promise<{ id: string; title: string; runs: RuleRun[] }> {
   const wantedTags = parseStringArray(template.tagIds);
   const tags = wantedTags.length
     ? await tx.boardTag.findMany({ where: { id: { in: wantedTags }, boardId: column.boardId }, select: { id: true } })
@@ -64,5 +66,12 @@ export async function createCardFromTemplate(
     },
     tx
   );
-  return { id: card.id, title: card.title };
+  // Like a card added by hand to that column: its rules run.
+  const runs = await runEnterColumnRules(tx as Prisma.TransactionClient, {
+    cardId: card.id,
+    boardId: column.boardId,
+    columnId: column.id,
+    actorId,
+  });
+  return { id: card.id, title: card.title, runs };
 }
