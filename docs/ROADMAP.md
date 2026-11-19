@@ -92,6 +92,17 @@ Closed in v1.1.0: card details readable offline, a durable webhook queue, S3-com
 
 Closed in v1.2.0: S3 temporary credentials and IAM roles, MinIO in CI, idempotent comments, offline board counts, and clearing a filter on a 500-card board in 64ms at 2x CPU throttling. Nothing from the earlier lists is still open.
 
+Closed in v1.3.0: French, Spanish, Brazilian Portuguese, Dutch, Czech and Ukrainian, only the current language sent to the browser, and server-side image thumbnails.
+
+## Phase 6: Flow (v1.4)
+
+Goal: help a team see how work moves and spend less time on bookkeeping, without turning the board into a project-management suite.
+
+1. **Board insights.** Cycle time, throughput per week, a cumulative flow chart and aging work in progress, computed from the card history the board already keeps. Readable as tables too, in both themes and at 390px.
+2. **Card age on the board.** A quiet marker on cards that have sat in one column much longer than usual for that board.
+3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes.
+4. **Simple automations.** Per-board rules of the form "when a card enters a column, set or clear a field" (assignee, tag, priority, deadline, mark checklist done), and "when the deadline passes, move or tag". Every rule run is in the card history and can be undone.
+
 ## Quality bar for every release
 
 - Lint, typecheck, unit tests, Playwright e2e with `axe`, and i18n completeness pass in CI.
