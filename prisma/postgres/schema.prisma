@@ -67,6 +67,7 @@ model User {
   webhooks          Webhook[]            @relation("WebhookCreator")
   identities        UserIdentity[]
   recoveryCodes     TotpRecoveryCode[]
+  automationRules   AutomationRule[]     @relation("AutomationRuleCreator")
 }
 
 // A single sign-on (OIDC) identity linked to a user: provider is the Auth.js
@@ -123,6 +124,7 @@ model Board {
   cardTemplates CardTemplate[]
   cardRecurrences CardRecurrence[]
   webhooks Webhook[]
+  automationRules AutomationRule[]
 }
 
 model BoardCategory {
@@ -611,4 +613,50 @@ model WebhookDelivery {
 
   @@index([webhookId, createdAt])
   @@index([status, nextAttemptAt])
+}
+
+// A board automation rule (see src/lib/automations.ts), managed by board
+// owners and admins. `trigger` is "cardEntersColumn" (with `columnId`) or
+// "deadlinePassed"; `actions` is a JSON array of actions. Column, tag and user
+// ids (here and inside `actions`) are not foreign keys: a rule whose column
+// was deleted stops firing and works again when the column is restored from
+// the trash. Part of the board trash snapshot and the board export.
+model AutomationRule {
+  id          String   @id @default(cuid())
+  boardId     String
+  name        String
+  trigger     String
+  columnId    String?
+  actions     String   @default("[]")
+  enabled     Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  board     Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("AutomationRuleCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
+  @@index([trigger, enabled])
+}
+
+// One run of an automation rule on a card. `changes` is the JSON list of what
+// the rule changed, which is what "Undo" reverts (`undoneAt` is set then).
+// `dedupeKey` is set for deadline runs ("<ruleId>:<cardId>:<deadline>"), so
+// each deadline is handled once, even with several instances. No relations,
+// like CardActivity: the row outlives the rule, and the card in the trash.
+model AutomationRun {
+  id        String    @id @default(cuid())
+  ruleId    String
+  ruleName  String
+  boardId   String
+  cardId    String
+  trigger   String
+  changes   String    @default("[]")
+  dedupeKey String?   @unique
+  actorId   String?
+  undoneAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([cardId, createdAt])
 }

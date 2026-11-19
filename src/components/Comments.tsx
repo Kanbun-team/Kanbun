@@ -9,7 +9,8 @@ import RelativeTime from "./ui/RelativeTime";
 import { addCommentAction, deleteCommentAction } from "@/server/tasks-actions";
 import { t, type Locale } from "@/lib/i18n";
 import { renderMarkdownToHtml } from "@/lib/markdown";
-import { describeActivity } from "@/lib/activity";
+import { activityRule, describeActivity } from "@/lib/activity";
+import { undoAutomationRunAction } from "@/server/automation-actions";
 import type { MentionCandidate } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 import { useUi } from "./ui/UiProvider";
@@ -34,6 +35,8 @@ export interface ActivityItem {
   createdAt: string;
   /** Null when the actor's account was deleted. */
   actor: { username: string; displayName: string | null } | null;
+  /** On the last entry of an automation rule run that can still be undone. */
+  undoRunId?: string;
 }
 
 type TimelineEntry = ({ kind: "comment" } & CommentItem) | ({ kind: "activity" } & ActivityItem);
@@ -76,6 +79,16 @@ export default function Comments({
     ...comments.map((c) => ({ kind: "comment" as const, ...c })),
     ...(commentsOnly ? [] : activity.map((a) => ({ kind: "activity" as const, ...a }))),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  function undoRule(runId: string) {
+    if (!online) return;
+    startTransition(async () => {
+      if (ui.report(await undoAutomationRunAction(runId)).ok) {
+        ui.toast({ message: t("automationUndoneToast", locale) });
+        router.refresh();
+      }
+    });
+  }
 
   async function remove(commentId: string) {
     // Confirm first: state set inside an async transition commits only at its end.
@@ -123,7 +136,7 @@ export default function Comments({
         )}
         {entries.map((e) =>
           e.kind === "activity" ? (
-            <ActivityRow key={`a-${e.id}`} entry={e} locale={locale} />
+            <ActivityRow key={`a-${e.id}`} entry={e} locale={locale} onUndo={undoRule} />
           ) : (
             <CommentRow
               key={`c-${e.id}`}
@@ -177,9 +190,24 @@ export default function Comments({
   );
 }
 
-export function ActivityRow({ entry, locale }: { entry: ActivityItem; locale: Locale }) {
+export function ActivityRow({
+  entry,
+  locale,
+  onUndo,
+}: {
+  entry: ActivityItem;
+  locale: Locale;
+  /** Undo for automation rule runs (online only). */
+  onUndo?: (runId: string) => void;
+}) {
   const [before, after] = describeActivity(entry.type, entry.data, locale);
-  const actor = entry.actor ? entry.actor.displayName ?? entry.actor.username : t("deletedUser", locale);
+  // Changes made by an automation rule name the rule, not a person.
+  const rule = activityRule(entry.data);
+  const actor = rule
+    ? t("automationActor", locale).replace("{name}", rule.name)
+    : entry.actor
+      ? entry.actor.displayName ?? entry.actor.username
+      : t("deletedUser", locale);
   return (
     <li className="flex items-start gap-3 text-sm text-ink-muted">
       <span aria-hidden className="w-8 shrink-0 flex justify-center pt-1.5">
@@ -191,6 +219,19 @@ export function ActivityRow({ entry, locale }: { entry: ActivityItem; locale: Lo
         {after}
         <span aria-hidden> · </span>
         <RelativeTime iso={entry.createdAt} locale={locale} className="tabular-nums whitespace-nowrap" />
+        {onUndo && rule && entry.undoRunId && (
+          <>
+            {" "}
+            <button
+              type="button"
+              className="font-medium text-accent hover:underline min-h-6"
+              aria-label={t("automationUndoNamed", locale).replace("{name}", rule.name)}
+              onClick={() => onUndo(entry.undoRunId!)}
+            >
+              {t("undo", locale)}
+            </button>
+          </>
+        )}
       </p>
     </li>
   );

@@ -123,6 +123,17 @@ interface BoardSnapshot {
     createdById: string | null;
     createdAt: string;
   }[];
+  /** Added in v1.4. The record of past rule runs is not part of it. */
+  automations?: {
+    id: string;
+    name: string;
+    trigger: string;
+    columnId: string | null;
+    actions: string;
+    enabled: boolean;
+    createdById: string | null;
+    createdAt: string;
+  }[];
 }
 
 const cardInclude = {
@@ -238,6 +249,7 @@ async function purgeCardLeftovers(tx: Tx, cardIds: string[]): Promise<void> {
     if (gone.length === 0) continue;
     await tx.cardActivity.deleteMany({ where: { cardId: { in: gone } } });
     await tx.dueSoonNotice.deleteMany({ where: { cardId: { in: gone } } });
+    await tx.automationRun.deleteMany({ where: { cardId: { in: gone } } });
     await tx.notification.deleteMany({ where: { cardId: { in: gone } } });
   }
 }
@@ -340,6 +352,7 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         cardTemplates: true,
         cardRecurrences: true,
         webhooks: true,
+        automationRules: true,
         columns: {
           orderBy: { position: "asc" },
           include: { cards: { include: cardInclude, orderBy: { position: "asc" } } },
@@ -407,6 +420,16 @@ export async function trashBoard(boardId: string, userId: string): Promise<strin
         active: w.active,
         createdById: w.createdById,
         createdAt: w.createdAt.toISOString(),
+      })),
+      automations: board.automationRules.map((r) => ({
+        id: r.id,
+        name: r.name,
+        trigger: r.trigger,
+        columnId: r.columnId,
+        actions: r.actions,
+        enabled: r.enabled,
+        createdById: r.createdById,
+        createdAt: r.createdAt.toISOString(),
       })),
     };
     const item = await tx.trashItem.create({
@@ -616,6 +639,29 @@ async function restoreWebhooks(tx: Tx, b: BoardSnapshot) {
   }
 }
 
+async function restoreAutomations(tx: Tx, b: BoardSnapshot) {
+  const rules = b.automations ?? [];
+  const users = await existingIds(
+    rules.map((r) => r.createdById),
+    (ids) => tx.user.findMany({ where: { id: { in: ids } }, select: { id: true } })
+  );
+  for (const r of rules) {
+    await tx.automationRule.create({
+      data: {
+        id: r.id,
+        boardId: b.id,
+        name: r.name,
+        trigger: r.trigger,
+        columnId: r.columnId,
+        actions: r.actions,
+        enabled: r.enabled,
+        createdById: r.createdById && users.has(r.createdById) ? r.createdById : null,
+        createdAt: new Date(r.createdAt),
+      },
+    });
+  }
+}
+
 /** Restores a trash item and deletes it. Returns the board id it belongs to. */
 export async function restoreTrashItem(item: { id: string; kind: string; boardId: string; payload: string }): Promise<string> {
   return prisma.$transaction(async (tx) => {
@@ -699,6 +745,7 @@ export async function restoreTrashItem(item: { id: string; kind: string; boardId
       await restoreCards(tx, b.columns.flatMap((c) => c.cards), (card) => card.columnId);
       await restoreTemplates(tx, b);
       await restoreWebhooks(tx, b);
+      await restoreAutomations(tx, b);
     }
     await tx.trashItem.delete({ where: { id: item.id } });
     return boardId;

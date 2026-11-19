@@ -10,6 +10,7 @@ import { ActionError } from "@/lib/action-result";
 import { checklistFromText } from "@/lib/card-templates";
 import { nextOccurrence, toRule } from "@/lib/recurrence";
 import { createCardFromTemplate } from "@/server/card-templates";
+import { publishRuleRuns, runNotices } from "@/server/automations";
 import { emitBoardEvent } from "@/server/webhooks";
 import { notifyNewCards } from "@/server/watchers";
 
@@ -175,7 +176,8 @@ export async function createCardFromTemplateAction(input: { templateId: string; 
     revalidatePath(`/tasks/${column.boardId}`);
     publishBoard(column.boardId);
     emitBoardEvent(column.boardId, "card.created", { cardId: card.id, actorId: access.userId });
-    return { cardId: card.id };
+    await publishRuleRuns(card.runs);
+    return { cardId: card.id, automation: runNotices(card.runs) };
   });
 }
 

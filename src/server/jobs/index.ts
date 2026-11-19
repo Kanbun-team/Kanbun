@@ -41,6 +41,16 @@ const JOBS: Job[] = [
       await runWebhookQueue();
     },
   },
+  {
+    // Automations: "when a card's deadline passes" rules. Idempotent per
+    // rule, card and deadline (see runDeadlineRules).
+    name: "automation-deadlines",
+    everyMs: 5 * 60 * 1000,
+    run: async () => {
+      const { runDeadlineJob } = await import("./automation-deadlines");
+      await runDeadlineJob();
+    },
+  },
   // Recurring cards: due schedules create their card within a minute.
   { name: "recurring-cards", everyMs: 60_000, run: async () => void (await runRecurringCards()) },
   {

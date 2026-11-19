@@ -24,7 +24,7 @@ export async function runOutboxOp(op: OutboxOp): Promise<RunResult> {
   switch (op.kind) {
     case "move": {
       const r = await moveCardAction({ cardId: op.cardId, toColumnId: op.toColumnId, position: op.position });
-      return r.ok ? { ok: true } : r;
+      return r.ok ? { ok: true, automation: r.data.automation } : r;
     }
     case "update": {
       const fields: Record<string, string> = { cardId: op.cardId };
@@ -46,7 +46,7 @@ export async function runOutboxOp(op: OutboxOp): Promise<RunResult> {
     }
     case "addCards": {
       const r = await addCardAction(form({ columnId: op.columnId, title: op.titles.join("\n") }));
-      return r.ok ? { ok: true, createdIds: r.data.ids } : r;
+      return r.ok ? { ok: true, createdIds: r.data.ids, automation: r.data.automation } : r;
     }
     case "subtask": {
       const r = await toggleSubtaskAction(form({ subtaskId: op.subtaskId, done: op.done ? "1" : "0" }));

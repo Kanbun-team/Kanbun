@@ -1,4 +1,4 @@
-import { intlLocale, t, type DictKey, type Locale } from "@/lib/i18n";
+import { intlLocale, t, tn, type DictKey, type Locale } from "@/lib/i18n";
 import { priorityLabel } from "@/lib/labels";
 
 // Card activity: the shapes stored in CardActivity.data and how each entry is
@@ -24,6 +24,9 @@ export type ActivityData = {
   subtaskConverted: { title: string };
   attachmentAdded: { name: string };
   attachmentRemoved: { name: string };
+  checklistDone: { count: number };
+  /** Not `rule`: that key marks entries made by a rule (activityRule). */
+  automationUndone: { ruleName: string };
 };
 
 export type ActivityType = keyof ActivityData;
@@ -51,6 +54,9 @@ const TEMPLATES: Record<ActivityType, DictKey> = {
   subtaskConverted: "activitySubtaskConverted",
   attachmentAdded: "activityAttachmentAdded",
   attachmentRemoved: "activityAttachmentRemoved",
+  // Counted: describeActivity picks the plural form with tn().
+  checklistDone: "activityChecklistDone_other",
+  automationUndone: "activityAutomationUndone",
 };
 
 export function isActivityType(value: string): value is ActivityType {
@@ -143,14 +149,28 @@ export function describeActivity(
       case "subtaskConverted":
         values = { title: str(data, "title") };
         break;
+      case "automationUndone":
+        values = { rule: str(data, "ruleName") };
+        break;
       default:
         break;
     }
   }
-  const template = t(key, locale);
+  const template =
+    type === "checklistDone" ? tn("activityChecklistDone", Number(data.count) || 0, locale) : t(key, locale);
   const at = template.indexOf("{actor}");
   if (at === -1) return ["", " " + fill(template, values)];
   return [fill(template.slice(0, at), values), fill(template.slice(at + "{actor}".length), values)];
+}
+
+/**
+ * The rule that made a change, when an automation made it: its name is
+ * shown in place of the person ("Rule "Done cleanup" added tag Blocked").
+ */
+export function activityRule(data: Record<string, unknown>): { name: string; runId: string | null } | null {
+  return typeof data.rule === "string" && data.rule
+    ? { name: data.rule, runId: typeof data.runId === "string" ? data.runId : null }
+    : null;
 }
 
 /** The whole entry as plain text, e.g. for tests and screen reader labels. */

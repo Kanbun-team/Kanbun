@@ -18,6 +18,7 @@ import { changedFields, emitBoardEvent, emitColumnCardsDeleted } from "@/server/
 import { BOARD_TEMPLATE_IDS, boardTemplateContent } from "@/lib/board-templates";
 import { audit } from "@/server/audit";
 import { CommentKeyError, createCommentOnce, parseClientKey } from "@/server/comments";
+import { publishRuleRuns, runEnterColumnRules, runNotices, type RuleRun } from "@/server/automations";
 
 /** The signed-in user as an audit actor (only called on rare, audited actions). */
 async function auditActor() {
@@ -552,6 +553,7 @@ export async function addCardAction(formData: FormData) {
     });
     let position = (last?.position ?? -1) + 1;
     const created: { id: string; title: string }[] = [];
+    const runs: RuleRun[] = [];
     await prisma.$transaction(async (tx) => {
       for (const title of titles) {
         const card = await tx.taskCard.create({
@@ -566,13 +568,16 @@ export async function addCardAction(formData: FormData) {
           { cardId: card.id, boardId: col.boardId, actorId: user.id, type: "created", data: { column: col.name } },
           tx
         );
+        // A card created in a column "enters" it: that column's rules run.
+        runs.push(...(await runEnterColumnRules(tx, { cardId: card.id, boardId: col.boardId, columnId, actorId: user.id })));
       }
     });
     await notifyNewCards(col.boardId, created, { id: user.id, name: user.displayName ?? user.username });
     for (const c of created) emitBoardEvent(col.boardId, "card.created", { cardId: c.id, actorId: user.id });
+    await publishRuleRuns(runs);
     revalidatePath(`/tasks/${col.boardId}`);
     publishBoard(col.boardId);
-    return { count: titles.length, ids: created.map((c) => c.id) };
+    return { count: titles.length, ids: created.map((c) => c.id), automation: runNotices(runs) };
   });
 }
 
@@ -711,6 +716,7 @@ export async function moveCardAction(input: {
     if (!toCol || toCol.boardId !== card.column.boardId) throw new ActionError("forbidden");
     void access;
 
+    const runs: RuleRun[] = [];
     await prisma.$transaction(async (tx) => {
       if (card.columnId !== data.toColumnId) {
         const sameCol = await tx.taskCard.findMany({
@@ -749,6 +755,15 @@ export async function moveCardAction(input: {
             data: { from: card.column.name, to: toCol.name },
           },
           tx
+        );
+        // The rules of the column it entered, in the same transaction.
+        runs.push(
+          ...(await runEnterColumnRules(tx, {
+            cardId: data.cardId,
+            boardId: card.column.boardId,
+            columnId: data.toColumnId,
+            actorId: user.id,
+          }))
         );
       } else {
         const sameCol = await tx.taskCard.findMany({
@@ -789,6 +804,8 @@ export async function moveCardAction(input: {
     } else {
       emitBoardEvent(card.column.boardId, "card.updated", { cardId: data.cardId, actorId: user.id, extra: { changes: ["position"] } });
     }
+    await publishRuleRuns(runs);
+    return { automation: runNotices(runs) };
   });
 }
 

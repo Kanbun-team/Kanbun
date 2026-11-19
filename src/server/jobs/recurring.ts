@@ -11,6 +11,7 @@ import { publishBoard } from "@/lib/realtime";
 import { emitBoardEvent } from "@/server/webhooks";
 import { nextOccurrence, toRule } from "@/lib/recurrence";
 import { createCardFromTemplate } from "@/server/card-templates";
+import { publishRuleRuns } from "@/server/automations";
 
 const BATCH = 100;
 
@@ -37,24 +38,24 @@ export async function runRecurringCards(now: Date = new Date(), db: PrismaClient
       continue;
     }
     const next = nextOccurrence(rule, now);
-    const cardId = await db.$transaction(async (tx) => {
+    const card = await db.$transaction(async (tx) => {
       const claimed = await tx.cardRecurrence.updateMany({
         where: { id: r.id, active: true, nextRunAt: r.nextRunAt },
         data: { nextRunAt: next, lastRunAt: now },
       });
       if (claimed.count === 0) return null;
-      const card = await createCardFromTemplate(tx, {
+      return createCardFromTemplate(tx, {
         template: r.template!,
         column: r.column!,
         actorId: r.createdById,
         source: "schedule",
       });
-      return card.id;
     });
-    if (cardId) {
+    if (card) {
       created++;
       touched.add(r.boardId);
-      emitBoardEvent(r.boardId, "card.created", { cardId, actorId: r.createdById }, db);
+      emitBoardEvent(r.boardId, "card.created", { cardId: card.id, actorId: r.createdById }, db);
+      await publishRuleRuns(card.runs, db);
     }
   }
   for (const boardId of touched) publishBoard(boardId);

@@ -12,6 +12,8 @@ export type ActivityEntry = ActivityInput & {
   cardId: string;
   boardId: string;
   actorId: string | null;
+  /** Set when an automation rule made the change (stored in `data`). */
+  rule?: { name: string; runId: string };
 };
 
 export async function logActivity(entries: ActivityEntry | ActivityEntry[], db: Db = prisma): Promise<void> {
@@ -22,7 +24,7 @@ export async function logActivity(entries: ActivityEntry | ActivityEntry[], db: 
       cardId: e.cardId,
       boardId: e.boardId,
       type: e.type,
-      data: JSON.stringify(e.data),
+      data: JSON.stringify(e.rule ? { ...e.data, rule: e.rule.name, runId: e.rule.runId } : e.data),
       actorId: e.actorId,
     })),
   });

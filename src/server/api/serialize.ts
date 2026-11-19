@@ -2,6 +2,7 @@
 // with the schemas in docs/openapi.json.
 
 import type { Prisma } from "@prisma/client";
+import { parseActions } from "@/lib/automations";
 
 export const userRefSelect = { id: true, username: true, displayName: true } satisfies Prisma.UserSelect;
 type UserRef = Prisma.UserGetPayload<{ select: typeof userRefSelect }>;
@@ -54,6 +55,30 @@ export function columnJson(c: { id: string; boardId: string; name: string; posit
 
 export function tagJson(t: { id: string; boardId: string; name: string; color: string }) {
   return { id: t.id, boardId: t.boardId, name: t.name, color: t.color };
+}
+
+export function automationJson(r: {
+  id: string;
+  boardId: string;
+  name: string;
+  trigger: string;
+  columnId: string | null;
+  actions: string;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: r.id,
+    boardId: r.boardId,
+    name: r.name,
+    trigger: r.trigger,
+    columnId: r.columnId,
+    actions: parseActions(r.actions),
+    enabled: r.enabled,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  };
 }
 
 export function boardJson(b: {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db-local";
 import { toCsv } from "@/lib/csv";
 import { APP_VERSION } from "@/lib/version";
 import { EXPORT_FORMAT, EXPORT_VERSION, type ExportBoard, type ExportCard, type KanbunExport } from "@/lib/transfer/format";
+import { automationToExport, parseActions } from "@/lib/automations";
 
 // Builds the Kanbun export (format documented in docs/IMPORT-EXPORT.md) and
 // the cards CSV from the database. Server-only.
@@ -12,6 +13,7 @@ const boardInclude = {
   members: { orderBy: { addedAt: "asc" } },
   tags: { orderBy: { position: "asc" } },
   cardTemplates: { orderBy: { name: "asc" } },
+  automationRules: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
   columns: {
     orderBy: { position: "asc" },
     include: {
@@ -110,6 +112,12 @@ async function toExportBoard(
         checklist: checklist.filter((s) => typeof s === "string"),
       };
     }),
+    automations: board.automationRules.map((rule) =>
+      automationToExport(
+        { ...rule, actions: parseActions(rule.actions) },
+        { columns: new Map(board.columns.map((c) => [c.id, c.name])), tags: tagName, users: names }
+      )
+    ),
     columns: board.columns.map((col) => ({
       name: col.name,
       wipLimit: col.wipLimit,

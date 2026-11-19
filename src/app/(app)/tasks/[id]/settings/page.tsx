@@ -9,6 +9,8 @@ import { buttonClass } from "@/components/ui/button";
 import TagChip from "@/components/ui/TagChip";
 import TemplateSettings from "@/components/board/TemplateSettings";
 import WebhookSettings from "@/components/board/WebhookSettings";
+import AutomationSettings from "@/components/board/AutomationSettings";
+import { isAutomationTrigger, parseActions } from "@/lib/automations";
 import { WEBHOOK_EVENTS, WEBHOOK_FAILURE_LIMIT, WEBHOOK_HISTORY, parseEvents } from "@/lib/webhooks";
 import CsvImport from "@/components/transfer/CsvImport";
 import { Download } from "lucide-react";
@@ -66,6 +68,7 @@ export default async function BoardSettingsPage({
         orderBy: { createdAt: "asc" },
         include: { template: { select: { name: true } }, column: { select: { name: true } } },
       },
+      automationRules: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
       webhooks: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -242,6 +245,21 @@ export default async function BoardSettingsPage({
         recurrences={board.cardRecurrences}
         columns={board.columns}
         tags={board.tags.map((tg) => ({ id: tg.id, name: tg.name, color: tg.color }))}
+        locale={locale}
+      />
+
+      <AutomationSettings
+        boardId={board.id}
+        rules={board.automationRules.flatMap((r) =>
+          isAutomationTrigger(r.trigger)
+            ? [{ id: r.id, name: r.name, trigger: r.trigger, columnId: r.columnId, actions: parseActions(r.actions), enabled: r.enabled }]
+            : []
+        )}
+        columns={board.columns}
+        tags={board.tags.map((tg) => ({ id: tg.id, name: tg.name }))}
+        members={board.members
+          .filter((m) => !m.user.deactivatedAt)
+          .map((m) => ({ id: m.userId, name: m.user.displayName ?? m.user.username }))}
         locale={locale}
       />
 

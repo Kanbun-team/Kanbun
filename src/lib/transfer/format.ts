@@ -76,6 +76,21 @@ export const exportTagSchema = z.object({
   color: hex,
 });
 
+/**
+ * An automation rule. Columns, tags and people are named, like everywhere
+ * in the file. Actions are kept loose on purpose: the importer skips action
+ * types it does not know (from a newer Kanbun) instead of refusing the file.
+ * Added in v1.4 without a version bump: older files simply have none.
+ */
+export const exportAutomationSchema = z.object({
+  name: z.string().min(1).max(80),
+  enabled: z.boolean().default(true),
+  trigger: z.string().min(1).max(64),
+  /** The column of a "cardEntersColumn" rule. */
+  column: z.string().max(80).nullable().optional(),
+  actions: z.array(z.looseObject({ type: z.string().min(1).max(64) })).max(50).default([]),
+});
+
 export const exportBoardSchema = z.object({
   name: z.string().min(1).max(120),
   description: z.string().max(2000).nullable().optional(),
@@ -98,6 +113,7 @@ export const exportBoardSchema = z.object({
       })
     )
     .default([]),
+  automations: z.array(exportAutomationSchema).max(200).default([]),
 });
 
 export const exportUserSchema = z.object({
@@ -125,6 +141,7 @@ export type ExportComment = z.input<typeof exportCommentSchema>;
 export type ExportCard = z.input<typeof exportCardSchema>;
 export type ExportColumn = z.input<typeof exportColumnSchema>;
 export type ExportBoard = z.input<typeof exportBoardSchema>;
+export type ExportAutomation = z.input<typeof exportAutomationSchema>;
 export type KanbunExport = z.input<typeof kanbunExportSchema>;
 /** A board after validation, with defaults filled in. What the importer writes. */
 export type ImportBoard = z.output<typeof exportBoardSchema>;

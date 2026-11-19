@@ -38,6 +38,8 @@ export interface RunOutcome {
   /** Saved in the outbox, to be sent when back online. */
   queued: boolean;
   createdIds?: string[];
+  /** Automation rules the edit set off on the server (not for queued edits). */
+  automation?: { runId: string; ruleName: string }[];
 }
 
 export function useOfflineBoard({
@@ -140,7 +142,12 @@ export function useOfflineBoard({
     // On failure the refresh rolls the optimistic change back.
     markBoardRefreshed(boardId);
     router.refresh();
-    return { ok: result.ok, queued: false, createdIds: result.ok ? result.createdIds : undefined };
+    return {
+      ok: result.ok,
+      queued: false,
+      createdIds: result.ok ? result.createdIds : undefined,
+      automation: result.ok ? result.automation : undefined,
+    };
   }
 
   /** For edits that need the server: false (with a toast) while offline. */
