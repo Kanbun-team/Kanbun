@@ -200,7 +200,7 @@ async function main() {
     const startCol = Math.min(c.col, 1);
     const at = (hours: number) => new Date(createdAt.getTime() + hours * HOUR);
     const history: { type: string; data: Record<string, unknown>; actorId: string; createdAt: Date }[] = [
-      { type: "created", data: { column: columns[startCol].name }, actorId: users.admin.id, createdAt: at(0) },
+      { type: "created", data: { column: columns[startCol].name, columnId: columns[startCol].id }, actorId: users.admin.id, createdAt: at(0) },
       ...(c.who ?? []).map((u) => ({
         type: "assigneeAdded",
         data: { name: users[u].displayName },
@@ -217,7 +217,7 @@ async function main() {
     for (let col = startCol + 1; col <= c.col; col++) {
       history.push({
         type: "moved",
-        data: { from: columns[col - 1].name, to: columns[col].name },
+        data: { from: columns[col - 1].name, to: columns[col].name, fromId: columns[col - 1].id, toId: columns[col].id },
         actorId: doer.id,
         createdAt: at(24 * (col - startCol)),
       });

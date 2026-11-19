@@ -29,6 +29,7 @@ import {
   Trash2,
   UserMinus,
   UserPlus,
+  BarChart3,
 } from "lucide-react";
 import { t, type DictKey, type Locale } from "@/lib/i18n";
 import { useUi } from "@/components/ui/UiProvider";
@@ -365,6 +366,14 @@ function PaletteBody({ locale, onClose, onShortcuts }: { locale: Locale; onClose
           setMode({ kind: "newCard", board, column: board.columns[0] });
           setQuery("");
         },
+      });
+    }
+    if (board) {
+      list.push({
+        id: "insights",
+        label: t("paletteBoardInsights", locale).replace("{board}", board.name),
+        icon: <BarChart3 size={16} aria-hidden />,
+        run: () => go(`/tasks/${board.id}/insights`),
       });
     }
     const fixed: [string, DictKey, ReactNode, () => void][] = [

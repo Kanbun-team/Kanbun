@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Lock, ListChecks, MessageSquare, Paperclip } from "lucide-react";
+import { Clock, Hourglass, Lock, ListChecks, MessageSquare, Paperclip } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import TagChip from "@/components/ui/TagChip";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
   const deadline = card.deadline ? relativeDeadline(card.deadline, locale) : null;
   const notch = card.priority === "critical" ? "bg-danger" : card.priority === "high" ? "bg-warning" : null;
   const extra = card.assignees.length - 3;
+  const stale = card.staleDays !== undefined ? tn("cardStaleA11y", card.staleDays, locale) : null;
 
   return (
     <>
@@ -32,7 +33,7 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
           ))}
         </span>
       )}
-      {(deadline || card.subtasksTotal > 0 || card.commentsCount > 0 || card.attachmentsCount > 0 || card.blockedByCount > 0 || card.assignees.length > 0) && (
+      {(deadline || stale || card.subtasksTotal > 0 || card.commentsCount > 0 || card.attachmentsCount > 0 || card.blockedByCount > 0 || card.assignees.length > 0) && (
         <span className="mt-2 flex items-center justify-between gap-2 text-sm text-ink-muted">
           <span className="flex items-center gap-x-3 gap-y-1 flex-wrap tabular-nums">
             {deadline && (
@@ -47,6 +48,14 @@ export default function CardFace({ card, locale }: { card: CardDTO; locale: Loca
                 <Clock size={14} aria-hidden />
                 {deadline.tone === "late" && <span className="sr-only">{t("cardOverdue", locale)}: </span>}
                 {deadline.label}
+              </span>
+            )}
+            {stale && (
+              // Quiet on purpose (no status color): a hint to look, not an alarm.
+              <span title={stale} className="inline-flex items-center gap-1" data-stale>
+                <Hourglass size={14} aria-hidden />
+                <span aria-hidden>{card.staleDays}</span>
+                <span className="sr-only">{stale}</span>
               </span>
             )}
             {card.subtasksTotal > 0 && (

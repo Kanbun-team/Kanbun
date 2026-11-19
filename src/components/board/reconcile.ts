@@ -28,6 +28,7 @@ export function sameCard(a: CardDTO, b: CardDTO): boolean {
     a.commentsCount === b.commentsCount &&
     a.blockedByCount === b.blockedByCount &&
     a.attachmentsCount === b.attachmentsCount &&
+    a.staleDays === b.staleDays &&
     sameList(a.assignees, b.assignees, samePerson) &&
     sameList(a.tags, b.tags, sameTag)
   );

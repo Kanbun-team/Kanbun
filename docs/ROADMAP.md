@@ -98,8 +98,8 @@ Closed in v1.3.0: French, Spanish, Brazilian Portuguese, Dutch, Czech and Ukrain
 
 Goal: help a team see how work moves and spend less time on bookkeeping, without turning the board into a project-management suite.
 
-1. **Board insights.** Cycle time, throughput per week, a cumulative flow chart and aging work in progress, computed from the card history the board already keeps. Readable as tables too, in both themes and at 390px.
-2. **Card age on the board.** A quiet marker on cards that have sat in one column much longer than usual for that board.
+1. **Board insights.** Done: `/tasks/<id>/insights`, linked from the board header and the command palette. Cycle time, throughput per week, a cumulative flow chart and aging work in progress, computed from the card history the board already keeps. Readable as tables too, in both themes and at 390px.
+2. **Card age on the board.** Done: an hourglass with the days on cards that have been in a work column longer than 85% of the cards that left it in the last 90 days (at least 3 days, with 5 or more of them), said in the card's accessible name.
 3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes.
 4. **Simple automations.** Per-board rules of the form "when a card enters a column, set or clear a field" (assignee, tag, priority, deadline, mark checklist done), and "when the deadline passes, move or tag". Every rule run is in the card history and can be undone.
 

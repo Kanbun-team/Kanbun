@@ -23,6 +23,7 @@
 - Search everything with Cmd/Ctrl+K: boards, card titles, descriptions and comments (SQLite FTS5 or PostgreSQL full-text search), plus quick commands.
 - Board, list and calendar views, saved filters shared with the board, and a "My tasks" page grouped into overdue, today, upcoming and done this week.
 - Card history: moves, edits, assignees, tags and dependencies in one timeline with comments; @mention autocomplete; searchable pickers.
+- Board insights from the card history: cycle time (median and 85th percentile, with its distribution), throughput per week, a cumulative flow chart over 30 or 90 days and aging work in progress, each chart also readable as a table. Cards that have sat in a column much longer than usual for that board get a quiet hourglass on the board.
 - Cards open in a side panel over the board; keyboard shortcuts for common actions (press `?` on a board).
 - Live board updates over Server-Sent Events: changes appear for everyone on the board without a refresh, with avatars of who is viewing the board and who has the same card open.
 - Checklists with an assignee and due date per item (reorder, convert to card), tags, comments, blocking dependencies, priorities, deadlines.

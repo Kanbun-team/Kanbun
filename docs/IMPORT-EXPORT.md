@@ -111,7 +111,7 @@ Notes:
 - People are always usernames, never internal ids, so a file can move between instances.
 - Card `id`s only link `blocks` (the cards this card blocks) inside the file. Importing creates new ids.
 - Dates are ISO 8601 in UTC; `deadline` and checklist `dueDate` are calendar dates (`YYYY-MM-DD`).
-- `activity` is only present in exports "with card history". `attachments` lists metadata only.
+- `activity` is only present in exports "with card history". Since v1.4, created and moved entries also carry the column ids of the exporting server (`columnId`, `fromId`, `toId`); an import keeps them, and board insights fall back to the column names when they do not match. `attachments` lists metadata only.
 - A future incompatible change gets a new `version`. Kanbun refuses versions it does not know instead of guessing.
 
 ## Backup and restore

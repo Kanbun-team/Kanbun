@@ -11,6 +11,8 @@ import type { ColumnDTO, SavedFilterDTO } from "@/components/board/types";
 import { parseFilters } from "@/lib/board-filters-schema";
 import { boardTitle } from "@/server/page-title";
 import BoardTitleKeeper from "@/components/board/BoardTitleKeeper";
+import { staleCardDays } from "@/server/flow";
+import { BarChart3 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +73,15 @@ export default async function BoardPage({
     },
   });
   if (!board) notFound();
+  // Cards in their column for longer than usual (a marker on the card face).
+  // Optional: the board still renders without it.
+  const stalePromise = staleCardDays(
+    id,
+    board.columns.flatMap((c) => c.cards.map((card) => ({ id: card.id, columnId: c.id })))
+  ).catch((err: unknown) => {
+    console.error("[board] card ages unavailable", err);
+    return new Map<string, number>();
+  });
 
   const canManage = canManageBoard(access);
   const savedRows = await prisma.savedFilter.findMany({
@@ -98,6 +109,7 @@ export default async function BoardPage({
     _count: { _all: true },
   });
   const subtasksDone = new Map(doneRows.map((r) => [r.cardId, r._count._all]));
+  const stale = await stalePromise;
 
   // One object per person and per tag, shared by every card that uses it, so
   // the serialized page (and every live refresh) does not repeat them.
@@ -131,6 +143,7 @@ export default async function BoardPage({
       commentsCount: card._count.comments,
       blockedByCount: card._count.blockedBy,
       attachmentsCount: card._count.attachments,
+      ...(stale.has(card.id) ? { staleDays: stale.get(card.id) } : {}),
     })),
   }));
 
@@ -159,6 +172,13 @@ export default async function BoardPage({
             </span>
           )}
           <WatchButton kind="board" id={board.id} watching={board.watchers.length > 0} />
+          <Link
+            href={`/tasks/${board.id}/insights`}
+            className="inline-flex items-center gap-1.5 rounded-control px-3 py-1 hover:bg-ink/5"
+          >
+            <BarChart3 size={16} aria-hidden />
+            {t("insightsTitle", locale)}
+          </Link>
           {canManageBoard(access) && (
             <Link
               href={`/tasks/${board.id}/settings`}

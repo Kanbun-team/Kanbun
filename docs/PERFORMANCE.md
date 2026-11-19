@@ -11,7 +11,8 @@ and after the v1.0 performance pass, and the rules that keep the board fast.
 1. Build: `npm run build`.
 2. A database with a large board. `npm run seed:large` adds a board called
    "Large board (performance)" with 500 cards over 6 columns (tags,
-   assignees, checklists, comments, a few blockers) to the database in
+   assignees, checklists, comments, a few blockers, and about 1,400 card
+   history entries over four months for board insights) to the database in
    `DATABASE_URL`. It uses the existing users as members, so run it after
    `npm run seed:demo` (or on the e2e database). Running it again replaces the
    board, `-- --remove` deletes it, `SEED_LARGE_CARDS=1000` changes the size.
@@ -350,6 +351,35 @@ layout sends the user's language through `LocaleDictionary`, which registers it
 before any client component renders, so ten languages cost the same download
 as one. `next.config.mjs` swaps `src/lib/i18n-dicts.ts` for an empty module in
 the browser build; the server keeps every language.
+
+### Card age marker (v1.4)
+
+The board marks cards that have been in a work column longer than usual
+(`staleDays` on the card, `src/server/flow.ts`). Two queries were added to
+the board page: the usual time per column, computed from the whole card
+history and kept per board for 10 minutes in memory, and one grouped query
+for the newest "created" or "moved" entry of each card in a column that has
+a usual time (indexed by card id). Measured on the 500-card board with its
+history (1,384 entries), same machine, `scripts/perf-board.ts`, before (main
+at 96310c4) and after:
+
+| | 1x before | 1x after | 2x before | 2x after |
+| --- | ---: | ---: | ---: | ---: |
+| `/tasks/<id>` full response (median of 5) | 103 | 110 | 103 | 99 |
+| HTML size (53 cards marked) | 1.70 MB | 1.74 MB | | |
+| First load: hydrated | none | none | none | none |
+| Keyboard pick up | 48 | 48 | 72 (56) | 80 to 96 (74), three runs |
+| Keyboard drop | 32 | 40 | 72 | 80 |
+| Clear the filter | 40 | 32 | 64 | 64 |
+| Open card panel | 24 | 24 | 40 | 40 |
+
+The differences are within run-to-run noise (one or two Event Timing steps);
+the card face renders nothing extra for unmarked cards, and the marker is not
+part of the memoized props that change during a drag. The queries on their
+own: 2ms for the marker with the usual times cached, 13ms for a cache miss or
+the insights page. With 3,000 cards and 50,000 history entries: 22ms and
+80ms. The `E2E_PERF` guard passes (hydrated after 855ms, keyboard steps 122
+to 155ms including Playwright round trips).
 
 ## Rules for new board code
 

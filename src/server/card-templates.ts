@@ -60,7 +60,7 @@ export async function createCardFromTemplate(
       boardId: column.boardId,
       actorId,
       type: source === "schedule" ? "createdBySchedule" : "createdFromTemplate",
-      data: { column: column.name, template: template.name },
+      data: { column: column.name, template: template.name, columnId: column.id },
     },
     tx
   );

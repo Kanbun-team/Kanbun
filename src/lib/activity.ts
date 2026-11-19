@@ -6,10 +6,12 @@ import { priorityLabel } from "@/lib/labels";
 // that writes entries lives in src/server/activity.ts.
 
 export type ActivityData = {
-  created: { column: string };
-  createdFromTemplate: { column: string; template: string };
-  createdBySchedule: { column: string; template: string };
-  moved: { from: string; to: string };
+  // Column ids are recorded since v1.4 (board insights follow a column
+  // through renames); older entries only have the names.
+  created: { column: string; columnId?: string };
+  createdFromTemplate: { column: string; template: string; columnId?: string };
+  createdBySchedule: { column: string; template: string; columnId?: string };
+  moved: { from: string; to: string; fromId?: string; toId?: string };
   renamed: { from: string; to: string };
   priority: { from: string; to: string };
   deadline: { to: string | null };

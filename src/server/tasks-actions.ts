@@ -563,7 +563,7 @@ export async function addCardAction(formData: FormData) {
           data: { cardId: card.id, cardTitle: card.title, boardId: col.boardId, toColumnName: col.name, userId: user.id },
         });
         await logActivity(
-          { cardId: card.id, boardId: col.boardId, actorId: user.id, type: "created", data: { column: col.name } },
+          { cardId: card.id, boardId: col.boardId, actorId: user.id, type: "created", data: { column: col.name, columnId } },
           tx
         );
       }
@@ -746,7 +746,7 @@ export async function moveCardAction(input: {
             boardId: card.column.boardId,
             actorId: user.id,
             type: "moved",
-            data: { from: card.column.name, to: toCol.name },
+            data: { from: card.column.name, to: toCol.name, fromId: card.columnId, toId: data.toColumnId },
           },
           tx
         );

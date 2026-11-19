@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Board insights (`/tasks/<id>/insights`, from the board header or the command palette): cycle time as median and 85th percentile with a distribution, throughput per week over 12 weeks, a cumulative flow chart over 30 or 90 days, aging work in progress and the usual time per column. Computed from the card history; the page says where the history starts and how many cards lack the start of theirs. Charts are hand-written SVG with a table and an accessible summary each, in both themes and at 390px. Same access as the board.
+- Cards that have been in a work column longer than usual for that board (longer than 85% of the cards that left it in the last 90 days, and at least 3 days) show a quiet hourglass with the number of days; the card's accessible name and tooltip say it in words.
+
+### Changed
+
+- Card history entries for creations and moves record the column ids next to the names, so insights follow a column through renames. Older entries are matched by name.
+- `npm run seed:large` gives the 500 cards a few months of history (created and moved entries).
+
 ## [1.3.0] - 2026-11-19
 
 Six new languages and image thumbnails.

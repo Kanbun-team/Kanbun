@@ -30,6 +30,11 @@ export interface CardDTO {
   commentsCount: number;
   blockedByCount: number;
   attachmentsCount: number;
+  /**
+   * Whole days in the current column, only when that is longer than usual
+   * for the column (board insights, src/lib/flow.ts). Absent otherwise.
+   */
+  staleDays?: number;
 }
 
 export interface ColumnDTO {
