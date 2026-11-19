@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- S3 attachment storage accepts temporary credentials: `ATTACHMENTS_S3_SESSION_TOKEN`, or without static keys the AWS credential chain (`AWS_*` variables, EKS web identity, ECS container credentials, EC2 instance role), cached and refreshed before they expire.
+
 ## [1.1.0] - 2026-11-18
 
 Closes the gaps listed after v1.0.

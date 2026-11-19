@@ -1,18 +1,23 @@
 import { createHash, createHmac } from "node:crypto";
+import { defaultCredentialChain, staticCredentials, type CredentialProvider } from "./aws-credentials";
 
 // A minimal client for S3-compatible object storage (AWS S3, MinIO,
 // Cloudflare R2, Backblaze B2): PUT, GET, HEAD and DELETE of single objects,
 // signed with AWS Signature Version 4. That is all attachments need, and it
 // keeps the AWS SDK and its dependency tree out of the app. Requests go
-// through the global fetch.
+// through the global fetch. Credentials are static keys from the config or,
+// without them, the AWS default chain (see aws-credentials.ts).
 
 export interface S3Config {
   bucket: string;
   region: string;
   /** Base URL for S3-compatible services; unset for AWS. */
   endpoint?: string;
-  accessKeyId: string;
-  secretAccessKey: string;
+  /** Static keys; both unset means the AWS credential chain. */
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  /** With temporary static keys. */
+  sessionToken?: string;
   /** `https://host/bucket/key` instead of `https://bucket.host/key`. */
   forcePathStyle: boolean;
   /** Object key prefix, empty or ending in `/`. */
@@ -102,10 +107,20 @@ export class S3Error extends Error {
 type Fetch = typeof fetch;
 
 export class S3Client {
+  private readonly credentials: CredentialProvider;
+
   constructor(
     readonly config: S3Config,
-    private readonly fetchImpl: Fetch = (...args) => fetch(...args)
-  ) {}
+    private readonly fetchImpl: Fetch = (...args) => fetch(...args),
+    credentials?: CredentialProvider
+  ) {
+    const { accessKeyId, secretAccessKey, sessionToken } = config;
+    this.credentials =
+      credentials ??
+      (accessKeyId && secretAccessKey
+        ? staticCredentials({ accessKeyId, secretAccessKey, sessionToken })
+        : defaultCredentialChain(process.env, this.fetchImpl));
+  }
 
   /** The URL of an object (key without the prefix). */
   objectUrl(key: string): URL {
@@ -132,12 +147,15 @@ export class S3Client {
   ): Promise<Response> {
     const url = this.objectUrl(key);
     const payloadHash = body ? sha256Hex(body) : EMPTY_SHA256;
+    const creds = await this.credentials();
     const amzDate = amzDateOf(new Date());
     const headers: Record<string, string> = {
       ...extraHeaders,
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": amzDate,
     };
+    // Temporary credentials: the token is sent and signed.
+    if (creds.sessionToken) headers["x-amz-security-token"] = creds.sessionToken;
     const { authorization } = signV4({
       method,
       url,
@@ -145,8 +163,8 @@ export class S3Client {
       payloadHash,
       region: this.config.region,
       service: "s3",
-      accessKeyId: this.config.accessKeyId,
-      secretAccessKey: this.config.secretAccessKey,
+      accessKeyId: creds.accessKeyId,
+      secretAccessKey: creds.secretAccessKey,
       amzDate,
     });
     const controller = new AbortController();

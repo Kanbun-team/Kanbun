@@ -90,7 +90,7 @@ Shipped in v1.0.0, together with a security review, a performance and Lighthouse
 
 Closed in v1.1.0: card details readable offline, a durable webhook queue, S3-compatible attachment storage, nodemailer 10, faster drag start and filter clear on large boards, consistent German, Italian and Polish copy.
 
-Still open: S3 needs static access keys (no instance roles or session tokens); on a 500-card board, clearing a filter takes about 128ms at 2x CPU throttling (80ms unthrottled), above the 100ms target, mostly browser layout of the cards that reappear.
+Still open: on a 500-card board, clearing a filter takes about 128ms at 2x CPU throttling (80ms unthrottled), above the 100ms target, mostly browser layout of the cards that reappear.
 
 ## Quality bar for every release
 

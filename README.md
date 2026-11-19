@@ -146,7 +146,7 @@ You will be prompted for username, display name, and password. The script create
 - `SMTP_URL` - optional, enables email notifications, e.g. `smtp://user:pass@smtp.example.com:587` (use `smtps://` for port 465). Without it email is off and the settings page says so.
 - `SMTP_FROM` - sender for notification emails, e.g. `Kanbun <kanbun@example.com>`
 - `ATTACHMENTS_DIR` - optional folder for card attachments. Defaults to an `attachments` folder next to the SQLite file (`/data/attachments` in Docker, `prisma/attachments` for `file:./dev.db`). Set it with PostgreSQL, and point every instance at the same shared volume, or use S3 instead
-- `ATTACHMENTS_S3_BUCKET` - optional: store attachments in this S3-compatible bucket instead of on disk (AWS S3, MinIO, Cloudflare R2, Backblaze B2). Needs `ATTACHMENTS_S3_ACCESS_KEY_ID` and `ATTACHMENTS_S3_SECRET_ACCESS_KEY`; further options `ATTACHMENTS_S3_REGION` (default `us-east-1`; `auto` for R2), `ATTACHMENTS_S3_ENDPOINT` (for anything but AWS, e.g. `http://minio:9000`), `ATTACHMENTS_S3_FORCE_PATH_STYLE` (`1` or `0`; defaults to on when an endpoint is set) and `ATTACHMENTS_S3_PREFIX` (a folder inside the bucket). See [Attachments in S3](#attachments-in-s3)
+- `ATTACHMENTS_S3_BUCKET` - optional: store attachments in this S3-compatible bucket instead of on disk (AWS S3, MinIO, Cloudflare R2, Backblaze B2). Uses `ATTACHMENTS_S3_ACCESS_KEY_ID` and `ATTACHMENTS_S3_SECRET_ACCESS_KEY` (plus `ATTACHMENTS_S3_SESSION_TOKEN` for temporary keys), or without them the AWS credential chain (`AWS_*` variables, EKS web identity, ECS or EC2 roles); further options `ATTACHMENTS_S3_REGION` (default `us-east-1`; `auto` for R2), `ATTACHMENTS_S3_ENDPOINT` (for anything but AWS, e.g. `http://minio:9000`), `ATTACHMENTS_S3_FORCE_PATH_STYLE` (`1` or `0`; defaults to on when an endpoint is set) and `ATTACHMENTS_S3_PREFIX` (a folder inside the bucket). See [Attachments in S3](#attachments-in-s3)
 - `ATTACHMENT_MAX_MB` - optional upload limit per file in megabytes, default `10`
 - `IMPORT_MAX_MB` - optional size limit for imported files (Trello, Kanbun JSON, CSV) in megabytes, default `20`
 - `AUDIT_RETENTION_DAYS` - how long audit log entries are kept, default `365`; `0` keeps them forever
@@ -172,7 +172,16 @@ ATTACHMENTS_S3_ENDPOINT=http://minio:9000
 # Backblaze B2: ATTACHMENTS_S3_ENDPOINT=https://s3.<region>.backblazeb2.com and ATTACHMENTS_S3_REGION=<region>
 ```
 
-The keys need `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on the bucket (or prefix), plus `s3:ListBucket` so a missing file answers 404 rather than 403. Kanbun signs requests with static keys (AWS Signature Version 4); instance roles and session tokens are not supported. A misconfigured bucket is reported in the log at startup.
+The keys need `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on the bucket (or prefix), plus `s3:ListBucket` so a missing file answers 404 rather than 403. Kanbun signs requests itself (AWS Signature Version 4, no AWS SDK). A misconfigured bucket is reported in the log at startup.
+
+Temporary credentials work too. Add `ATTACHMENTS_S3_SESSION_TOKEN` to static keys that come with a session token. Or leave both `ATTACHMENTS_S3_ACCESS_KEY_ID` and `ATTACHMENTS_S3_SECRET_ACCESS_KEY` unset, and Kanbun looks for credentials the way the AWS SDKs do, in this order:
+
+1. `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and optional `AWS_SESSION_TOKEN`.
+2. Web identity, as on EKS with IAM roles for service accounts: `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_ROLE_ARN` (optional `AWS_ROLE_SESSION_NAME`), exchanged with STS `AssumeRoleWithWebIdentity` at the regional endpoint of `AWS_REGION` when set.
+3. Container credentials, as on ECS or with EKS Pod Identity: `AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` or `AWS_CONTAINER_CREDENTIALS_FULL_URI`, with `AWS_CONTAINER_AUTHORIZATION_TOKEN` or `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE` when set.
+4. The EC2 instance role, from instance metadata (IMDSv2, one-second timeouts). `AWS_EC2_METADATA_DISABLED=true` skips it.
+
+Temporary credentials are cached and fetched again five minutes before they expire. Config and credential files in `~/.aws` and SSO profiles are not read.
 
 To move existing attachments from the disk to the bucket, set the `ATTACHMENTS_S3_*` variables and run, with Kanbun stopped or before switching:
 

@@ -13,7 +13,7 @@ import { S3Client, type S3Config } from "./s3";
 // - S3-compatible object storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2)
 //   when ATTACHMENTS_S3_BUCKET is set, for several instances without a shared
 //   folder. Objects are private; downloads still go through the app's
-//   authenticated route.
+//   authenticated route. Static keys, or the AWS credential chain without them.
 //
 // Files are named by a random storage key, never by anything the user sent.
 
@@ -71,13 +71,18 @@ export function attachmentStorageFrom(env: Env, cwd: string): StorageConfig {
   const bucket = env.ATTACHMENTS_S3_BUCKET?.trim();
   if (!bucket) return { kind: "local", dir: attachmentsDirFrom(env, cwd) };
 
-  const accessKeyId = env.ATTACHMENTS_S3_ACCESS_KEY_ID?.trim() ?? "";
-  const secretAccessKey = env.ATTACHMENTS_S3_SECRET_ACCESS_KEY?.trim() ?? "";
-  const missing = [
-    !accessKeyId && "ATTACHMENTS_S3_ACCESS_KEY_ID",
-    !secretAccessKey && "ATTACHMENTS_S3_SECRET_ACCESS_KEY",
-  ].filter(Boolean);
-  if (missing.length) throw new Error(`ATTACHMENTS_S3_BUCKET is set but ${missing.join(" and ")} missing`);
+  // Static keys, or neither for the AWS credential chain (AWS_* variables,
+  // web identity, ECS or EC2 roles, see aws-credentials.ts).
+  const accessKeyId = env.ATTACHMENTS_S3_ACCESS_KEY_ID?.trim() || undefined;
+  const secretAccessKey = env.ATTACHMENTS_S3_SECRET_ACCESS_KEY?.trim() || undefined;
+  if (!accessKeyId !== !secretAccessKey) {
+    const missing = accessKeyId ? "ATTACHMENTS_S3_SECRET_ACCESS_KEY" : "ATTACHMENTS_S3_ACCESS_KEY_ID";
+    throw new Error(`ATTACHMENTS_S3_BUCKET is set with only one of the two keys: ${missing} is missing`);
+  }
+  const sessionToken = env.ATTACHMENTS_S3_SESSION_TOKEN?.trim() || undefined;
+  if (sessionToken && !accessKeyId) {
+    throw new Error("ATTACHMENTS_S3_SESSION_TOKEN needs ATTACHMENTS_S3_ACCESS_KEY_ID and ATTACHMENTS_S3_SECRET_ACCESS_KEY");
+  }
 
   const endpoint = env.ATTACHMENTS_S3_ENDPOINT?.trim() || undefined;
   if (endpoint) {
@@ -103,6 +108,7 @@ export function attachmentStorageFrom(env: Env, cwd: string): StorageConfig {
       endpoint,
       accessKeyId,
       secretAccessKey,
+      sessionToken,
       forcePathStyle: pathStyle ? truthy(pathStyle) : !!endpoint,
       prefix: prefix ? `${prefix}/` : "",
     },

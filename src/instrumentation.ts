@@ -10,7 +10,8 @@ export async function register() {
     console.error(`[kanbun] Attachment storage is misconfigured: ${(err as Error).message} (see README.md).`);
   }
   if (storage?.kind === "s3") {
-    console.info(`[kanbun] Attachments are stored in S3 bucket ${storage.s3.bucket}.`);
+    const keys = storage.s3.accessKeyId ? "static keys" : "credentials from the AWS environment or an IAM role";
+    console.info(`[kanbun] Attachments are stored in S3 bucket ${storage.s3.bucket} (${keys}).`);
   } else if (storage && isPostgres() && !process.env.ATTACHMENTS_DIR?.trim()) {
     // With SQLite, attachments default to a folder next to the database file.
     // There is no such place for PostgreSQL, and several instances must share it.

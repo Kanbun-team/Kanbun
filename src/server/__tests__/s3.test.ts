@@ -234,6 +234,40 @@ describe("S3 attachment store against a fake S3", () => {
     expect(requests).toHaveLength(0);
   });
 
+  it("sends and signs the session token of temporary credentials", async () => {
+    const seen: string[] = [];
+    const fetchSpy: typeof fetch = (input, init) => {
+      const h = new Headers(init?.headers);
+      seen.push(`${h.get("x-amz-security-token")}|${h.get("authorization")}`);
+      return fetch(input, init);
+    };
+    let calls = 0;
+    const client = new S3Client(config({ accessKeyId: undefined, secretAccessKey: undefined }), fetchSpy, async () => {
+      calls++;
+      return { accessKeyId: "ASIATEMP", secretAccessKey: SECRET, sessionToken: "session-token-1" };
+    });
+    await client.put(KEY, new Uint8Array([7]));
+    expect(await client.head(KEY)).toEqual({ size: 1 });
+    expect(calls).toBe(2);
+    expect(seen).toHaveLength(2);
+    for (const line of seen) {
+      expect(line).toMatch(/^session-token-1\|AWS4-HMAC-SHA256 Credential=ASIATEMP\//);
+      expect(line).toMatch(/SignedHeaders=[^,]*;x-amz-security-token,/);
+    }
+    // The fake S3 verified the signature over the token header too.
+    expect(objects.size).toBe(1);
+  });
+
+  it("sends a static session token from the config", async () => {
+    let token: string | null = null;
+    const client = new S3Client(config({ sessionToken: "static-token" }), (input, init) => {
+      token = new Headers(init?.headers).get("x-amz-security-token");
+      return fetch(input, init);
+    });
+    await client.put(KEY, new Uint8Array([1]));
+    expect(token).toBe("static-token");
+  });
+
   it("HEAD gives the size, or null for a missing object", async () => {
     const client = new S3Client(config());
     expect(await client.head(KEY)).toBeNull();
@@ -310,9 +344,22 @@ describe("storage selection", () => {
     expect(c.kind === "s3" && c.s3).toMatchObject({ forcePathStyle: true, region: "auto" });
   });
 
+  it("uses the AWS credential chain without static keys, and takes a session token with them", () => {
+    const chain = attachmentStorageFrom({ ATTACHMENTS_S3_BUCKET: "files" }, "/app");
+    expect(chain.kind === "s3" && chain.s3).toMatchObject({ accessKeyId: undefined, secretAccessKey: undefined });
+    const temp = attachmentStorageFrom({ ...s3Env, ATTACHMENTS_S3_SESSION_TOKEN: " tok " }, "/app");
+    expect(temp.kind === "s3" && temp.s3.sessionToken).toBe("tok");
+  });
+
   it("refuses an incomplete S3 configuration instead of falling back to disk", () => {
-    expect(() => attachmentStorageFrom({ ATTACHMENTS_S3_BUCKET: "files" }, "/app")).toThrow(
-      /ATTACHMENTS_S3_ACCESS_KEY_ID and ATTACHMENTS_S3_SECRET_ACCESS_KEY/
+    expect(() => attachmentStorageFrom({ ATTACHMENTS_S3_BUCKET: "files", ATTACHMENTS_S3_ACCESS_KEY_ID: "id" }, "/app")).toThrow(
+      /ATTACHMENTS_S3_SECRET_ACCESS_KEY is missing/
+    );
+    expect(() => attachmentStorageFrom({ ATTACHMENTS_S3_BUCKET: "files", ATTACHMENTS_S3_SECRET_ACCESS_KEY: "s" }, "/app")).toThrow(
+      /ATTACHMENTS_S3_ACCESS_KEY_ID is missing/
+    );
+    expect(() => attachmentStorageFrom({ ATTACHMENTS_S3_BUCKET: "files", ATTACHMENTS_S3_SESSION_TOKEN: "t" }, "/app")).toThrow(
+      /SESSION_TOKEN needs/
     );
     expect(() => attachmentStorageFrom({ ...s3Env, ATTACHMENTS_S3_ENDPOINT: "minio:9000" }, "/app")).toThrow(/ENDPOINT/);
     expect(() => attachmentStorageFrom({ ...s3Env, ATTACHMENTS_S3_ENDPOINT: "ftp://minio" }, "/app")).toThrow(/ENDPOINT/);

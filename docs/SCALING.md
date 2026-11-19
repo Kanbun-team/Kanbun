@@ -64,7 +64,9 @@ Without `REDIS_URL` none of this is loaded and everything stays in process.
   volume (a Docker volume on one host, NFS or a similar network file system
   across hosts).
 - **S3-compatible object storage** (AWS S3, MinIO, Cloudflare R2, Backblaze
-  B2): set `ATTACHMENTS_S3_BUCKET` and its keys on every instance, see
+  B2): set `ATTACHMENTS_S3_BUCKET` and its keys on every instance, or on AWS
+  give the instances an IAM role (EC2 instance profile, ECS task role, EKS
+  service account) and leave the keys unset, see
   [Attachments in S3](../README.md#attachments-in-s3). Nothing has to be
   shared between hosts, and downloads still go through Kanbun's access checks.
   `npm run attachments:to-s3` copies existing files into the bucket.
