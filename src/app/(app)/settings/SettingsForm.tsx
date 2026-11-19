@@ -5,7 +5,7 @@ import { buttonClass } from "@/components/ui/button";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setLocaleAction, setThemeAction, updateProfileAction } from "@/server/actions";
-import { t, type Locale } from "@/lib/i18n";
+import { LOCALE_INFO, LOCALES, t, type Locale } from "@/lib/i18n";
 
 interface Props {
   locale: Locale;
@@ -61,11 +61,13 @@ export default function SettingsForm({ locale, initial }: Props) {
 
       <section className="bg-surface border border-line rounded-panel p-4 space-y-3">
         <h2 className="text-md font-semibold">{t("settingsLanguage", locale)}</h2>
-        <div className="flex gap-2">
-          {(["en", "it", "pl", "de"] as const).map((lng) => (
+        <div className="flex flex-wrap gap-2">
+          {LOCALES.map((lng) => (
             <button
               key={lng}
               type="button"
+              lang={lng}
+              aria-pressed={initial.language === lng}
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
@@ -79,11 +81,7 @@ export default function SettingsForm({ locale, initial }: Props) {
                   : "border-line-strong hover:bg-ink/5"
               }`}
             >
-              {lng === "en" ? t("langEnglish", locale) :
-              lng === "it" ? t("langItalian", locale) :
-              lng === "pl" ? t("langPolish", locale) :
-              lng === "de" ? t("langGerman", locale) :
-              t("langEnglish", locale)}
+              {LOCALE_INFO[lng].name}
             </button>
           ))}
         </div>

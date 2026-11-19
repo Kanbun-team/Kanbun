@@ -1,4 +1,4 @@
-import { intlLocale, t, type Locale } from "@/lib/i18n";
+import { intlLocale, LOCALE_INFO, t, type Locale } from "@/lib/i18n";
 
 // Repeat rules for recurring cards. Client-safe and pure: dates are computed
 // in the process's local time zone (the server's TZ for the job), so "every
@@ -98,7 +98,7 @@ function ordinal(n: number, locale: Locale): string {
       rem100 >= 11 && rem100 <= 13 ? "th" : rem10 === 1 ? "st" : rem10 === 2 ? "nd" : rem10 === 3 ? "rd" : "th";
     return `${n}${suffix}`;
   }
-  return locale === "it" ? String(n) : `${n}.`;
+  return LOCALE_INFO[locale].dottedOrdinals ? `${n}.` : String(n);
 }
 
 /** "Every Monday", "Monthly on the 1st at 09:00", "Every day". */

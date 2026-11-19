@@ -16,8 +16,34 @@ test.describe("login screen in the browser's language", () => {
   });
 });
 
+test.describe("login screen in French", () => {
+  test.use({ locale: "fr-CA" });
+
+  test("a French browser gets a French login screen and errors", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page).toHaveTitle("Connexion · Kanbun");
+    await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+    await page.getByLabel("Nom d’utilisateur").fill("admin");
+    await page.getByLabel("Mot de passe").fill("wrong-password");
+    await page.getByRole("button", { name: "Se connecter", exact: true }).click();
+    await expect(page.getByText("Nom d’utilisateur ou mot de passe incorrect.")).toBeVisible();
+    expect(await axeViolations(page)).toEqual([]);
+  });
+});
+
+test.describe("login screen in Brazilian Portuguese", () => {
+  test.use({ locale: "pt-BR" });
+
+  test("a Portuguese browser gets a Portuguese login screen", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.locator("html")).toHaveAttribute("lang", "pt");
+    await expect(page.getByLabel("Nome de usuário")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Entrar", exact: true })).toBeVisible();
+  });
+});
+
 test.describe("login screen fallback", () => {
-  test.use({ locale: "fr-FR" });
+  test.use({ locale: "ja-JP" });
 
   test("an unsupported language falls back to English", async ({ page }) => {
     await page.goto("/login");
@@ -68,4 +94,25 @@ test("every page has its own document title", async ({ page }) => {
 
   await page.goto(`${boardUrl}/settings`);
   await expect(page).toHaveTitle("Board settings · Website relaunch · Kanbun");
+});
+
+test("the language picker names each language in that language and switches the UI", async ({ page }) => {
+  // piotr, not admin, so a failure here can not leave the other tests in Spanish.
+  await loginAs(page, "piotr");
+  await page.goto("/settings");
+  const language = (name: string) => page.getByRole("button", { name, exact: true });
+  for (const name of ["English", "Italiano", "Polski", "Deutsch", "Français", "Español", "Português (Brasil)"]) {
+    await expect(language(name)).toBeVisible();
+  }
+  try {
+    await language("Español").click();
+    await expect(page).toHaveTitle("Ajustes · Kanbun");
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    await expect(language("Español")).toHaveAttribute("aria-pressed", "true");
+    await language("Français").click();
+    await expect(page).toHaveTitle("Paramètres · Kanbun");
+  } finally {
+    await language("English").click();
+    await expect(page).toHaveTitle("Settings · Kanbun");
+  }
 });

@@ -13,23 +13,26 @@ export default async function WhatsNewPage() {
     <div className="space-y-6 max-w-3xl">
       <h1 className="text-xl font-semibold">{t("whatsNewTitle", locale)}</h1>
       <div className="space-y-4">
-        {CHANGELOG.map((entry) => (
+        {CHANGELOG.map((entry) => {
+          const title = localizedTitle(entry, locale);
+          return (
           <article key={entry.date} className="bg-surface border border-line rounded-panel p-4">
             <header className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">{localizedTitle(entry, locale)}</h2>
+              <h2 className="font-semibold" lang={title.lang === locale ? undefined : title.lang}>{title.text}</h2>
               <time className="text-xs text-ink-muted">
                 {formatDate(new Date(entry.date), locale)}
               </time>
             </header>
             <ul className="divide-y divide-line">
-              {localizedItems(entry, locale).map((it, i) => (
-                <li key={i} className="py-2 text-sm">
-                  {it}
+              {localizedItems(entry, locale).map((item, i) => (
+                <li key={i} className="py-2 text-sm" lang={item.lang === locale ? undefined : item.lang}>
+                  {item.text}
                 </li>
               ))}
             </ul>
           </article>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

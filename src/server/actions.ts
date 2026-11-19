@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db-local";
 import { auth, refreshSession, requireRole, requireUser } from "@/auth";
-import { isLocale } from "@/lib/i18n";
+import { isLocale, LOCALES } from "@/lib/i18n";
 import { LOCALE_COOKIE } from "@/lib/get-locale";
 import { safeAction } from "@/server/safe-action";
 import { ActionError } from "@/lib/action-result";
@@ -25,7 +25,7 @@ async function tryRefreshSession(patch: Record<string, unknown>): Promise<void> 
 }
 
 const themeSchema = z.enum(["light", "dark", "system"]);
-const localeSchema = z.enum(["en", "it", "pl", "de"]);
+const localeSchema = z.enum(LOCALES);
 
 export async function setThemeAction(theme: string) {
   return safeAction(async () => {

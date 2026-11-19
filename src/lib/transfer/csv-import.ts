@@ -77,11 +77,12 @@ export interface CsvPlan {
   tooManyRows: boolean;
 }
 
+// English plus the priority labels of every UI language (and common synonyms).
 const PRIORITY_WORDS: Record<string, Priority> = {
-  low: "low", bassa: "low", niska: "low", niedrig: "low",
-  normal: "normal", medium: "normal", normale: "normal", media: "normal", normalna: "normal", mittel: "normal", "": "normal",
-  high: "high", alta: "high", wysoka: "high", hoch: "high",
-  critical: "critical", urgent: "critical", critica: "critical", urgente: "critical", krytyczna: "critical", kritisch: "critical", dringend: "critical",
+  low: "low", bassa: "low", niska: "low", niedrig: "low", basse: "low", baja: "low", baixa: "low",
+  normal: "normal", medium: "normal", normale: "normal", media: "normal", normalna: "normal", mittel: "normal", moyenne: "normal", "média": "normal", "": "normal",
+  high: "high", alta: "high", wysoka: "high", hoch: "high", haute: "high",
+  critical: "critical", urgent: "critical", critica: "critical", urgente: "critical", krytyczna: "critical", kritisch: "critical", dringend: "critical", critique: "critical", "crítica": "critical",
 };
 
 function parsePriority(value: string): Priority | null {

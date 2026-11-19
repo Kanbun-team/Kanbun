@@ -2,9 +2,6 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "@/locales/en.json";
-import it_ from "@/locales/it.json";
-import pl from "@/locales/pl.json";
-import de from "@/locales/de.json";
 
 // Every key in en.json must be used somewhere in src: unused keys pile up and
 // cost translators time. A key counts as used when it appears as a quoted
@@ -48,7 +45,11 @@ describe("i18n keys", () => {
   });
 
   it("other locales have no keys that en.json lacks (besides their extra plural forms)", () => {
-    const orphans = Object.entries({ it: it_, pl, de }).flatMap(([code, dict]) =>
+    const dir = join(SRC, "locales");
+    const others = readdirSync(dir)
+      .filter((name) => name.endsWith(".json") && name !== "en.json")
+      .map((name) => [name.slice(0, -".json".length), JSON.parse(readFileSync(join(dir, name), "utf8"))] as const);
+    const orphans = others.flatMap(([code, dict]) =>
       Object.keys(dict)
         .filter((k) => !(k in en))
         .filter((k) => !(PLURAL.test(k) && `${k.replace(PLURAL, "")}_other` in en))
