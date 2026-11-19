@@ -371,7 +371,7 @@ const SortableCard = memo(function SortableCard({
       style={style}
       data-card-id={card.id}
       hidden={hidden}
-      className={cn("group relative", isDragging && "opacity-40")}
+      className={cn("board-card group relative", isDragging && "opacity-40")}
     >
       <CardBody card={card} editing={editing} attributes={attributes} listeners={listeners} shared={shared} />
     </div>
