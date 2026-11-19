@@ -40,7 +40,7 @@ In a board's **Settings > Import and export**, choose a CSV file. Kanbun detects
 | `title` (required) | Any text. Rows without a title are skipped |
 | `description` | Markdown text |
 | `column` | A column name (any case). Unknown names create a new column at the end; empty means the first column |
-| `priority` | `low`, `normal`, `high`, `critical` (also `urgent`, `medium` and the Italian, Polish and German words). Anything else becomes `normal` with a warning |
+| `priority` | `low`, `normal`, `high`, `critical` (also `urgent`, `medium` and the priority names of every UI language, such as `hoch`, `haute` or `crítica`). Anything else becomes `normal` with a warning |
 | `deadline` | `YYYY-MM-DD` (a time part is ignored), `DD.MM.YYYY` or `DD/MM/YYYY`. Invalid dates are dropped with a warning |
 | `tags` | Names separated by commas or semicolons. Unknown tags are created |
 | `assignees` | Usernames separated by commas. Users who are not members of the board are left out with a warning |

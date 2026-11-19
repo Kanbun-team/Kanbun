@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- French, Spanish and Brazilian Portuguese UI, complete with plural forms and informal address (tu, tú, você) ([#2](https://github.com/Kanbun-team/Kanbun/issues/2), [#3](https://github.com/Kanbun-team/Kanbun/issues/3), [#7](https://github.com/Kanbun-team/Kanbun/issues/7)). Browsers set to any French, Spanish or Portuguese variant get the login screen in that language.
+- CSV import understands the French, Spanish and Portuguese priority names.
+
+### Changed
+
+- The language picker in Settings names each language in that language (Deutsch, Français, ...).
+- Languages are listed in one place (`LOCALES` and `LOCALE_INFO` in `src/lib/i18n.ts`); the settings validation, the picker and browser language detection follow it. In-app release notes need English only, other languages fall back to it.
+- Monthly repeat summaries write the day as "5." only in German and Polish.
+
 ## [1.2.0] - 2026-11-19
 
 Closes the last gaps listed after v1.1.

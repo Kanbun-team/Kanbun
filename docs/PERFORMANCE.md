@@ -342,8 +342,8 @@ Checked and left alone:
 - Keyboard pick up and pointer drag start are under 100ms at 2x (88ms and a
   50ms task) but not at 4x (192ms, 95ms task): dnd-kit still re-renders every
   sortable card a few times per drag start (see "Tried and dropped" above).
-- The translations of all four languages are in the client bundle (about
-  50 KB compressed). Loading only the current language would need `t()` to
+- The translations of all seven languages are in the client bundle (about
+  14 KB compressed each, so about 100 KB). Loading only the current language would need `t()` to
   become asynchronous or a per-locale bundle.
 
 ## Rules for new board code
