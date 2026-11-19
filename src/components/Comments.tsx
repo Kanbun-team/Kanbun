@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
@@ -16,6 +16,7 @@ import { useUi } from "./ui/UiProvider";
 import { buttonClass } from "./ui/button";
 import { useOnline } from "@/lib/use-online";
 import { sendOrWarn } from "./ui/offline";
+import { newId } from "@/lib/outbox";
 
 export interface CommentItem {
   id: string;
@@ -62,6 +63,14 @@ export default function Comments({
   const [body, setBody] = useState("");
   const online = useOnline();
   const [commentsOnly, setCommentsOnly] = useState(false);
+  // One idempotency key per draft: sending the same text again after a
+  // dropped connection reuses it, so the server does not post it twice.
+  // Changing the text makes it a new comment with a new key.
+  const draftKey = useRef<{ body: string; key: string } | null>(null);
+  function keyFor(text: string): string {
+    if (draftKey.current?.body !== text) draftKey.current = { body: text, key: newId() };
+    return draftKey.current.key;
+  }
 
   const entries: TimelineEntry[] = [
     ...comments.map((c) => ({ kind: "comment" as const, ...c })),
@@ -130,8 +139,10 @@ export default function Comments({
       <form
         action={async (fd) => {
           // Offline or connection lost: the draft stays in the box.
+          fd.set("clientKey", keyFor(String(fd.get("body") ?? "")));
           const result = await sendOrWarn(ui, () => addCommentAction(fd));
           if (result && ui.report(result).ok) {
+            draftKey.current = null;
             setBody("");
             router.refresh();
           }

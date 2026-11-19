@@ -213,6 +213,39 @@ describe("applyOutbox", () => {
     expect(merged[0].cards.filter((c) => c.title === "Fresh")).toHaveLength(1);
   });
 
+  it("updates the checklist and comment counts on the board card", () => {
+    const base = board();
+    base[0].cards[0] = { ...base[0].cards[0], subtasksTotal: 5, subtasksDone: 1, commentsCount: 2 };
+    const entries = [
+      entry({ kind: "subtask", cardId: "c1", subtaskId: "s1", done: true, subtasksDone: 2 }),
+      entry({ kind: "subtask", cardId: "c1", subtaskId: "s2", done: true, subtasksDone: 3 }),
+      entry({ kind: "comment", cardId: "c1", tempId: "tmpc_a", body: "hi", commentsCount: 3 }),
+    ];
+    const once = applyOutbox(base, entries);
+    expect(once[0].cards[0]).toMatchObject({ subtasksDone: 3, commentsCount: 3 });
+    // Absolute counts: applying again, or on data that already has them, changes nothing.
+    expect(applyOutbox(once, entries)).toEqual(once);
+    // Never more than the card has, and entries without counts leave them alone.
+    const capped = applyOutbox(base, [
+      entry({ kind: "subtask", cardId: "c1", subtaskId: "s1", done: true, subtasksDone: 9 }),
+      entry({ kind: "subtask", cardId: "c2", subtaskId: "s9", done: true }),
+      entry({ kind: "comment", cardId: "c2", tempId: "tmpc_b", body: "hi" }),
+    ]);
+    expect(capped[0].cards[0].subtasksDone).toBe(5);
+    expect(capped[0].cards[1]).toBe(base[0].cards[1]);
+  });
+
+  it("keeps the latest count when a toggle of the same item is collapsed", () => {
+    const base = board();
+    base[0].cards[0] = { ...base[0].cards[0], subtasksTotal: 3, subtasksDone: 0 };
+    let entries: OutboxEntry[] = [];
+    entries = enqueue(entries, entry({ kind: "subtask", cardId: "c1", subtaskId: "a", done: true, subtasksDone: 1 }));
+    entries = enqueue(entries, entry({ kind: "subtask", cardId: "c1", subtaskId: "b", done: true, subtasksDone: 2 }));
+    entries = enqueue(entries, entry({ kind: "subtask", cardId: "c1", subtaskId: "a", done: false, subtasksDone: 1 }));
+    expect(entries).toHaveLength(2);
+    expect(applyOutbox(base, entries)[0].cards[0].subtasksDone).toBe(1);
+  });
+
   it("ignores entries for cards or columns that no longer exist", () => {
     const before = board();
     const after = applyOutbox(before, [

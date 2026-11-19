@@ -893,5 +893,5 @@
   "logoutPendingTitle": "Uscire con modifiche non sincronizzate?",
   "logoutPendingBody_one": "{count} modifica fatta offline non è ancora arrivata al server. Uscendo verrà scartata.",
   "logoutPendingBody_other": "{count} modifiche fatte offline non sono ancora arrivate al server. Uscendo verranno scartate.",
-  "networkError": "Impossibile raggiungere il server. Non è stato salvato nulla."
+  "networkError": "Impossibile raggiungere il server. La modifica potrebbe non essere stata salvata."
 }

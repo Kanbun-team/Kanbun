@@ -9,6 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Added
 
 - S3 attachment storage accepts temporary credentials: `ATTACHMENTS_S3_SESSION_TOKEN`, or without static keys the AWS credential chain (`AWS_*` variables, EKS web identity, ECS container credentials, EC2 instance role), cached and refreshed before they expire.
+- The REST API accepts an optional `Idempotency-Key` header when adding a comment, so a retried request returns the first comment instead of adding another ([docs/API.md](docs/API.md)).
+
+### Fixed
+
+- A comment sent again after the connection dropped (from the comment box or the offline queue) is no longer posted twice.
+- Checklist ticks and comments made offline in the card panel update the board card's checklist badge and comment count right away, not only after syncing.
+- The "could not reach the server" message no longer claims nothing was saved, since the change may have reached the server before the connection dropped.
 
 ## [1.1.0] - 2026-11-18
 

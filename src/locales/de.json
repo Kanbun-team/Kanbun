@@ -893,5 +893,5 @@
   "logoutPendingTitle": "Mit nicht synchronisierten Änderungen abmelden?",
   "logoutPendingBody_one": "{count} offline vorgenommene Änderung hat den Server noch nicht erreicht. Beim Abmelden wird sie verworfen.",
   "logoutPendingBody_other": "{count} offline vorgenommene Änderungen haben den Server noch nicht erreicht. Beim Abmelden werden sie verworfen.",
-  "networkError": "Der Server ist nicht erreichbar. Es wurde nichts gespeichert."
+  "networkError": "Der Server ist nicht erreichbar. Deine Änderung wurde möglicherweise nicht gespeichert."
 }

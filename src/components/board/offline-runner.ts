@@ -53,7 +53,10 @@ export async function runOutboxOp(op: OutboxOp): Promise<RunResult> {
       return r.ok ? { ok: true } : r;
     }
     case "comment": {
-      const r = await addCommentAction(form({ cardId: op.cardId, body: op.body }));
+      // The temporary id doubles as the idempotency key: if the connection
+      // drops after the server saved the comment, the replay that follows
+      // gets the saved comment back instead of posting it again.
+      const r = await addCommentAction(form({ cardId: op.cardId, body: op.body, clientKey: op.tempId }));
       return r.ok ? { ok: true } : r;
     }
   }

@@ -78,6 +78,15 @@ curl -X POST "$KANBUN/api/v1/cards/CARD_ID/comments" \
   -d '{"body":"Deployed to staging."}'
 ```
 
+To retry a comment safely (for example after a timeout), send an `Idempotency-Key` header with a key you chose for that comment, such as a UUID (1 to 100 letters, digits or `_ . : -`). The first request answers `201`; a repeat with the same key on the same card answers `200` with the same comment and notifies nobody again. A key another user already used on that card answers `409`.
+
+```sh
+curl -X POST "$KANBUN/api/v1/cards/CARD_ID/comments" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -H "Idempotency-Key: 6f1c2a0e-8f8a-4c55-9a43-0d6f3c1b7e21" \
+  -d '{"body":"Deployed to staging."}'
+```
+
 Deadlines are calendar dates: send and receive `YYYY-MM-DD` (an ISO date-time is accepted and its UTC date used). `null` clears a field. Card `position` 0 is the top of the column; moving to another column without a `position` puts the card at the end.
 
 ## Pagination

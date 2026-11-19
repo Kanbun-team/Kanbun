@@ -17,6 +17,7 @@ import { getLocale } from "@/lib/get-locale";
 import { changedFields, emitBoardEvent, emitColumnCardsDeleted } from "@/server/webhooks";
 import { BOARD_TEMPLATE_IDS, boardTemplateContent } from "@/lib/board-templates";
 import { audit } from "@/server/audit";
+import { CommentKeyError, createCommentOnce, parseClientKey } from "@/server/comments";
 
 /** The signed-in user as an audit actor (only called on rare, audited actions). */
 async function auditActor() {
@@ -1088,6 +1089,12 @@ export async function addCommentAction(formData: FormData) {
     const cardId = String(formData.get("cardId") ?? "");
     const body = String(formData.get("body") ?? "").trim();
     if (!cardId || !body) throw new ActionError("invalid");
+    let clientKey: string | null;
+    try {
+      clientKey = parseClientKey(formData.get("clientKey"));
+    } catch {
+      throw new ActionError("invalid");
+    }
     const card = await prisma.taskCard.findUnique({
       where: { id: cardId },
       select: { title: true, column: { select: { boardId: true } } },
@@ -1095,17 +1102,16 @@ export async function addCommentAction(formData: FormData) {
     if (!card) throw new ActionError("notFound");
     const boardId = card.column.boardId;
     await loadBoardAccess(boardId);
-    const comment = await prisma.$transaction(async (tx) => {
-      const created = await tx.taskCardComment.create({
-        data: {
-          cardId,
-          authorId: user.id,
-          body: body.slice(0, 5000),
-        },
-      });
-      await watchCard(cardId, user.id, tx);
-      return created;
-    });
+    let result: Awaited<ReturnType<typeof createCommentOnce>>;
+    try {
+      result = await createCommentOnce({ cardId, authorId: user.id, body: body.slice(0, 5000), clientKey });
+    } catch (err) {
+      if (err instanceof CommentKeyError) throw new ActionError("invalid");
+      throw err;
+    }
+    const { comment, created } = result;
+    // A retried send of a comment that was already saved: nothing more to do.
+    if (!created) return { id: comment.id };
 
     // Mentioned board members get "mention", card watchers "comment" (once each).
     await notifyComment(
@@ -1115,6 +1121,7 @@ export async function addCommentAction(formData: FormData) {
 
     revalidatePath(`/tasks/${boardId}/cards/${cardId}`);
     emitBoardEvent(boardId, "comment.created", { cardId, actorId: user.id, commentId: comment.id });
+    return { id: comment.id };
   });
 }
 

@@ -111,6 +111,27 @@ test("tokens: create in settings, use the API, read-only and revoked tokens", as
   const comments = await (await request.get(`/api/v1/cards/${created.id}/comments`, { headers: auth(readToken) })).json();
   expect(comments.data.at(-1)).toMatchObject({ body: "Posted by a script", author: { username: "admin" } });
 
+  // A retried comment with the same Idempotency-Key is not posted twice.
+  const key = `retry-${stamp}`;
+  const once = await request.post(`/api/v1/cards/${created.id}/comments`, {
+    headers: { ...auth(writeToken), "Idempotency-Key": key },
+    data: { body: "Sent with a retry" },
+  });
+  expect(once.status()).toBe(201);
+  const twice = await request.post(`/api/v1/cards/${created.id}/comments`, {
+    headers: { ...auth(writeToken), "Idempotency-Key": key },
+    data: { body: "Sent with a retry" },
+  });
+  expect(twice.status()).toBe(200);
+  expect((await twice.json()).id).toBe((await once.json()).id);
+  const bad = await request.post(`/api/v1/cards/${created.id}/comments`, {
+    headers: { ...auth(writeToken), "Idempotency-Key": "has spaces" },
+    data: { body: "x" },
+  });
+  expect(bad.status()).toBe(400);
+  const after = await (await request.get(`/api/v1/cards/${created.id}/comments`, { headers: auth(readToken) })).json();
+  expect(after.data.filter((c: { body: string }) => c.body === "Sent with a retry")).toHaveLength(1);
+
   // Delete goes to the trash.
   const deleted = await request.delete(`/api/v1/cards/${created.id}`, { headers: auth(writeToken) });
   expect(deleted.ok()).toBe(true);

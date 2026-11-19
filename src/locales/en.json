@@ -893,5 +893,5 @@
   "logoutPendingTitle": "Log out with unsynced changes?",
   "logoutPendingBody_one": "{count} change made offline has not reached the server yet. Logging out discards it.",
   "logoutPendingBody_other": "{count} changes made offline have not reached the server yet. Logging out discards them.",
-  "networkError": "Could not reach the server. Nothing was saved."
+  "networkError": "Could not reach the server. Your change may not have been saved."
 }

@@ -926,5 +926,5 @@
   "logoutPendingBody_few": "{count} zmiany wprowadzone offline nie dotarły jeszcze na serwer. Wylogowanie je odrzuci.",
   "logoutPendingBody_many": "{count} zmian wprowadzonych offline nie dotarło jeszcze na serwer. Wylogowanie je odrzuci.",
   "logoutPendingBody_other": "{count} zmiany wprowadzonej offline nie dotarło jeszcze na serwer. Wylogowanie je odrzuci.",
-  "networkError": "Nie można połączyć się z serwerem. Nic nie zostało zapisane."
+  "networkError": "Nie można połączyć się z serwerem. Zmiana mogła nie zostać zapisana."
 }

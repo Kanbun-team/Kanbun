@@ -292,7 +292,16 @@
         "tags": ["Comments"],
         "operationId": "createComment",
         "summary": "Comment on a card",
-        "description": "Needs the write scope. `@username` mentions and card watchers are notified.",
+        "description": "Needs the write scope. `@username` mentions and card watchers are notified. Send an `Idempotency-Key` header to retry safely: a repeated request with the same key on the same card returns the comment the first one created (status 200) and notifies nobody again.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "A key you choose per comment, for example a UUID: 1 to 100 letters, digits or `_ . : -`. Keys are unique per card.",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z0-9_.:-]{1,100}$" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -306,11 +315,22 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "A repeated request with the same `Idempotency-Key`: the comment the first request created.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Comment" } } }
+          },
           "201": { "description": "The new comment.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Comment" } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
+          "400": {
+            "description": "The body is not a JSON object, or the `Idempotency-Key` header is malformed (`invalid_idempotency_key`).",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "403": { "$ref": "#/components/responses/Forbidden" },
           "404": { "$ref": "#/components/responses/NotFound" },
+          "409": {
+            "description": "Another user already used this `Idempotency-Key` on this card (`idempotency_key_conflict`).",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
           "422": { "$ref": "#/components/responses/ValidationFailed" },
           "429": { "$ref": "#/components/responses/RateLimited" }
         }

@@ -13,7 +13,13 @@
 //   desired state too (done or not), so only the latest per item is kept.
 // - Comments written offline are never merged: each one is sent once, in
 //   order. They get a temporary id (COMMENT_PREFIX) so the card view can show
-//   them as pending until they are sent.
+//   them as pending until they are sent. The server also uses it as the
+//   comment's idempotency key, so a replay repeated after a dropped
+//   connection does not post the comment twice.
+// - Checklist toggles and comments carry the card's resulting counts (done
+//   items, comments), so the board card's badges update right away. They are
+//   absolute numbers, not +1/-1, so applying an entry the board data already
+//   reflects changes nothing (see applyOutbox).
 // - Cards created offline get a temporary id (TEMP_PREFIX). Replaying the
 //   creation maps it to the real id, and later entries use the real id.
 // - An entry the server rejects (card deleted, no access) is dropped and
@@ -40,8 +46,23 @@ export type OutboxOp =
   | { kind: "assignee"; cardId: string; user: MemberOption; on: boolean }
   | { kind: "tag"; cardId: string; tag: TagOption; on: boolean }
   | { kind: "addCards"; columnId: string; titles: string[]; tempIds: string[] }
-  | { kind: "subtask"; cardId: string; subtaskId: string; done: boolean }
-  | { kind: "comment"; cardId: string; tempId: string; body: string };
+  | {
+      kind: "subtask";
+      cardId: string;
+      subtaskId: string;
+      done: boolean;
+      /** Done items of the card after this toggle, for the board card's "2/5" badge. */
+      subtasksDone?: number;
+    }
+  | {
+      kind: "comment";
+      cardId: string;
+      /** Also the comment's idempotency key on the server. */
+      tempId: string;
+      body: string;
+      /** Comments on the card once this one is posted, for the board card's count. */
+      commentsCount?: number;
+    };
 
 export interface OutboxEntry {
   id: string;
@@ -302,6 +323,23 @@ export function applyOutbox(columns: ColumnDTO[], entries: OutboxEntry[], idMap:
           return { ...card, tags: op.on ? [...card.tags, op.tag] : card.tags.filter((tg) => tg.id !== op.tag.id) };
         });
         break;
+      case "subtask": {
+        const done = op.subtasksDone;
+        if (done === undefined) break;
+        result = mapCard(result, op.cardId, (card) => {
+          const next = Math.max(0, Math.min(done, card.subtasksTotal));
+          return next === card.subtasksDone ? card : { ...card, subtasksDone: next };
+        });
+        break;
+      }
+      case "comment": {
+        const count = op.commentsCount;
+        if (count === undefined) break;
+        result = mapCard(result, op.cardId, (card) =>
+          count === card.commentsCount ? card : { ...card, commentsCount: Math.max(0, count) }
+        );
+        break;
+      }
     }
   }
   return result;
