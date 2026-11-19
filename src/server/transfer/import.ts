@@ -200,7 +200,7 @@ export async function writeBoard(
           cardId: row.id,
           boardId,
           type: "created",
-          data: JSON.stringify({ column: clip(col.name, 80) }),
+          data: JSON.stringify({ column: clip(col.name, 80), columnId: column.id }),
           actorId: importer.id,
         });
       }
@@ -348,7 +348,7 @@ export async function writeCsvPlan(boardId: string, plan: CsvPlan, importer: Imp
         cardId: row.id,
         boardId,
         type: "created",
-        data: JSON.stringify({ column: card.column }),
+        data: JSON.stringify({ column: card.column, columnId: colId }),
         actorId: importer.id,
       });
     }

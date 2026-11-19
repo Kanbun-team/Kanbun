@@ -153,7 +153,7 @@ export async function convertSubtaskToCardAction(subtaskId: string) {
       await tx.taskSubtask.delete({ where: { id: sub.id } });
       await logActivity(
         [
-          { cardId: created.id, boardId, actorId: access.userId, type: "created", data: { column: parent.column.name } },
+          { cardId: created.id, boardId, actorId: access.userId, type: "created", data: { column: parent.column.name, columnId: parent.columnId } },
           { cardId: parent.id, boardId, actorId: access.userId, type: "subtaskConverted", data: { title: sub.title } },
         ],
         tx

@@ -1,5 +1,6 @@
 // Adds one large board (500 cards over 6 columns, with tags, assignees,
-// checklists, comments and a few blockers) for performance testing, see
+// checklists, comments, a few blockers and a few months of card history) for
+// performance testing, see
 // docs/PERFORMANCE.md. Unlike seed-demo it runs on a database that already
 // has users (for example the e2e database after seed-demo): the board's
 // members are the existing users. On an empty database it creates an admin
@@ -54,6 +55,16 @@ function rand() {
   seed = (seed * 1664525 + 1013904223) % 4294967296;
   return seed / 4294967296;
 }
+// Card history uses its own sequence, so the board itself (titles, tags,
+// assignees) stays the same as before history was added.
+let historySeed = 7;
+function hrand() {
+  historySeed = (historySeed * 1664525 + 1013904223) % 4294967296;
+  return historySeed / 4294967296;
+}
+// Average days a card stays in each column before it moves on.
+const MEAN_STAY_DAYS = [12, 5, 3, 1.5, 4, 0];
+const stayMs = (column: number) => -Math.log(1 - hrand()) * MEAN_STAY_DAYS[column] * DAY + 60_000;
 const pick = <T,>(items: T[]) => items[Math.floor(rand() * items.length)];
 function sample<T>(items: T[], n: number): T[] {
   const copy = [...items];
@@ -86,7 +97,12 @@ async function main() {
   const people = users.slice(0, 8);
 
   const old = await prisma.board.findMany({ where: { name: LARGE_BOARD_NAME }, select: { id: true } });
-  if (old.length) await prisma.board.deleteMany({ where: { id: { in: old.map((b) => b.id) } } });
+  if (old.length) {
+    const ids = old.map((b) => b.id);
+    // Card history has no relation to the card, so it goes separately.
+    await prisma.cardActivity.deleteMany({ where: { boardId: { in: ids } } });
+    await prisma.board.deleteMany({ where: { id: { in: ids } } });
+  }
   if (process.argv.includes("--remove")) {
     console.log(old.length ? "Large board removed." : "No large board found.");
     return;
@@ -119,13 +135,30 @@ async function main() {
     coverColor: string | null;
     deadline: Date | null;
     createdById: string;
+    createdAt: Date;
   }[] = [];
   const tagRows: { cardId: string; tagId: string }[] = [];
   const assigneeRows: { cardId: string; userId: string }[] = [];
   const subtaskRows: { cardId: string; title: string; done: boolean; position: number; completedAt: Date | null }[] = [];
   const commentRows: { cardId: string; authorId: string; body: string }[] = [];
+  const activityRows: { cardId: string; boardId: string; type: string; data: string; actorId: string; createdAt: Date }[] = [];
 
   const now = Date.now();
+  // The columns a card went through to reach column `current`, oldest first:
+  // Backlog onwards (some start in To do, a few were added straight to
+  // Done), with the occasional trip back from Review or through Blocked.
+  function historyPath(current: number): number[] {
+    if (current === 5 && hrand() < 0.03) return [5];
+    const path: number[] = [];
+    for (let c = hrand() < 0.15 ? Math.min(current, 1) : 0; c <= Math.min(current, 3); c++) path.push(c);
+    if (current === 4) path.push(4);
+    if (current === 5) {
+      if (hrand() < 0.1) path.splice(path.indexOf(2) + 1, 0, 4, 2);
+      if (hrand() < 0.12) path.splice(path.lastIndexOf(3) + 1, 0, 2, 3);
+      path.push(5);
+    }
+    return path;
+  }
   let n = 0;
   board.columns.forEach((column, ci) => {
     const count = ci === board.columns.length - 1 ? CARD_COUNT - n : Math.round(CARD_COUNT * SHARE[ci]);
@@ -143,7 +176,36 @@ async function main() {
         coverColor: rand() < 0.08 ? pick(TAGS)[1] : null,
         deadline: rand() < 0.45 ? new Date(Math.floor((now + Math.round((rand() * 60 - 15)) * DAY) / DAY) * DAY) : null,
         createdById: owner.id,
+        createdAt: new Date(now),
       });
+      // Walk back from now: the time in the current column, then the stays
+      // before it. Done cards finished at some point in the last 110 days;
+      // one card in ten has sat in its column four times longer than usual.
+      const path = historyPath(ci);
+      const times: number[] = new Array(path.length);
+      times[path.length - 1] =
+        now - (ci === 5 ? hrand() * 110 * DAY : stayMs(ci) * (hrand() < 0.1 ? 4 : 1));
+      for (let i = path.length - 2; i >= 0; i--) times[i] = times[i + 1] - stayMs(path[i]);
+      cards[cards.length - 1].createdAt = new Date(times[0]);
+      const col = (i: number) => board.columns[path[i]];
+      activityRows.push({
+        cardId,
+        boardId: board.id,
+        type: "created",
+        data: JSON.stringify({ column: col(0).name, columnId: col(0).id }),
+        actorId: owner.id,
+        createdAt: new Date(times[0]),
+      });
+      for (let i = 1; i < path.length; i++) {
+        activityRows.push({
+          cardId,
+          boardId: board.id,
+          type: "moved",
+          data: JSON.stringify({ from: col(i - 1).name, to: col(i).name, fromId: col(i - 1).id, toId: col(i).id }),
+          actorId: people[Math.floor(hrand() * people.length)].id,
+          createdAt: new Date(times[i]),
+        });
+      }
       for (const tag of sample(board.tags, Math.floor(rand() * 3))) tagRows.push({ cardId, tagId: tag.id });
       for (const user of sample(people, Math.floor(rand() * 3))) assigneeRows.push({ cardId, userId: user.id });
       if (rand() < 0.4) {
@@ -178,10 +240,12 @@ async function main() {
   for (const rows of chunk(subtaskRows)) await prisma.taskSubtask.createMany({ data: rows });
   for (const rows of chunk(commentRows)) await prisma.taskCardComment.createMany({ data: rows });
   for (const rows of chunk(blockRows)) await prisma.taskBlock.createMany({ data: rows });
+  for (const rows of chunk(activityRows, 500)) await prisma.cardActivity.createMany({ data: rows });
 
   console.log(
     `Large board created: ${cards.length} cards, ${tagRows.length} tags, ${assigneeRows.length} assignees, ` +
-      `${subtaskRows.length} checklist items, ${commentRows.length} comments, ${blockRows.length} blockers.`
+      `${subtaskRows.length} checklist items, ${commentRows.length} comments, ${blockRows.length} blockers, ` +
+      `${activityRows.length} history entries.`
   );
   console.log(`Board id: ${board.id}`);
 }

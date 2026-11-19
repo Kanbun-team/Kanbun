@@ -244,6 +244,8 @@ function moveCardLocally(columns: ColumnDTO[], cardId: string, toColumnId: strin
     const i = c.cards.findIndex((card) => card.id === cardId);
     if (i < 0) return c;
     moved = c.cards[i];
+    // A card that changes column starts a new stay: no "longer than usual".
+    if (c.id !== toColumnId && moved.staleDays !== undefined) moved = { ...moved, staleDays: undefined };
     return { ...c, cards: c.cards.filter((card) => card.id !== cardId) };
   });
   if (!moved) return columns;

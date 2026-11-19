@@ -300,7 +300,7 @@ export async function createCard(ctx: ApiContext, boardId: string, body: unknown
     await tx.taskCardMoveEvent.create({
       data: { cardId: created.id, cardTitle: created.title, boardId, toColumnName: col.name, userId },
     });
-    await logActivity({ cardId: created.id, boardId, actorId: userId, type: "created", data: { column: col.name } }, tx);
+    await logActivity({ cardId: created.id, boardId, actorId: userId, type: "created", data: { column: col.name, columnId: data.columnId } }, tx);
     return created;
   });
 
@@ -378,7 +378,7 @@ export async function updateCard(ctx: ApiContext, cardId: string, body: unknown)
   for (const id of dropTags) activity.push({ ...base, type: "tagRemoved", data: { name: currentTags.get(id) ?? "" } });
 
   const moving = toColumn !== null || data.position !== undefined;
-  if (toColumn) activity.push({ ...base, type: "moved", data: { from: fromColumn.name, to: toColumn.name } });
+  if (toColumn) activity.push({ ...base, type: "moved", data: { from: fromColumn.name, to: toColumn.name, fromId: card.columnId, toId: toColumn.id } });
 
   await prisma.$transaction(async (tx) => {
     if (Object.keys(fields).length) await tx.taskCard.update({ where: { id: cardId }, data: fields });
