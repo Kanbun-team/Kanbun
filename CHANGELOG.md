@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-19
+
+Phase 6, Flow: board insights, swimlanes and automations.
+
 ### Added
 
 - Board insights (`/tasks/<id>/insights`, from the board header or the command palette): cycle time as median and 85th percentile with a distribution, throughput per week over 12 weeks, a cumulative flow chart over 30 or 90 days, aging work in progress and the usual time per column. Computed from the card history; the page says where the history starts and how many cards lack the start of theirs. Charts are hand-written SVG with a table and an accessible summary each, in both themes and at 390px. Same access as the board.
@@ -333,7 +337,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.0.0...v1.1.0
