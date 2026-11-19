@@ -219,9 +219,10 @@ create a bucket and pass the `ATTACHMENTS_S3_*` variables to Playwright:
 
 ```bash
 docker run -d --name kanbun-minio -p 9000:9000 \
-  -e MINIO_ROOT_USER=kanbun -e MINIO_ROOT_PASSWORD=kanbun-secret minio/minio server /data
-docker run --rm --network host -e MC_HOST_local=http://kanbun:kanbun-secret@localhost:9000 \
-  minio/mc mb local/kanbun-e2e
+  -e MINIO_ROOT_USER=kanbun -e MINIO_ROOT_PASSWORD=kanbun-secret \
+  pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data
+curl -X PUT --aws-sigv4 "aws:amz:us-east-1:s3" --user kanbun:kanbun-secret \
+  http://localhost:9000/kanbun-e2e
 ATTACHMENTS_S3_BUCKET=kanbun-e2e ATTACHMENTS_S3_ENDPOINT=http://localhost:9000 \
 ATTACHMENTS_S3_ACCESS_KEY_ID=kanbun ATTACHMENTS_S3_SECRET_ACCESS_KEY=kanbun-secret \
 E2E_POSTGRES_URL=postgresql://postgres:pw@localhost:55432/kanbun_e2e \
