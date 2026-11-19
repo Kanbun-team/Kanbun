@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- The REST API accepts an optional `Idempotency-Key` header when adding a comment, so a retried request returns the first comment instead of adding another ([docs/API.md](docs/API.md)).
+
+### Fixed
+
+- A comment sent again after the connection dropped (from the comment box or the offline queue) is no longer posted twice.
+- Checklist ticks and comments made offline in the card panel update the board card's checklist badge and comment count right away, not only after syncing.
+
 ## [1.1.0] - 2026-11-18
 
 Closes the gaps listed after v1.0.

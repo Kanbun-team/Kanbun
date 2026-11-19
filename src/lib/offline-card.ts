@@ -293,3 +293,37 @@ export function applyCardOutbox(
   }
   return { card: next, pendingComments };
 }
+
+/** The counts the board shows for a card (a CardDTO has these fields). */
+export interface BoardCounts {
+  subtasksDone: number;
+  commentsCount: number;
+}
+
+/**
+ * Done checklist items of the card once `subtaskId` is set to `done`, for the
+ * board card's badge while the toggle waits in the outbox. Based on what the
+ * board shows when it is known, else on the stored checklist. Undefined when
+ * neither is reliable (a lightweight copy may hold only part of a long
+ * checklist).
+ */
+export function subtasksDoneAfter(
+  view: CardView["card"],
+  record: Pick<StoredCard, "partial">,
+  subtaskId: string,
+  done: boolean,
+  board?: BoardCounts
+): number | undefined {
+  const item = view.checklist.find((i) => i.id === subtaskId);
+  if (!item) return undefined;
+  const delta = item.done === done ? 0 : done ? 1 : -1;
+  if (board) return Math.max(0, board.subtasksDone + delta);
+  if (record.partial && view.checklist.length >= LITE_LIMITS.checklist) return undefined;
+  return view.checklist.filter((i) => i.done).length + delta;
+}
+
+/** Comments on the card once one more is posted, for the board card's count. */
+export function commentsCountAfter(view: CardView, board?: BoardCounts): number {
+  if (board) return board.commentsCount + 1;
+  return view.card.commentsTotal + view.pendingComments.length + 1;
+}

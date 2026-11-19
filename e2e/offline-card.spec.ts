@@ -61,6 +61,9 @@ test("a card opened online is readable offline, and checklist and comment edits 
   await panel.getByRole("button", { name: "Close" }).click();
   await expect(panel).toHaveCount(0);
   await expect(page).toHaveTitle("Website relaunch · Kanbun");
+  const face = card(page, "Backlog", title);
+  await expect(face).toContainText("0 of 1 subtask done");
+  await expect(face).not.toContainText("1 comment");
 
   await context.setOffline(true);
   await expect(page.getByRole("status").filter({ hasText: "Offline" }).first()).toBeVisible();
@@ -81,6 +84,9 @@ test("a card opened online is readable offline, and checklist and comment edits 
   expect(await axeViolations(page)).toEqual([]);
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(pending(page)).toHaveText("2 changes waiting to sync");
+  // The board card shows the queued checklist tick and comment before syncing.
+  await expect(face).toContainText("1 of 1 subtask done");
+  await expect(face).toContainText("1 comment");
 
   // A card never opened: the lightweight copy.
   await card(page, "Review", "Lighthouse pass on landing page").getByRole("link").click();
@@ -91,8 +97,10 @@ test("a card opened online is readable offline, and checklist and comment edits 
   await context.setOffline(false);
   await expect(toast(page)).toContainText("All offline changes are synced.");
   await expect(pending(page)).toHaveCount(0);
+  await expect(face).toContainText("1 of 1 subtask done");
+  await expect(face).toContainText("1 comment");
 
-  // Another browser sees the synced checklist item and comment.
+  // Another browser sees the synced checklist item and comment, posted once.
   const other = await browser.newContext();
   const page2 = await other.newPage();
   await loginAs(page2, "admin");
@@ -100,7 +108,7 @@ test("a card opened online is readable offline, and checklist and comment edits 
   await card(page2, "Backlog", title).getByRole("link").click();
   const panel2 = page2.getByRole("dialog", { name: "Open card" });
   await expect(panel2.getByRole("checkbox", { name: `Done: ${step}` })).toBeChecked();
-  await expect(panel2.getByText(comment)).toBeVisible();
+  await expect(panel2.getByText(comment)).toHaveCount(1);
   await other.close();
 });
 

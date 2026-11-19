@@ -3,7 +3,9 @@ import {
   FULL_LIMITS,
   LITE_LIMITS,
   applyCardOutbox,
+  commentsCountAfter,
   newerCard,
+  subtasksDoneAfter,
   toOfflineCard,
   type OfflineCardRow,
   type StoredCard,
@@ -235,5 +237,45 @@ describe("applyCardOutbox", () => {
       tmp_1: "c1",
     });
     expect(view.card.title).toBe("Mapped");
+  });
+});
+
+describe("board counts for queued checklist toggles and comments", () => {
+  const card = toOfflineCard(row());
+  const full = { partial: false };
+  const board = (subtasksDone: number, commentsCount = 0) => ({ subtasksDone, commentsCount });
+
+  it("counts done items from what the board shows", () => {
+    expect(subtasksDoneAfter(card, full, "s1", true, board(4))).toBe(5);
+    expect(subtasksDoneAfter(card, full, "s2", false, board(4))).toBe(3);
+    // Setting an item to the state it already has changes nothing.
+    expect(subtasksDoneAfter(card, full, "s2", true, board(4))).toBe(4);
+  });
+
+  it("falls back to the stored checklist, unless it may be cut short", () => {
+    expect(subtasksDoneAfter(card, full, "s1", true)).toBe(2);
+    expect(subtasksDoneAfter(card, full, "missing", true)).toBeUndefined();
+    const long = toOfflineCard(
+      row({
+        subtasks: Array.from({ length: 60 }, (_, i) => ({
+          id: `s${i}`,
+          title: `S${i}`,
+          done: false,
+          dueDate: null,
+          assignee: null,
+        })),
+      }),
+      LITE_LIMITS
+    );
+    expect(subtasksDoneAfter(long, { partial: true }, "s1", true)).toBeUndefined();
+    expect(subtasksDoneAfter(long, { partial: true }, "s1", true, board(0))).toBe(1);
+  });
+
+  it("counts comments from the board, else from stored and pending comments", () => {
+    const view = applyCardOutbox(card, [
+      entry({ kind: "comment", cardId: "c1", tempId: `${COMMENT_PREFIX}a`, body: "one" }),
+    ]);
+    expect(commentsCountAfter(view, board(0, 7))).toBe(8);
+    expect(commentsCountAfter(view)).toBe(card.commentsTotal + 2);
   });
 });

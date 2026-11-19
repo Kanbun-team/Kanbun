@@ -10,7 +10,16 @@ import { formatBytes } from "@/lib/attachments";
 import { formatDate, formatDateTime, intlLocale, t, type Locale } from "@/lib/i18n";
 import { PRIORITIES, priorityClass, priorityLabel } from "@/lib/labels";
 import { renderMarkdownToHtml } from "@/lib/markdown";
-import { applyCardOutbox, newerCard, type OfflineCard, type StoredCard } from "@/lib/offline-card";
+import {
+  applyCardOutbox,
+  commentsCountAfter,
+  newerCard,
+  subtasksDoneAfter,
+  type BoardCounts,
+  type CardView,
+  type OfflineCard,
+  type StoredCard,
+} from "@/lib/offline-card";
 import { queueEdit, readCard, useOfflineState } from "@/lib/offline-store";
 import { COMMENT_PREFIX, newId, type OutboxOp } from "@/lib/outbox";
 import { cn } from "@/lib/utils";
@@ -106,8 +115,8 @@ export default function OfflineCardView({
     <CardBody
       key={record.renderedAt}
       record={record}
-      card={view.card}
-      pendingComments={view.pendingComments}
+      view={view}
+      board={fallback?.card}
       notStored={notStored}
       locale={locale}
     />
@@ -132,17 +141,19 @@ function OfflineNotice({ locale, time, children }: { locale: Locale; time?: stri
 
 function CardBody({
   record,
-  card,
-  pendingComments,
+  view,
+  board,
   notStored,
   locale,
 }: {
   record: StoredCard;
-  card: OfflineCard;
-  pendingComments: { id: string; body: string; createdAt: string }[];
+  view: CardView;
+  /** The card as the board shows it (queued edits applied), when opened from the board. */
+  board?: BoardCounts;
   notStored: boolean;
   locale: Locale;
 }) {
+  const { card, pendingComments } = view;
   const ui = useUi();
   const ids = useId();
   const [title, setTitle] = useState(card.title);
@@ -164,7 +175,13 @@ function CardBody({
   function postComment() {
     const body = comment.trim();
     if (!body) return;
-    queue({ kind: "comment", cardId: card.id, tempId: newId(COMMENT_PREFIX), body: body.slice(0, 5000) });
+    queue({
+      kind: "comment",
+      cardId: card.id,
+      tempId: newId(COMMENT_PREFIX),
+      body: body.slice(0, 5000),
+      commentsCount: commentsCountAfter(view, board),
+    });
     setComment("");
     ui.toast({ message: t("offlineCommentQueued", locale) });
   }
@@ -330,7 +347,13 @@ function CardBody({
                   id={`${ids}-sub-${item.id}`}
                   checked={item.done}
                   onChange={(e) =>
-                    queue({ kind: "subtask", cardId: card.id, subtaskId: item.id, done: e.target.checked })
+                    queue({
+                      kind: "subtask",
+                      cardId: card.id,
+                      subtaskId: item.id,
+                      done: e.target.checked,
+                      subtasksDone: subtasksDoneAfter(card, record, item.id, e.target.checked, board),
+                    })
                   }
                   aria-label={t("subtaskToggle", locale).replace("{title}", item.title)}
                   className="w-5 h-5 shrink-0"
