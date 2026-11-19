@@ -889,5 +889,18 @@
   "logoutPendingTitle": "Uscire con modifiche non sincronizzate?",
   "logoutPendingBody_one": "{count} modifica fatta offline non è ancora arrivata al server. Uscendo verrà scartata.",
   "logoutPendingBody_other": "{count} modifiche fatte offline non sono ancora arrivate al server. Uscendo verranno scartate.",
-  "networkError": "Impossibile raggiungere il server. La modifica potrebbe non essere stata salvata."
+  "networkError": "Impossibile raggiungere il server. La modifica potrebbe non essere stata salvata.",
+  "laneGroupButton": "Corsie",
+  "laneGroupActive": "Corsie: {group}",
+  "laneGroupLabel": "Raggruppa la bacheca in corsie",
+  "laneGroupNone": "Nessuna corsia",
+  "laneNoAssignee": "Nessun assegnatario",
+  "laneNoTag": "Nessun tag",
+  "laneCards_one": "{count} card",
+  "laneCards_other": "{count} card",
+  "laneCopyHint": "Copia. Sposta la card nella corsia {lane}.",
+  "laneDndInstructions": "Per prendere una card premi Spazio. Spostala con le frecce, Maiusc con Su o Giù la porta nella corsia sopra o sotto. Premi Spazio per rilasciarla o Esc per annullare.",
+  "laneDndOver": "{title} è in {column}, corsia {lane}, posizione {position} di {count}.",
+  "laneDndDropped": "{title} spostata in {column}, corsia {lane}, posizione {position} di {count}.",
+  "shortcutLaneMove": "Mentre sposti una card nelle corsie: alla corsia sopra o sotto"
 }

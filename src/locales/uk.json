@@ -923,5 +923,20 @@
   "logoutPendingBody_few": "{count} зміни, зроблені офлайн, ще не дійшли до сервера. Якщо вийдеш, їх буде втрачено.",
   "logoutPendingBody_many": "{count} змін, зроблених офлайн, ще не дійшли до сервера. Якщо вийдеш, їх буде втрачено.",
   "logoutPendingBody_other": "{count} зміни, зробленої офлайн, ще не дійшло до сервера. Якщо вийдеш, їх буде втрачено.",
-  "networkError": "Не вдалося зв'язатися із сервером. Твою зміну могло бути не збережено."
+  "networkError": "Не вдалося зв'язатися із сервером. Твою зміну могло бути не збережено.",
+  "laneGroupButton": "Доріжки",
+  "laneGroupActive": "Доріжки: {group}",
+  "laneGroupLabel": "Згрупувати дошку в доріжки",
+  "laneGroupNone": "Без доріжок",
+  "laneNoAssignee": "Без виконавця",
+  "laneNoTag": "Без мітки",
+  "laneCards_one": "{count} картка",
+  "laneCards_few": "{count} картки",
+  "laneCards_many": "{count} карток",
+  "laneCards_other": "{count} картки",
+  "laneCopyHint": "Копія. Переміщуй картку в доріжці {lane}.",
+  "laneDndInstructions": "Щоб підняти картку, натисни пробіл. Переміщуй стрілками, Shift зі стрілкою вгору чи вниз переносить її в доріжку вище чи нижче. Натисни пробіл, щоб відпустити, або Escape, щоб скасувати.",
+  "laneDndOver": "{title} у колонці {column}, доріжка {lane}, позиція {position} з {count}.",
+  "laneDndDropped": "{title} переміщено в колонку {column}, доріжка {lane}, позиція {position} з {count}.",
+  "shortcutLaneMove": "Під час переміщення картки в доріжках: у доріжку вище чи нижче"
 }

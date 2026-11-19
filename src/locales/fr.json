@@ -889,5 +889,18 @@
   "logoutPendingTitle": "Te déconnecter avec des modifications non synchronisées ?",
   "logoutPendingBody_one": "{count} modification faite hors ligne n’a pas encore atteint le serveur. Te déconnecter la supprimera.",
   "logoutPendingBody_other": "{count} modifications faites hors ligne n’ont pas encore atteint le serveur. Te déconnecter les supprimera.",
-  "networkError": "Impossible de joindre le serveur. Ta modification n’a peut-être pas été enregistrée."
+  "networkError": "Impossible de joindre le serveur. Ta modification n’a peut-être pas été enregistrée.",
+  "laneGroupButton": "Couloirs",
+  "laneGroupActive": "Couloirs : {group}",
+  "laneGroupLabel": "Regrouper le tableau en couloirs",
+  "laneGroupNone": "Sans couloirs",
+  "laneNoAssignee": "Sans responsable",
+  "laneNoTag": "Sans étiquette",
+  "laneCards_one": "{count} carte",
+  "laneCards_other": "{count} cartes",
+  "laneCopyHint": "Copie. Déplace la carte dans le couloir {lane}.",
+  "laneDndInstructions": "Pour prendre une carte, appuie sur Espace. Déplace-la avec les flèches, Maj avec Haut ou Bas la fait passer dans le couloir du dessus ou du dessous. Appuie sur Espace pour la déposer, ou sur Échap pour annuler.",
+  "laneDndOver": "{title} est dans {column}, couloir {lane}, position {position} sur {count}.",
+  "laneDndDropped": "{title} déplacée vers {column}, couloir {lane}, position {position} sur {count}.",
+  "shortcutLaneMove": "En déplaçant une carte dans les couloirs : vers le couloir du dessus ou du dessous"
 }

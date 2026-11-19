@@ -125,6 +125,7 @@ const SHORTCUTS: [string[], DictKey][] = [
   [["D"], "shortcutDeadline"],
   [["Enter"], "shortcutOpen"],
   [["Space"], "shortcutLift"],
+  [["Shift", "↑", "↓"], "shortcutLaneMove"],
   [["J", "K", "H", "L"], "shortcutNavigate"],
   [["Esc"], "shortcutClose"],
   [["?"], "shortcutHelp"],

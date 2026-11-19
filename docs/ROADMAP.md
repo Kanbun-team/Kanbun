@@ -100,7 +100,7 @@ Goal: help a team see how work moves and spend less time on bookkeeping, without
 
 1. **Board insights.** Cycle time, throughput per week, a cumulative flow chart and aging work in progress, computed from the card history the board already keeps. Readable as tables too, in both themes and at 390px.
 2. **Card age on the board.** A quiet marker on cards that have sat in one column much longer than usual for that board.
-3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes.
+3. **Swimlanes.** Group the board by assignee, priority or tag, with drag and drop and keyboard moves across lanes. Done: a "Lanes" menu and `?group=` in the URL, collapsible lanes with counts, "No assignee" and "No tag" lanes, moves that change the grouped field (optimistic, queued offline), Shift+Up/Down while moving, WIP limits across lanes. A card with several assignees or tags is moved from its first lane and shown as a read-only copy in the others (rules in `src/lib/swimlanes.ts`).
 4. **Simple automations.** Per-board rules of the form "when a card enters a column, set or clear a field" (assignee, tag, priority, deadline, mark checklist done), and "when the deadline passes, move or tag". Every rule run is in the card history and can be undone.
 
 ## Quality bar for every release

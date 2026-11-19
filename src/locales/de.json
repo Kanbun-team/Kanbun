@@ -889,5 +889,18 @@
   "logoutPendingTitle": "Mit nicht synchronisierten Änderungen abmelden?",
   "logoutPendingBody_one": "{count} offline vorgenommene Änderung hat den Server noch nicht erreicht. Beim Abmelden wird sie verworfen.",
   "logoutPendingBody_other": "{count} offline vorgenommene Änderungen haben den Server noch nicht erreicht. Beim Abmelden werden sie verworfen.",
-  "networkError": "Der Server ist nicht erreichbar. Deine Änderung wurde möglicherweise nicht gespeichert."
+  "networkError": "Der Server ist nicht erreichbar. Deine Änderung wurde möglicherweise nicht gespeichert.",
+  "laneGroupButton": "Bahnen",
+  "laneGroupActive": "Bahnen: {group}",
+  "laneGroupLabel": "Board in Bahnen gruppieren",
+  "laneGroupNone": "Keine Bahnen",
+  "laneNoAssignee": "Niemand zuständig",
+  "laneNoTag": "Ohne Tag",
+  "laneCards_one": "{count} Karte",
+  "laneCards_other": "{count} Karten",
+  "laneCopyHint": "Kopie. Verschiebe die Karte in der Bahn {lane}.",
+  "laneDndInstructions": "Drücke die Leertaste, um eine Karte aufzunehmen. Bewege sie mit den Pfeiltasten, Umschalt mit Pfeil nach oben oder unten bringt sie in die Bahn darüber oder darunter. Lege sie mit der Leertaste ab oder brich mit Escape ab.",
+  "laneDndOver": "{title} ist in {column}, Bahn {lane}, Position {position} von {count}.",
+  "laneDndDropped": "{title} nach {column} verschoben, Bahn {lane}, Position {position} von {count}.",
+  "shortcutLaneMove": "Beim Verschieben einer Karte in Bahnen: in die Bahn darüber oder darunter"
 }

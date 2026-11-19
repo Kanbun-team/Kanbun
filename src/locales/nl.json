@@ -889,5 +889,18 @@
   "logoutPendingTitle": "Uitloggen met niet-gesynchroniseerde wijzigingen?",
   "logoutPendingBody_one": "{count} offline gemaakte wijziging heeft de server nog niet bereikt. Als je uitlogt, gaat die verloren.",
   "logoutPendingBody_other": "{count} offline gemaakte wijzigingen hebben de server nog niet bereikt. Als je uitlogt, gaan ze verloren.",
-  "networkError": "De server is niet bereikbaar. Je wijziging is mogelijk niet opgeslagen."
+  "networkError": "De server is niet bereikbaar. Je wijziging is mogelijk niet opgeslagen.",
+  "laneGroupButton": "Banen",
+  "laneGroupActive": "Banen: {group}",
+  "laneGroupLabel": "Bord in banen groeperen",
+  "laneGroupNone": "Geen banen",
+  "laneNoAssignee": "Geen uitvoerder",
+  "laneNoTag": "Geen tag",
+  "laneCards_one": "{count} kaart",
+  "laneCards_other": "{count} kaarten",
+  "laneCopyHint": "Kopie. Verplaats de kaart in de baan {lane}.",
+  "laneDndInstructions": "Druk op Spatie om een kaart op te pakken. Verplaats hem met de pijltjestoetsen, Shift met pijl omhoog of omlaag zet hem in de baan erboven of eronder. Druk op Spatie om hem neer te zetten of op Escape om te annuleren.",
+  "laneDndOver": "{title} staat in {column}, baan {lane}, positie {position} van {count}.",
+  "laneDndDropped": "{title} verplaatst naar {column}, baan {lane}, positie {position} van {count}.",
+  "shortcutLaneMove": "Tijdens het verplaatsen van een kaart in banen: naar de baan erboven of eronder"
 }

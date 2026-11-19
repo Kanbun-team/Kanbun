@@ -923,5 +923,20 @@
   "logoutPendingBody_few": "{count} změny provedené offline se ještě nedostaly na server. Odhlášením je zahodíš.",
   "logoutPendingBody_many": "{count} změny provedené offline se ještě nedostalo na server. Odhlášením je zahodíš.",
   "logoutPendingBody_other": "{count} změn provedených offline se ještě nedostalo na server. Odhlášením je zahodíš.",
-  "networkError": "Nepodařilo se spojit se serverem. Tvoje změna možná nebyla uložena."
+  "networkError": "Nepodařilo se spojit se serverem. Tvoje změna možná nebyla uložena.",
+  "laneGroupButton": "Dráhy",
+  "laneGroupActive": "Dráhy: {group}",
+  "laneGroupLabel": "Rozdělit nástěnku do drah",
+  "laneGroupNone": "Bez drah",
+  "laneNoAssignee": "Bez řešitele",
+  "laneNoTag": "Bez štítku",
+  "laneCards_one": "{count} karta",
+  "laneCards_few": "{count} karty",
+  "laneCards_many": "{count} karty",
+  "laneCards_other": "{count} karet",
+  "laneCopyHint": "Kopie. Kartu přesuň v dráze {lane}.",
+  "laneDndInstructions": "Kartu zvedneš mezerníkem. Posouvej šipkami, Shift se šipkou nahoru nebo dolů ji přesune do dráhy nad nebo pod. Mezerníkem pusť, klávesou Escape přesun zrušíš.",
+  "laneDndOver": "{title} je ve sloupci {column}, v dráze {lane}, na pozici {position} z {count}.",
+  "laneDndDropped": "{title} přesunuto do sloupce {column}, do dráhy {lane}, na pozici {position} z {count}.",
+  "shortcutLaneMove": "Při přesunu karty v drahách: do dráhy nad nebo pod"
 }

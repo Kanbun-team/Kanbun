@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Swimlanes: the "Lanes" menu on the board groups it into rows by assignee, priority or tag, kept in the URL (`?group=assignee|priority|tag`) like the view. Each lane has a header with its name and card count and can be collapsed (remembered per board in this browser); assignee and tag lanes end with "No assignee" or "No tag".
+- Dragging a card into another lane changes the grouped field: a priority lane sets the priority, an assignee or tag lane replaces the lane's person or tag and keeps the others, "No assignee" and "No tag" clear them. Applied right away, rolled back if the server refuses, and queued like other edits while offline. A card with several assignees or tags is moved from the first of its lanes (in lane order) and shows a dashed, read-only copy in the others.
+- Keyboard moves across lanes: while a card is picked up, Up and Down continue into the lane above or below at the edge of a cell, and Shift+Up or Shift+Down jumps there directly (listed in the `?` sheet). j and k move focus on into the next lane. Screen readers hear both the column and the lane.
+- "Add card" in a lane's cell adds the card with that lane's assignee, priority or tag.
+- `PERF_GROUP=assignee|priority|tag` makes `scripts/perf-board.ts` measure the board with swimlanes.
+
+### Changed
+
+- With the card panel open, the board underneath keeps its view (list, calendar) and lanes instead of switching back to the plain board until the panel closes.
+
 ## [1.3.0] - 2026-11-19
 
 Six new languages and image thumbnails.
