@@ -207,6 +207,74 @@ reached (every sortable card re-renders about four times per pick up)
 needs dnd-kit to export its internal contexts, so a patch. It saved about
 10ms at 2x on top of the above, not worth a patched dependency.
 
+### Filter clear pass
+
+The v1.1 pass left clearing a filter at about 128ms at 2x. Same machine and
+setup, `scripts/perf-board.ts` run three times per row (median, slowest
+input event with the longest long task in brackets). Before is main at
+0a9a6bf, after is this pass. "First load: hydrated" is the end of the last
+long task; "none" means the load had no task over 50ms.
+
+| | 1x before | 1x after | 2x before | 2x after | 4x before | 4x after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clear the filter ("fix", most cards come back) | 72 | 32 | 136 (127) | 64 (53) | 272 (164) | 120 (72) |
+| Type in the filter | 32 | 24 | 56 | 40 | 120 (59) | 72 |
+| Keyboard pick up | 48 | 40 | 96 (64) | 88 (69) | 208 (144) | 160 (123) |
+| Keyboard move to next column | 24 | 16 | 40 (87) | 24 (71) | 40 (192) | 40 (146) |
+| Keyboard drop | 40 | 40 | 80 | 72 | 176 (98) | 120 (59) |
+| Pointer drag start | none over 50 | none over 50 | (56) | (62) | (122) | (114) |
+| Pointer drag move, longest frame | (53) | none over 50 | (107) | (69) | (223) | (135) |
+| Pointer drop | 24 | 24 | 56 | 48 | 112 (83) | 80 (64) |
+| Open card panel | 32 | 24 | 40 (74) | 24 | 80 (151) | 40 (75) |
+| First load: hydrated | 443 | none | 477 | none | 915 | 481 |
+
+A separate script with 11 repetitions per interaction (filter typed and cleared
+11 times, 11 pick ups and drag starts) gave the same picture: clear 64 to
+32 at 1x and 128 to 56 at 2x; typing 32 to 24 and 56 to 32; keyboard pick up
+32 to 32 and 72 to 64; drag start had no long task and a longest frame of
+17ms (1x) and 33ms (2x) before and after.
+
+A trace of the clear at 2x showed where the time went before: 13ms of
+React (the input event), then the browser's forced style recalculation
+(11,300 elements, 34ms) and layout (35ms) of every card that came back, a
+16ms hit test and 26ms of paint. After: 4ms and 7ms of style for 600 and
+2,500 elements, 16ms of style and layout in the frame, 13ms of paint. The
+JavaScript part is the same.
+
+What changed:
+
+- **`content-visibility: auto` on cards** (`.board-card` in
+  `src/app/globals.css`, on the sortable wrapper in `Column.tsx`). A card
+  outside its column's scroll area skips style, layout and paint; only the
+  six or seven cards per column on screen are rendered when a filter is
+  cleared, when the board first loads and when a column re-renders during a
+  drag. `contain-intrinsic-size: auto 92px` (median card height 93px)
+  reserves space for a card not rendered yet and remembers the real size
+  once it has been. Paint containment clips at the card's box, so
+  `overflow-clip-margin: 10px` keeps the focus ring, the shadow and the
+  presence avatar (8px outside the card) visible.
+- Checked on the 500-card board with the change on and off: j pressed 40
+  times keeps the focused card in view, a keyboard reorder of 25 places and
+  a keyboard move to the next column from the 100th card land where
+  announced, and a pointer drag onto a card in the middle of a scrolled
+  column lands next to it; the board e2e specs, the axe checks and the
+  `E2E_PERF` guard pass. Keyboard moves to another column target the column
+  (since v1.1), not card rects, which is why the v1.0 failure (see "Checked
+  and left alone") does not come back.
+
+Tried and dropped, measured at 2x with 9 repetitions:
+
+- `contain: layout style` on columns: no change (56 both ways); cards
+  already contain themselves.
+- The card list as a flex column with `gap` instead of `space-y-2`: clearing
+  went from 56 to 112. A flex container sizes every item, so the skipped
+  cards are laid out anyway.
+- No card shadow and no transitions in cards: no change.
+- Setting `hidden` on the cards from a layout effect in the column instead
+  of rendering it (so the 470 sortable cards do not re-render): 64 to 56,
+  one Event Timing step, but the server would render a filtered board
+  (`?deadline=none`) unfiltered until hydration. Not worth it.
+
 ## What changed
 
 - **Memoized columns and cards.** The React Compiler is not enabled (only its
@@ -262,20 +330,15 @@ Checked and left alone:
   items and comments by card), so no migration was needed.
 - Virtualization: not needed at 500 cards, and it would get in the way of
   drag and drop, keyboard navigation and find-in-page.
-- `content-visibility: auto` on cards: it saves layout work, but dnd-kit then
-  measures off-screen cards with their placeholder size and keyboard moves to
-  the next column failed, so it is not used.
+- `content-visibility: auto` on cards: dropped in v1.0 because keyboard moves
+  to the next column failed. Since v1.1 those moves target the column, not
+  card rects, and it is now used (see "Filter clear pass" below).
 - Lazy-loading dialogs and the command palette: they are small and build on
   React Aria, which the board loads anyway; the remaining JavaScript is
   React, Next.js, React Aria, dnd-kit and the translations.
 
 ## Still above the target
 
-- Clearing a filter that hid most of the board takes 80ms unthrottled but
-  about 128ms at 2x: the browser has to lay out and paint about 470 cards
-  (12,000 elements) that come back, and each sortable wrapper re-renders
-  once for its `hidden` attribute. The JavaScript part is small now; the rest
-  is the cost of showing that many cards at once.
 - Keyboard pick up and pointer drag start are under 100ms at 2x (88ms and a
   50ms task) but not at 4x (192ms, 95ms task): dnd-kit still re-renders every
   sortable card a few times per drag start (see "Tried and dropped" above).
@@ -290,6 +353,11 @@ Checked and left alone:
   handlers to the objects passed through `useStableHandlers`), no per-render
   arrays. Do not put values that change for every card (such as the filter
   state) into `shared`.
+- Keep the `board-card` class (`content-visibility: auto`) on the sortable
+  card wrapper and the column's card list a plain block (`space-y-*`): a flex
+  or grid list makes the browser size every card and undoes the saving.
+  Anything drawn more than 10px outside a card's box is clipped
+  (`overflow-clip-margin`), so badges and rings stay within that.
 - Cards hidden by a filter are still in the page: code that looks cards up
   in the DOM for something on screen uses `[data-card-id]:not([hidden])`.
 - Do not give sortable items zero transforms or put elements that come and go
