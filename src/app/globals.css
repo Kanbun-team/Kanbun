@@ -191,3 +191,14 @@ html.dark .chip {
   background: var(--chip-bg-dark);
   color: var(--chip-fg-dark);
 }
+
+/* Board cards (Column.tsx). A card outside its column's visible area skips
+   style, layout and paint (content-visibility: auto); `auto` in
+   contain-intrinsic-size keeps the size it had when it was last rendered.
+   Paint containment would clip the focus ring, the shadow and the presence
+   avatar (8px out), hence the clip margin. See docs/PERFORMANCE.md. */
+.board-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 92px;
+  overflow-clip-margin: 10px;
+}
