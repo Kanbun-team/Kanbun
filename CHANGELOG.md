@@ -6,10 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-19
+
+Closes the last gaps listed after v1.1.
+
 ### Added
 
 - S3 attachment storage accepts temporary credentials: `ATTACHMENTS_S3_SESSION_TOKEN`, or without static keys the AWS credential chain (`AWS_*` variables, EKS web identity, ECS container credentials, EC2 instance role), cached and refreshed before they expire.
 - The REST API accepts an optional `Idempotency-Key` header when adding a comment, so a retried request returns the first comment instead of adding another ([docs/API.md](docs/API.md)).
+
+### Changed
+
+- Clearing a filter on a 500-card board takes 64ms at 2x CPU throttling (was 136ms): cards off screen skip style, layout and paint ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
+- CI runs the PostgreSQL and Redis end-to-end job with attachments stored in MinIO.
 
 ### Fixed
 
@@ -282,7 +291,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.5.0...v0.6.0

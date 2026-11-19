@@ -8,6 +8,24 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-19",
+    title: { en: "Version 1.2", it: "Versione 1.2", pl: "Wersja 1.2", de: "Version 1.2" },
+    items: [
+      {
+        en: "Clearing a filter on a big board is about twice as fast again.",
+        it: "Azzerare un filtro su una bacheca grande è di nuovo circa due volte più veloce.",
+        pl: "Czyszczenie filtra na dużej tablicy jest znów około dwa razy szybsze.",
+        de: "Einen Filter auf einem großen Board zurückzusetzen ist noch einmal etwa doppelt so schnell.",
+      },
+      {
+        en: "A comment sent again after a dropped connection is posted only once, and checklist ticks and comments made offline show on the board card right away.",
+        it: "Un commento inviato di nuovo dopo una connessione interrotta viene pubblicato una sola volta, e spunte e commenti fatti offline compaiono subito sulla card della bacheca.",
+        pl: "Komentarz wysłany ponownie po zerwanym połączeniu pojawia się tylko raz, a odhaczenia i komentarze zrobione offline od razu widać na karcie na tablicy.",
+        de: "Ein nach einem Verbindungsabbruch erneut gesendeter Kommentar erscheint nur einmal, und offline gesetzte Häkchen und Kommentare siehst du sofort auf der Karte im Board.",
+      },
+    ],
+  },
+  {
     date: "2026-11-18",
     title: { en: "Version 1.1", it: "Versione 1.1", pl: "Wersja 1.1", de: "Version 1.1" },
     items: [
