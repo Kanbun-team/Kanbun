@@ -33,6 +33,13 @@ const nextConfig = {
   // (generated next to the default SQLite one, see src/lib/db-local.ts) and
   // the Redis client, which only loads when REDIS_URL is set.
   serverExternalPackages: [".prisma/client-postgres", "ioredis"],
+  // The browser bundle gets an empty set of translations; the root layout
+  // sends the user's language (see src/components/LocaleDictionary.tsx).
+  turbopack: {
+    resolveAlias: {
+      "@/lib/i18n-dicts": { browser: "./src/lib/i18n-dicts.browser.ts" },
+    },
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",

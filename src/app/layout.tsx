@@ -6,6 +6,8 @@ import "./globals.css";
 import { cookies, headers } from "next/headers";
 import { auth } from "@/auth";
 import { getLocale } from "@/lib/get-locale";
+import { getDict } from "@/lib/i18n";
+import { LocaleDictionary } from "@/components/LocaleDictionary";
 
 export const metadata: Metadata = {
   // Pages set their own part (generateMetadata, see src/server/page-title.ts).
@@ -74,7 +76,11 @@ export default async function RootLayout({
       <head>
         {theme === "system" && <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SYSTEM_THEME_SCRIPT }} />}
       </head>
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <LocaleDictionary locale={locale} dict={locale === "en" ? undefined : getDict(locale)}>
+          {children}
+        </LocaleDictionary>
+      </body>
     </html>
   );
 }

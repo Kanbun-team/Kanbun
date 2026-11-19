@@ -1,10 +1,8 @@
 import enDict from "@/locales/en.json";
-import itDict from "@/locales/it.json";
-import plDict from "@/locales/pl.json";
-import deDict from "@/locales/de.json";
-import frDict from "@/locales/fr.json";
-import esDict from "@/locales/es.json";
-import ptDict from "@/locales/pt.json";
+// On the server this holds every language. In the browser bundle it is an
+// empty module (see next.config.mjs): the root layout sends the current
+// language through LocaleDictionary instead of shipping all of them.
+import { OTHER_DICTS } from "@/lib/i18n-dicts";
 
 /**
  * The UI languages, in the order the language picker shows them. This is the
@@ -12,7 +10,7 @@ import ptDict from "@/locales/pt.json";
  * and the picker all derive from it. Adding a code here makes TypeScript ask
  * for its LOCALE_INFO and DICTS entries.
  */
-export const LOCALES = ["en", "it", "pl", "de", "fr", "es", "pt"] as const;
+export const LOCALES = ["en", "it", "pl", "de", "fr", "es", "pt", "nl", "cs", "uk"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
@@ -37,19 +35,24 @@ export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
   fr: { name: "Français", intl: "fr-FR" },
   es: { name: "Español", intl: "es-ES" },
   pt: { name: "Português (Brasil)", intl: "pt-BR" },
+  nl: { name: "Nederlands", intl: "nl-NL" },
+  cs: { name: "Čeština", intl: "cs-CZ", dottedOrdinals: true },
+  uk: { name: "Українська", intl: "uk-UA" },
 };
 
-type Dict = Partial<Record<DictKey, string>>;
+export type Dict = Partial<Record<DictKey, string>>;
 
-const DICTS: Record<Locale, Dict> = {
-  en: enDict,
-  it: itDict as Dict,
-  pl: plDict as Dict,
-  de: deDict as Dict,
-  fr: frDict as Dict,
-  es: esDict as Dict,
-  pt: ptDict as Dict,
-};
+const DICTS: Partial<Record<Locale, Dict>> = { en: enDict, ...OTHER_DICTS };
+
+/** The dictionary of a language, if this bundle has it. */
+export function getDict(locale: Locale): Dict | undefined {
+  return DICTS[locale];
+}
+
+/** Adds a language sent from the server (browser bundle only needs this). */
+export function registerDict(locale: Locale, dict: Dict): void {
+  if (!DICTS[locale]) DICTS[locale] = dict;
+}
 
 const warnedKeys = new Set<string>();
 
@@ -85,7 +88,7 @@ function pluralCategory(count: number, locale: Locale): string {
 
 /** A counted text in the right plural form, with {count} filled in. */
 export function tn(base: PluralKey, count: number, locale: Locale = DEFAULT_LOCALE): string {
-  const dict = DICTS[locale] as Record<string, string | undefined>;
+  const dict = (DICTS[locale] ?? {}) as Record<string, string | undefined>;
   const en = enDict as Record<string, string | undefined>;
   const text =
     dict[`${base}_${pluralCategory(count, locale)}`] ||

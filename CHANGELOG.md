@@ -9,11 +9,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Added
 
 - French, Spanish, Brazilian Portuguese, Dutch, Czech and Ukrainian UI, complete with plural forms and informal address (tu, tú, você, je, ty) ([#2](https://github.com/Kanbun-team/Kanbun/issues/2), [#3](https://github.com/Kanbun-team/Kanbun/issues/3), [#7](https://github.com/Kanbun-team/Kanbun/issues/7), [#8](https://github.com/Kanbun-team/Kanbun/issues/8), [#6](https://github.com/Kanbun-team/Kanbun/issues/6), [#5](https://github.com/Kanbun-team/Kanbun/issues/5)). Browsers set to any variant of these languages get the login screen in that language.
-- CSV import understands the French, Spanish and Portuguese priority names.
+- CSV import recognizes column headers and priority names in all ten languages.
 - Image attachments get a small WebP thumbnail (480px wide, without EXIF or location data) made on the server when they are uploaded and stored next to the original, on disk or in S3. The card panel loads the thumbnail and opens the original on click. Images uploaded before get theirs the first time they are shown; GIFs and images already small enough are shown as they are.
 
 ### Changed
 
+- The browser downloads only English and the user's language instead of every translation, so more languages do not make pages heavier.
 - The language picker in Settings names each language in that language (Deutsch, Français, ...).
 - Languages are listed in one place (`LOCALES` and `LOCALE_INFO` in `src/lib/i18n.ts`); the settings validation, the picker and browser language detection follow it. In-app release notes need English only, other languages fall back to it.
 - Monthly repeat summaries write the day as "5." only in German, Polish and Czech.

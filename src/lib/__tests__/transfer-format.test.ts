@@ -99,6 +99,21 @@ describe("CSV import plan", () => {
     expect(guessMapping(["foo"]).title).toBeNull();
   });
 
+  it("recognizes headers and priority names in the newer UI languages", () => {
+    const all = { title: 0, description: 1, column: 2, priority: 3, deadline: 4, tags: 5, assignees: 6 };
+    expect(guessMapping(["Titre", "Description", "Colonne", "Priorité", "Échéance", "Étiquettes", "Responsables"])).toEqual(all);
+    expect(guessMapping(["Título", "Descripción", "Columna", "Prioridad", "Fecha límite", "Etiquetas", "Asignados"])).toEqual(all);
+    expect(guessMapping(["Título", "Descrição", "Coluna", "Prioridade", "Prazo", "Etiquetas", "Responsáveis"])).toEqual(all);
+    expect(guessMapping(["Titel", "Beschrijving", "Kolom", "Prioriteit", "Vervaldatum", "Tags", "Uitvoerders"])).toEqual(all);
+    expect(guessMapping(["Název", "Popis", "Sloupec", "Priorita", "Termín", "Štítky", "Řešitelé"])).toEqual(all);
+    expect(guessMapping(["Назва", "Опис", "Колонка", "Пріоритет", "Термін", "Мітки", "Виконавці"])).toEqual(all);
+
+    const mapping = { title: 0, description: null, column: null, priority: 1, deadline: null, tags: null, assignees: null };
+    const rows = [["a", "Hoog"], ["b", "Kritická"], ["c", "Низький"], ["d", "Normaal"]];
+    const plan = planCsvImport(rows, mapping, ctx);
+    expect(plan.cards.map((c) => c.priority)).toEqual(["high", "critical", "low", "normal"]);
+  });
+
   it("plans cards, matches existing columns and tags, and reports problems", () => {
     const rows = parseCsv(
       [

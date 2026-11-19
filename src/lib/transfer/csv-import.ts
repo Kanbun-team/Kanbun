@@ -16,13 +16,13 @@ export const MAX_CSV_ROWS = 5000;
 // dashes and underscores). Includes the headers of Kanbun's own CSV export and
 // the common translations.
 const ALIASES: Record<CsvField, string[]> = {
-  title: ["title", "name", "card", "cardname", "task", "summary", "titolo", "tytul", "tytuł", "titel", "nome", "nazwa"],
-  description: ["description", "desc", "details", "notes", "body", "descrizione", "opis", "beschreibung"],
-  column: ["column", "list", "status", "stage", "listname", "colonna", "kolumna", "spalte", "stato"],
-  priority: ["priority", "priorita", "priorità", "priorytet", "prioritat", "priorität"],
-  deadline: ["deadline", "due", "duedate", "dueon", "scadenza", "termin", "fällig", "fallig", "fälligkeit"],
-  tags: ["tags", "tag", "labels", "label", "etichette", "tagi", "etykiety", "schlagwörter", "schlagworter"],
-  assignees: ["assignees", "assignee", "members", "assignedto", "owner", "assegnatari", "przypisani", "zuständig", "zustandig"],
+  title: ["title", "name", "card", "cardname", "task", "summary", "titolo", "tytul", "tytuł", "titel", "nome", "nazwa", "titre", "título", "název", "назва"],
+  description: ["description", "desc", "details", "notes", "body", "descrizione", "opis", "beschreibung", "descripción", "descrição", "beschrijving", "popis", "опис"],
+  column: ["column", "list", "status", "stage", "listname", "colonna", "kolumna", "spalte", "stato", "colonne", "columna", "coluna", "kolom", "sloupec", "колонка"],
+  priority: ["priority", "priorita", "priorità", "priorytet", "prioritat", "priorität", "priorité", "prioridad", "prioridade", "prioriteit", "пріоритет"],
+  deadline: ["deadline", "due", "duedate", "dueon", "scadenza", "termin", "fällig", "fallig", "fälligkeit", "échéance", "fechalímite", "prazo", "vervaldatum", "termín", "термін"],
+  tags: ["tags", "tag", "labels", "label", "etichette", "tagi", "etykiety", "schlagwörter", "schlagworter", "étiquettes", "etiquetas", "štítky", "мітки"],
+  assignees: ["assignees", "assignee", "members", "assignedto", "owner", "assegnatari", "przypisani", "zuständig", "zustandig", "responsables", "asignados", "responsáveis", "uitvoerders", "řešitelé", "виконавці"],
 };
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/[\s_\-.]+/g, "");
@@ -79,10 +79,10 @@ export interface CsvPlan {
 
 // English plus the priority labels of every UI language (and common synonyms).
 const PRIORITY_WORDS: Record<string, Priority> = {
-  low: "low", bassa: "low", niska: "low", niedrig: "low", basse: "low", baja: "low", baixa: "low",
-  normal: "normal", medium: "normal", normale: "normal", media: "normal", normalna: "normal", mittel: "normal", moyenne: "normal", "média": "normal", "": "normal",
-  high: "high", alta: "high", wysoka: "high", hoch: "high", haute: "high",
-  critical: "critical", urgent: "critical", critica: "critical", urgente: "critical", krytyczna: "critical", kritisch: "critical", dringend: "critical", critique: "critical", "crítica": "critical",
+  low: "low", bassa: "low", niska: "low", niedrig: "low", basse: "low", baja: "low", baixa: "low", laag: "low", "nízká": "low", "низький": "low",
+  normal: "normal", medium: "normal", normale: "normal", media: "normal", normalna: "normal", mittel: "normal", moyenne: "normal", "média": "normal", normaal: "normal", "normální": "normal", "звичайний": "normal", "": "normal",
+  high: "high", alta: "high", wysoka: "high", hoch: "high", haute: "high", hoog: "high", "vysoká": "high", "високий": "high",
+  critical: "critical", urgent: "critical", critica: "critical", urgente: "critical", krytyczna: "critical", kritisch: "critical", dringend: "critical", critique: "critical", "crítica": "critical", kritiek: "critical", "kritická": "critical", "критичний": "critical",
 };
 
 function parsePriority(value: string): Priority | null {

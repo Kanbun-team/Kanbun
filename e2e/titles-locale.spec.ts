@@ -101,7 +101,7 @@ test("the language picker names each language in that language and switches the 
   await loginAs(page, "piotr");
   await page.goto("/settings");
   const language = (name: string) => page.getByRole("button", { name, exact: true });
-  for (const name of ["English", "Italiano", "Polski", "Deutsch", "Français", "Español", "Português (Brasil)"]) {
+  for (const name of ["English", "Italiano", "Polski", "Deutsch", "Français", "Español", "Português (Brasil)", "Nederlands", "Čeština", "Українська"]) {
     await expect(language(name)).toBeVisible();
   }
   try {
@@ -112,6 +112,35 @@ test("the language picker names each language in that language and switches the 
     await language("Français").click();
     await expect(page).toHaveTitle("Paramètres · Kanbun");
   } finally {
+    await language("English").click();
+    await expect(page).toHaveTitle("Settings · Kanbun");
+  }
+});
+
+test("client components get the user's language without shipping every translation", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  await loginAs(page, "piotr");
+  await page.goto("/settings");
+  const language = (name: string) => page.getByRole("button", { name, exact: true });
+  try {
+    await language("Čeština").click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "cs");
+    await page.goto("/tasks");
+    await page.getByRole("link", { name: /Website relaunch/ }).first().click();
+    await page.waitForURL(/\/tasks\/[^/]+$/);
+    // Rendered only in the browser, after hydration.
+    await expect(async () => {
+      await page.locator("body").press("?");
+      await expect(page.getByRole("dialog", { name: "Klávesové zkratky" })).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    await page.keyboard.press("Escape");
+    expect(errors.filter((e) => /hydrat|did not match/i.test(e))).toEqual([]);
+  } finally {
+    await page.goto("/settings");
     await language("English").click();
     await expect(page).toHaveTitle("Settings · Kanbun");
   }

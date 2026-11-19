@@ -342,9 +342,14 @@ Checked and left alone:
 - Keyboard pick up and pointer drag start are under 100ms at 2x (88ms and a
   50ms task) but not at 4x (192ms, 95ms task): dnd-kit still re-renders every
   sortable card a few times per drag start (see "Tried and dropped" above).
-- The translations of all seven languages are in the client bundle (about
-  14 KB compressed each, so about 100 KB). Loading only the current language would need `t()` to
-  become asynchronous or a per-locale bundle.
+
+## Translations in the browser
+
+The browser bundle carries only English (about 14 KB compressed). The root
+layout sends the user's language through `LocaleDictionary`, which registers it
+before any client component renders, so ten languages cost the same download
+as one. `next.config.mjs` swaps `src/lib/i18n-dicts.ts` for an empty module in
+the browser build; the server keeps every language.
 
 ## Rules for new board code
 

@@ -45,7 +45,7 @@
 - Admin audit log of sign-ins, user and role changes, board deletions, membership changes, imports, exports and backups, with filters and CSV download.
 - Accessible by default: WCAG 2.2 AA checked with axe in light and dark themes on every CI run, Lighthouse accessibility 100 on every main page.
 - Fast on big boards: a 500-card board loads in about half a second ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)).
-- Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German, Italian, French, Spanish and Brazilian Portuguese (see [src/locales](src/locales/README.md) to add a language); the login screen follows the browser language.
+- Light, dark and system theme, IBM Plex Sans bundled (no external font requests). UI in English, Polish, German, Italian, French, Spanish, Brazilian Portuguese, Dutch, Czech and Ukrainian (see [src/locales](src/locales/README.md) to add a language); the login screen follows the browser language.
 - Mobile responsive with hamburger drawer and safe-area insets. Installable PWA that works offline: boards opened before stay readable, and card edits made offline sync when the connection returns ([docs/OFFLINE.md](docs/OFFLINE.md)).
 - Loading skeletons on every data-fetching page.
 
