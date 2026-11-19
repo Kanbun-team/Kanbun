@@ -94,6 +94,21 @@ test("a rule runs on a drag and on a keyboard move, and its changes can be undon
   await page.keyboard.press("Escape");
   await expect(card(page, "Done", moved)).not.toContainText("Blocked");
 
+  // With swimlanes, a keyboard move into Done runs the rule and offers Undo too.
+  await page.goto(boardUrl);
+  const laned = `Invoice copy ${stamp}`;
+  await addCard(page, "Doing", laned);
+  await page.goto(`${boardUrl}?group=priority`);
+  await page.getByRole("link", { name: new RegExp(laned) }).first().focus();
+  await page.keyboard.press("Space");
+  await expect(live).toContainText(`${laned} is in Doing`);
+  await page.keyboard.press("ArrowRight");
+  await expect(live).toContainText("is in Done");
+  await page.keyboard.press("Space");
+  await expect(toast(page)).toContainText("Rule “Done cleanup” updated the card");
+  await toast(page).getByRole("button", { name: "Undo" }).click();
+  await expect(toast(page)).toContainText("Rule changes undone");
+
   // Switched off, it no longer runs; then delete it.
   await page.goto(`${boardUrl}/settings`);
   await section.getByText("On", { exact: true }).click();

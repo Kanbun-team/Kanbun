@@ -607,6 +607,7 @@ export default function Board({
     const ids: Record<string, string> = {};
     let ok = true;
     let sent = false;
+    let automation: Awaited<ReturnType<typeof offline.run>>["automation"];
     try {
       for (const raw of ops) {
         const op = raw.kind !== "addCards" && ids[raw.cardId] ? { ...raw, cardId: ids[raw.cardId] } : raw;
@@ -616,6 +617,7 @@ export default function Board({
           ok = false;
           break;
         }
+        if (result.automation) automation = result.automation;
         if (op.kind === "addCards" && result.createdIds) {
           markLocalCards(result.createdIds);
           op.tempIds.forEach((tempId, i) => {
@@ -636,6 +638,8 @@ export default function Board({
         refreshPending.current = true;
       }
     }
+    // Rules that ran on the move get their Undo toast, as for a plain drop.
+    if (ok) offerRuleUndo(automation);
     return ok;
   }
 
