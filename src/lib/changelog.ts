@@ -26,6 +26,39 @@ function localized(text: LocalizedText, locale: Locale): ShownText {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-11-19",
+    title: {
+      en: "Version 1.3", it: "Versione 1.3", pl: "Wersja 1.3", de: "Version 1.3", fr: "Version 1.3",
+      es: "Versión 1.3", pt: "Versão 1.3", nl: "Versie 1.3", cs: "Verze 1.3", uk: "Версія 1.3",
+    },
+    items: [
+      {
+        en: "Kanbun now speaks French, Spanish, Portuguese, Dutch, Czech and Ukrainian. Pick your language in Settings.",
+        it: "Kanbun ora parla francese, spagnolo, portoghese, olandese, ceco e ucraino. Scegli la lingua nelle Impostazioni.",
+        pl: "Kanbun mówi teraz po francusku, hiszpańsku, portugalsku, niderlandzku, czesku i ukraińsku. Język wybierzesz w Ustawieniach.",
+        de: "Kanbun spricht jetzt Französisch, Spanisch, Portugiesisch, Niederländisch, Tschechisch und Ukrainisch. Wähle deine Sprache in den Einstellungen.",
+        fr: "Kanbun parle désormais français, espagnol, portugais, néerlandais, tchèque et ukrainien. Choisis ta langue dans les Paramètres.",
+        es: "Kanbun ahora habla francés, español, portugués, neerlandés, checo y ucraniano. Elige tu idioma en Ajustes.",
+        pt: "O Kanbun agora fala francês, espanhol, português, holandês, tcheco e ucraniano. Escolha seu idioma nas Configurações.",
+        nl: "Kanbun spreekt nu Frans, Spaans, Portugees, Nederlands, Tsjechisch en Oekraïens. Kies je taal in de Instellingen.",
+        cs: "Kanbun teď mluví francouzsky, španělsky, portugalsky, nizozemsky, česky a ukrajinsky. Jazyk si vyber v Nastavení.",
+        uk: "Kanbun тепер розмовляє французькою, іспанською, португальською, нідерландською, чеською та українською. Обери мову в Налаштуваннях.",
+      },
+      {
+        en: "Image attachments load as small previews, and the full image opens on click.",
+        it: "Le immagini allegate si caricano come piccole anteprime e l'immagine intera si apre con un clic.",
+        pl: "Załączone obrazki ładują się jako małe podglądy, a pełny obraz otwiera się po kliknięciu.",
+        de: "Bildanhänge laden als kleine Vorschau, das ganze Bild öffnet sich per Klick.",
+        fr: "Les images jointes s'affichent en petits aperçus, et l'image complète s'ouvre d'un clic.",
+        es: "Las imágenes adjuntas se cargan como vistas previas pequeñas y la imagen completa se abre con un clic.",
+        pt: "Imagens anexadas carregam como prévias pequenas, e a imagem completa abre com um clique.",
+        nl: "Afbeeldingsbijlagen laden als kleine voorbeelden, en de volledige afbeelding opent met een klik.",
+        cs: "Obrázkové přílohy se načítají jako malé náhledy a celý obrázek se otevře kliknutím.",
+        uk: "Вкладені зображення завантажуються як невеликі прев'ю, а повне зображення відкривається кліком.",
+      },
+    ],
+  },
+  {
+    date: "2026-11-19",
     title: { en: "Version 1.2", it: "Versione 1.2", pl: "Wersja 1.2", de: "Version 1.2" },
     items: [
       {

@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-19
+
+Six new languages and image thumbnails.
+
 ### Added
 
 - French, Spanish, Brazilian Portuguese, Dutch, Czech and Ukrainian UI, complete with plural forms and informal address (tu, tú, você, je, ty) ([#2](https://github.com/Kanbun-team/Kanbun/issues/2), [#3](https://github.com/Kanbun-team/Kanbun/issues/3), [#7](https://github.com/Kanbun-team/Kanbun/issues/7), [#8](https://github.com/Kanbun-team/Kanbun/issues/8), [#6](https://github.com/Kanbun-team/Kanbun/issues/6), [#5](https://github.com/Kanbun-team/Kanbun/issues/5)). Browsers set to any variant of these languages get the login screen in that language.
@@ -306,7 +310,8 @@ Phase 1 of the [roadmap](docs/ROADMAP.md): foundations and trust.
 - Dual licensing: AGPL-3.0 with commercial option, CLA in place.
 - Resilient session handling: stale/invalid JWT cookies are cleared via `/api/auth/clear` instead of crashing.
 
-[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Kanbun-team/Kanbun/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Kanbun-team/Kanbun/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kanbun-team/Kanbun/compare/v0.6.0...v1.0.0
