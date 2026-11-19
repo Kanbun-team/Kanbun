@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Image attachments get a small WebP thumbnail (480px wide, without EXIF or location data) made on the server when they are uploaded and stored next to the original, on disk or in S3. The card panel loads the thumbnail and opens the original on click. Images uploaded before get theirs the first time they are shown; GIFs and images already small enough are shown as they are.
+
+### Changed
+
+- `sharp` is a direct dependency (it was installed as an optional dependency of Next.js). Without it, images are shown at full size as before.
+- `npm run attachments:to-s3` copies thumbnails along with the original files.
+
 ## [1.2.0] - 2026-11-19
 
 Closes the last gaps listed after v1.1.

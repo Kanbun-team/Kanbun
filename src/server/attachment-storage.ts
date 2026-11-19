@@ -16,8 +16,13 @@ import { S3Client, type S3Config } from "./s3";
 //   authenticated route. Static keys, or the AWS credential chain without them.
 //
 // Files are named by a random storage key, never by anything the user sent.
+// An image's resized preview (see attachment-thumbnails.ts) sits next to it
+// under the same key plus THUMB_SUFFIX, so it shares the original's fate:
+// kept through trash and restore, removed with it, and in the backup.
 
 const KEY_RE = /^[a-f0-9]{32}$/;
+const FILE_KEY_RE = /^[a-f0-9]{32}(_thumb)?$/;
+export const THUMB_SUFFIX = "_thumb";
 
 type Env = Record<string, string | undefined>;
 
@@ -44,13 +49,24 @@ export function isStorageKey(key: string): boolean {
   return KEY_RE.test(key);
 }
 
+/** The key of an original or of its thumbnail: what the stores accept. */
+export function isFileKey(key: string): boolean {
+  return FILE_KEY_RE.test(key);
+}
+
+/** Key of the thumbnail stored next to an original. */
+export function thumbnailKey(key: string): string {
+  if (!isStorageKey(key)) throw new Error("invalid storage key");
+  return key + THUMB_SUFFIX;
+}
+
 export function newStorageKey(): string {
   return randomBytes(16).toString("hex");
 }
 
-/** Absolute path of a stored file. Throws for anything that is not a storage key. */
+/** Absolute path of a stored file (or its thumbnail). Throws for anything that is not a storage key. */
 export function storagePathIn(dir: string, key: string): string {
-  if (!isStorageKey(key)) throw new Error("invalid storage key");
+  if (!isFileKey(key)) throw new Error("invalid storage key");
   return path.join(dir, key.slice(0, 2), key);
 }
 
@@ -181,7 +197,7 @@ export function localStore(dir: string): AttachmentStore {
 
 export function s3Store(config: S3Config, client = new S3Client(config)): AttachmentStore {
   const checked = (key: string) => {
-    if (!isStorageKey(key)) throw new Error("invalid storage key");
+    if (!isFileKey(key)) throw new Error("invalid storage key");
     return key;
   };
   return {
@@ -236,9 +252,12 @@ export function openAttachmentFile(key: string): Promise<{ stream: ReadableStrea
   return attachmentStore().open(key);
 }
 
-/** Removes stored files; missing files are ignored and other errors only logged. */
+/**
+ * Removes stored files together with their thumbnails; missing files are
+ * ignored and other errors only logged.
+ */
 export async function removeAttachmentFiles(keys: string[]): Promise<void> {
-  const valid = keys.filter(isStorageKey);
+  const valid = keys.filter(isStorageKey).flatMap((key) => [key, thumbnailKey(key)]);
   if (valid.length === 0) return;
   let store: AttachmentStore;
   try {

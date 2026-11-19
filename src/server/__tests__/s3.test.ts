@@ -8,6 +8,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { S3Client, S3Error, signV4, uriEncode, type S3Config } from "@/server/s3";
 import { AttachmentNotFoundError, attachmentStorageFrom, localStore, s3Store } from "@/server/attachment-storage";
 import { attachmentsManifest } from "@/server/backup";
+import { openThumbnail, storeThumbnail } from "@/server/attachment-thumbnails";
+import sharp from "sharp";
 import { copyAttachmentsToS3, localAttachmentFiles } from "../../../scripts/attachments-to-s3";
 
 // Signature Version 4 against the published AWS examples, then the client
@@ -231,6 +233,7 @@ describe("S3 attachment store against a fake S3", () => {
   it("refuses anything that is not a storage key", async () => {
     const store = s3Store(config());
     await expect(store.save("../etc/passwd", new Uint8Array([1]))).rejects.toThrow(/invalid storage key/);
+    await expect(store.save(`${KEY}_other`, new Uint8Array([1]))).rejects.toThrow(/invalid storage key/);
     expect(requests).toHaveLength(0);
   });
 
@@ -266,6 +269,21 @@ describe("S3 attachment store against a fake S3", () => {
     });
     await client.put(KEY, new Uint8Array([1]));
     expect(token).toBe("static-token");
+  });
+
+  it("keeps image thumbnails next to the original, made on upload or on first view", async () => {
+    const store = s3Store(config());
+    const photo = await sharp({ create: { width: 1000, height: 1000, channels: 3, background: "#336699" } }).png().toBuffer();
+    await store.save(KEY, photo);
+    expect(await storeThumbnail(KEY, photo, store)).toBe(true);
+    expect([...objects.keys()].sort()).toEqual([`/kanbun-files/prod/${KEY}`, `/kanbun-files/prod/${KEY}_thumb`]);
+
+    const older = "fedcba9876543210fedcba9876543210";
+    await store.save(older, photo);
+    const opened = await openThumbnail(older, store);
+    const thumb = Buffer.from(await new Response(opened!.stream).arrayBuffer());
+    expect(await sharp(thumb).metadata()).toMatchObject({ format: "webp", width: 480 });
+    expect(objects.has(`/kanbun-files/prod/${older}_thumb`)).toBe(true);
   });
 
   it("HEAD gives the size, or null for a missing object", async () => {
@@ -398,30 +416,32 @@ describe("local attachment store", () => {
 });
 
 describe("scripts/attachments-to-s3", () => {
-  it("copies local files once, skips what is there, ignores the rest", async () => {
+  it("copies local files and thumbnails once, skips what is there, ignores the rest", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "kanbun-to-s3-"));
     try {
       const local = localStore(dir);
       const other = "fedcba9876543210fedcba9876543210";
       await local.save(KEY, new TextEncoder().encode("one"));
       await local.save(other, new TextEncoder().encode("two"));
+      await local.save(`${KEY}_thumb`, new TextEncoder().encode("thumb"));
       await writeFile(path.join(dir, "01", `${KEY}.tmp`), "half");
       await writeFile(path.join(dir, "README"), "not an attachment");
       const client = new S3Client(config());
 
       const dry = await copyAttachmentsToS3({ dir, client, dryRun: true });
-      expect(dry).toEqual({ found: 2, present: 0, copied: 2, failed: 0, ignored: 2 });
+      expect(dry).toEqual({ found: 3, present: 0, copied: 3, failed: 0, ignored: 2 });
       expect(objects.size).toBe(0);
 
-      expect(await copyAttachmentsToS3({ dir, client, dryRun: false })).toMatchObject({ copied: 2, present: 0 });
+      expect(await copyAttachmentsToS3({ dir, client, dryRun: false })).toMatchObject({ copied: 3, present: 0 });
       expect((await s3Store(config()).read(other)).toString()).toBe("two");
+      expect((await s3Store(config()).read(`${KEY}_thumb`)).toString()).toBe("thumb");
 
-      expect(await copyAttachmentsToS3({ dir, client, dryRun: false })).toMatchObject({ copied: 0, present: 2 });
+      expect(await copyAttachmentsToS3({ dir, client, dryRun: false })).toMatchObject({ copied: 0, present: 3 });
 
       const failing = new S3Client(config({ secretAccessKey: "wrong" }));
       const lines: string[] = [];
       expect(await copyAttachmentsToS3({ dir, client: failing, dryRun: false, log: (l) => lines.push(l) })).toMatchObject({
-        failed: 2,
+        failed: 3,
       });
       expect(lines[0]).toMatch(/HTTP 403/);
     } finally {

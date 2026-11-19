@@ -15,6 +15,7 @@ import {
   maxAttachmentBytesFrom,
   newStorageKey,
   storagePathIn,
+  thumbnailKey,
 } from "@/server/attachment-storage";
 import { snapshotStorageKeys } from "@/server/trash";
 
@@ -127,9 +128,14 @@ describe("storage", () => {
     expect(isStorageKey(key)).toBe(true);
     expect(newStorageKey()).not.toBe(key);
     expect(storagePathIn("/data/attachments", key)).toBe(path.join("/data/attachments", key.slice(0, 2), key));
-    for (const bad of ["../../etc/passwd", "", "ABCDEF".repeat(6), "a".repeat(31), `${"a".repeat(32)}/x`]) {
+    for (const bad of ["../../etc/passwd", "", "ABCDEF".repeat(6), "a".repeat(31), `${"a".repeat(32)}/x`, `${"a".repeat(32)}_x`]) {
       expect(() => storagePathIn("/data/attachments", bad)).toThrow();
     }
+    // A thumbnail sits next to its original; it is never a key of its own.
+    expect(thumbnailKey(key)).toBe(`${key}_thumb`);
+    expect(storagePathIn("/data/attachments", thumbnailKey(key))).toBe(path.join("/data/attachments", key.slice(0, 2), `${key}_thumb`));
+    expect(isStorageKey(thumbnailKey(key))).toBe(false);
+    expect(() => thumbnailKey(thumbnailKey(key))).toThrow();
   });
 
   it("finds the files held by trash snapshots", () => {

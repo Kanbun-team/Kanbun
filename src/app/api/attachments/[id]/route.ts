@@ -3,12 +3,15 @@ import { prisma } from "@/lib/db-local";
 import { loadBoardAccess } from "@/server/board-access";
 import { contentDisposition, isInlineImage } from "@/lib/attachments";
 import { AttachmentNotFoundError, openAttachmentFile } from "@/server/attachment-storage";
+import { openThumbnail, THUMB_TYPE, wantsThumbnail } from "@/server/attachment-thumbnails";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Download or preview an attachment: GET /api/attachments/<id>, with
-// `?download=1` to force a download. Only raster images are served inline;
+// `?download=1` to force a download, or `?thumb=1` for the small WebP preview
+// of a large image (the original when there is none, see
+// attachment-thumbnails.ts). Only raster images are served inline;
 // everything else (SVG and HTML included) is a download, and the response is
 // sandboxed with nosniff so nothing can run in the app's origin. The file is
 // streamed from the configured store (local disk or S3), never redirected to,
@@ -26,6 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       fileName: true,
       mimeType: true,
       storageKey: true,
+      width: true,
       card: { select: { column: { select: { boardId: true } } } },
     },
   });
@@ -37,16 +41,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return new Response("Not found", { status: 404 });
   }
 
-  let file: Awaited<ReturnType<typeof openAttachmentFile>>;
-  try {
-    file = await openAttachmentFile(attachment.storageKey);
-  } catch (err) {
-    if (!(err instanceof AttachmentNotFoundError)) console.error("[attachments] download", err);
-    return new Response("Not found", { status: 404 });
+  const inline = isInlineImage(attachment.mimeType) && req.nextUrl.searchParams.get("download") !== "1";
+  let file: Awaited<ReturnType<typeof openAttachmentFile>> | null = null;
+  let type = ACTIVE_TYPES.test(attachment.mimeType) ? "application/octet-stream" : attachment.mimeType;
+  if (inline && req.nextUrl.searchParams.get("thumb") === "1" && wantsThumbnail(attachment.mimeType, attachment.width)) {
+    file = await openThumbnail(attachment.storageKey);
+    if (file) type = THUMB_TYPE;
+  }
+  if (!file) {
+    try {
+      file = await openAttachmentFile(attachment.storageKey);
+    } catch (err) {
+      if (!(err instanceof AttachmentNotFoundError)) console.error("[attachments] download", err);
+      return new Response("Not found", { status: 404 });
+    }
   }
 
-  const inline = isInlineImage(attachment.mimeType) && req.nextUrl.searchParams.get("download") !== "1";
-  const type = ACTIVE_TYPES.test(attachment.mimeType) ? "application/octet-stream" : attachment.mimeType;
   return new Response(file.stream, {
     headers: {
       "Content-Type": type,

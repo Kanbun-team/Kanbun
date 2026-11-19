@@ -13,7 +13,8 @@ import { deleteAttachmentAction } from "@/server/attachment-actions";
 
 // Card attachments: drop files on the section or use "Add files". Each file
 // uploads on its own request (XMLHttpRequest, for progress) to
-// /api/attachments. Images show as a thumbnail grid, other files as rows.
+// /api/attachments. Images show as a thumbnail grid (the server's small
+// preview, `?thumb=1`; the link opens the original), other files as rows.
 
 export interface AttachmentItem {
   id: string;
@@ -246,7 +247,7 @@ export default function CardAttachments({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`/api/attachments/${a.id}`}
+                  src={`/api/attachments/${a.id}?thumb=1`}
                   alt={a.fileName}
                   width={a.width ?? undefined}
                   height={a.height ?? undefined}

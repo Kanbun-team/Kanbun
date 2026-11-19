@@ -486,8 +486,8 @@ function pill(active: boolean) {
 
 /**
  * An image attachment, only if the browser still has it from viewing it
- * online (the attachment route allows private caching for an hour). Nothing
- * is fetched or stored for offline use.
+ * online (same thumbnail URL as the card panel; the attachment route allows
+ * private caching for an hour). Nothing is fetched or stored for offline use.
  */
 function CachedThumb({ id }: { id: string }) {
   const [failed, setFailed] = useState(false);
@@ -495,7 +495,7 @@ function CachedThumb({ id }: { id: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/api/attachments/${id}`}
+      src={`/api/attachments/${id}?thumb=1`}
       alt=""
       width={40}
       height={40}

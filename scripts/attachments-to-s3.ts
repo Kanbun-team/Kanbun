@@ -15,7 +15,7 @@
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { attachmentStorageFrom, attachmentsDirFrom, isStorageKey } from "../src/server/attachment-storage";
+import { attachmentStorageFrom, attachmentsDirFrom, isFileKey } from "../src/server/attachment-storage";
 import { S3Client } from "../src/server/s3";
 
 export interface CopyCounts {
@@ -30,7 +30,7 @@ export interface CopyCounts {
   ignored: number;
 }
 
-/** Storage keys and paths of the attachment files in `dir` (`<dir>/<ab>/<key>`). */
+/** Storage keys and paths of the attachment files (and thumbnails) in `dir` (`<dir>/<ab>/<key>`). */
 export async function localAttachmentFiles(dir: string): Promise<{ files: { key: string; file: string }[]; ignored: number }> {
   const files: { key: string; file: string }[] = [];
   let ignored = 0;
@@ -48,7 +48,7 @@ export async function localAttachmentFiles(dir: string): Promise<{ files: { key:
     }
     for (const entry of await readdir(path.join(dir, shard.name), { withFileTypes: true })) {
       // Half-written uploads end in .tmp; only finished files under their own shard count.
-      if (entry.isFile() && isStorageKey(entry.name) && entry.name.startsWith(shard.name)) {
+      if (entry.isFile() && isFileKey(entry.name) && entry.name.startsWith(shard.name)) {
         files.push({ key: entry.name, file: path.join(dir, shard.name, entry.name) });
       } else {
         ignored++;

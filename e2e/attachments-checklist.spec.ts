@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import sharp from "sharp";
 import { axeViolations, card, column, loginAs, openDemoBoard, toast } from "./helpers";
 
 // Attachments and Checklists 2.0 in the card panel. Each test creates its own
@@ -98,6 +99,52 @@ test("upload an image and a text file, download them and delete one", async ({ p
   const restored = await page.request.get(imageUrl!);
   expect(restored.status()).toBe(200);
   expect(Buffer.compare(await restored.body(), PNG)).toBe(0);
+});
+
+test("large images get a small server-side thumbnail, kept through trash and restore", async ({ page }) => {
+  const title = `Thumbnail ${Date.now()}`;
+  const panel = await newCard(page, title);
+  const photo = await sharp({ create: { width: 1600, height: 1200, channels: 3, background: { r: 30, g: 120, b: 200 } } })
+    .png()
+    .toBuffer();
+  await panel.getByTestId("attachment-input").setInputFiles([
+    { name: "photo.png", mimeType: "image/png", buffer: photo },
+    { name: "pixel.png", mimeType: "image/png", buffer: PNG },
+  ]);
+
+  // The panel shows the 480px WebP preview; the link still opens the original.
+  const tile = panel.getByRole("img", { name: "photo.png" });
+  await expect(tile).toHaveAttribute("src", /\?thumb=1$/);
+  await expect.poll(() => tile.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(480);
+  const thumbUrl = (await tile.getAttribute("src"))!;
+  const thumb = await page.request.get(thumbUrl);
+  expect(thumb.headers()["content-type"]).toBe("image/webp");
+  expect(thumb.headers()["content-disposition"]).toMatch(/^inline;/);
+  expect(thumb.headers()["x-content-type-options"]).toBe("nosniff");
+  expect((await thumb.body()).length).toBeLessThan(photo.length);
+  const originalUrl = (await panel.getByRole("link", { name: "Open photo.png" }).getAttribute("href"))!;
+  const original = await page.request.get(originalUrl);
+  expect(original.headers()["content-type"]).toBe("image/png");
+  expect(Buffer.compare(await original.body(), photo)).toBe(0);
+
+  // A small image needs no thumbnail: the original is served for it.
+  const small = await page.request.get((await panel.getByRole("img", { name: "pixel.png" }).getAttribute("src"))!);
+  expect(small.headers()["content-type"]).toBe("image/png");
+  expect(Buffer.compare(await small.body(), PNG)).toBe(0);
+  // Asking for a download never gives the thumbnail.
+  const download = await page.request.get(`${thumbUrl}&download=1`);
+  expect(download.headers()["content-type"]).toBe("image/png");
+  expect(download.headers()["content-disposition"]).toMatch(/^attachment;/);
+
+  // Trash and undo: the thumbnail comes back with the card.
+  await panel.getByRole("button", { name: "Delete card" }).click();
+  await expect(toast(page)).toContainText("Card deleted");
+  expect((await page.request.get(thumbUrl)).status()).toBe(404);
+  await toast(page).getByRole("button", { name: "Undo" }).click();
+  await expect(card(page, "Backlog", title)).toContainText("2 attachments");
+  const restored = await page.request.get(thumbUrl);
+  expect(restored.status()).toBe(200);
+  expect(restored.headers()["content-type"]).toBe("image/webp");
 });
 
 test.describe("dark theme", () => {

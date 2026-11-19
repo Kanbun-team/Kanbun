@@ -13,6 +13,7 @@ import {
   removeAttachmentFiles,
   saveAttachmentFile,
 } from "@/server/attachment-storage";
+import { storeThumbnail, wantsThumbnail } from "@/server/attachment-thumbnails";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,6 +103,9 @@ export async function POST(req: NextRequest) {
     console.error("[attachments] store", err);
     return fail("unknown", 503);
   }
+  // A small preview for the card panel. Best effort: without it the original
+  // is shown, and the download route tries again later.
+  if (wantsThumbnail(mimeType, dims?.width ?? null)) await storeThumbnail(storageKey, bytes);
   let attachment;
   try {
     attachment = await prisma.$transaction(async (tx) => {
@@ -125,7 +129,7 @@ export async function POST(req: NextRequest) {
       return row;
     });
   } catch (err) {
-    // The card was deleted meanwhile, or the database failed: drop the orphan file.
+    // The card was deleted meanwhile, or the database failed: drop the orphan file (and thumbnail).
     await removeAttachmentFiles([storageKey]);
     console.error("[attachments] upload", err);
     return fail("notFound");

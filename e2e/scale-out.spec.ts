@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import sharp from "sharp";
 import { card, column, loginAs, openDemoBoard, toast } from "./helpers";
 
 // Two Kanbun instances on one PostgreSQL database and one Redis (docs/SCALING.md).
@@ -84,6 +85,19 @@ test.describe("several instances", () => {
       const download = await page.request.get(`/api/attachments/${attachment.id}`);
       expect(download.status()).toBe(200);
       expect(Buffer.compare(await download.body(), bytes)).toBe(0);
+
+      // An image uploaded on one instance has its thumbnail on the other.
+      const photo = await sharp({ create: { width: 1200, height: 800, channels: 3, background: { r: 90, g: 160, b: 60 } } })
+        .jpeg()
+        .toBuffer();
+      const imageUpload = await marta.request.post(`/api/attachments?cardId=${encodeURIComponent(cardId)}`, {
+        multipart: { file: { name: "photo.jpg", mimeType: "image/jpeg", buffer: photo } },
+      });
+      expect(imageUpload.status()).toBe(201);
+      const thumb = await page.request.get(`/api/attachments/${(await imageUpload.json()).attachment.id}?thumb=1`);
+      expect(thumb.status()).toBe(200);
+      expect(thumb.headers()["content-type"]).toBe("image/webp");
+      expect((await sharp(await thumb.body()).metadata()).width).toBe(480);
     } finally {
       await other.close();
     }
