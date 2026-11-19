@@ -181,3 +181,36 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
   });
 }
+
+test("a comment sent again after its reply was lost is posted once", async ({ page }) => {
+  const title = "Set up preview deployments";
+  const panel = await openCard(page, "Done", title);
+  const text = `Retried comment ${Date.now()}`;
+  const box = panel.getByLabel("Write a comment");
+  // The first send reaches the server, which saves the comment, but the
+  // connection drops before the reply arrives.
+  let dropped = false;
+  await page.route("**/*", async (route) => {
+    const req = route.request();
+    if (!dropped && req.method() === "POST" && req.headers()["next-action"] && (req.postData() ?? "").includes(text)) {
+      dropped = true;
+      await route.fetch();
+      await route.abort("connectionreset");
+      return;
+    }
+    await route.fallback();
+  });
+  await box.fill(text);
+  await panel.getByRole("button", { name: "Post comment" }).click();
+  await expect(page.getByRole("region", { name: "Messages" })).toContainText("Could not reach the server");
+  await expect(box).toHaveValue(text);
+  expect(dropped).toBe(true);
+  await page.unroute("**/*");
+
+  // Sending the same draft again returns the saved comment instead of a second one.
+  await panel.getByRole("button", { name: "Post comment" }).click();
+  await expect(box).toHaveValue("");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: text })).toHaveCount(1);
+});

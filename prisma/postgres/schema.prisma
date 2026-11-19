@@ -290,12 +290,17 @@ model TaskCardComment {
   cardId    String
   authorId  String?
   body      String
+  /// Set by the client once per comment it sends, so a retried send (dropped
+  /// connection, offline outbox replay) returns the first comment instead of
+  /// posting it twice.
+  clientKey String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   card   TaskCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
   author User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
+  @@unique([cardId, clientKey])
   @@index([cardId, createdAt])
   @@index([authorId, createdAt])
 }

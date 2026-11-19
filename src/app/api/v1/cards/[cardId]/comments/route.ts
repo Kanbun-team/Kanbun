@@ -8,6 +8,9 @@ export const GET = apiRoute<{ cardId: string }>("read", async (ctx, req, { cardI
   return paginate(await listComments(ctx, cardId, page), page);
 });
 
-export const POST = apiRoute<{ cardId: string }>("write", async (ctx, req, { cardId }) =>
-  created(await addComment(ctx, cardId, await readJson(req)))
-);
+// With an Idempotency-Key header, a repeated request answers 200 with the
+// comment the first request created (201) instead of adding another one.
+export const POST = apiRoute<{ cardId: string }>("write", async (ctx, req, { cardId }) => {
+  const result = await addComment(ctx, cardId, await readJson(req), req.headers.get("idempotency-key"));
+  return result.created ? created(result.comment) : Response.json(result.comment);
+});

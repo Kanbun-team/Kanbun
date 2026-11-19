@@ -16,6 +16,7 @@ import { notifyComment, notifyMoved, notifyNewCards, watchCard } from "@/server/
 import { trashCard, trashColumn } from "@/server/trash";
 import { changedFields, emitBoardEvent, emitColumnCardsDeleted } from "@/server/webhooks";
 import { ApiError, notFound, type ApiContext, type PageParams } from "./http";
+import { CommentKeyError, createCommentOnce, parseClientKey } from "@/server/comments";
 import {
   boardJson,
   cardInclude,
@@ -453,18 +454,35 @@ export async function listComments(ctx: ApiContext, cardId: string, page: PagePa
 
 const commentSchema = z.object({ body: z.string().trim().min(1).max(5000) });
 
-export async function addComment(ctx: ApiContext, cardId: string, body: unknown) {
+/**
+ * Adds a comment. With an idempotency key (the Idempotency-Key header), a
+ * repeated request returns the comment the first one created, with
+ * `created: false`, and sends no second notification or webhook.
+ */
+export async function addComment(ctx: ApiContext, cardId: string, body: unknown, idempotencyKey?: string | null) {
   const data = commentSchema.parse(body);
+  let clientKey: string | null;
+  try {
+    clientKey = parseClientKey(idempotencyKey);
+  } catch {
+    throw new ApiError(400, "invalid_idempotency_key", "Idempotency-Key must be 1 to 100 letters, digits or _ . : -");
+  }
   const { card } = await loadCard(ctx, cardId);
   const boardId = card.column.boardId;
   const userId = ctx.user.id;
-  const comment = await prisma.$transaction(async (tx) => {
-    const c = await tx.taskCardComment.create({ data: { cardId, authorId: userId, body: data.body }, include: commentInclude });
-    await watchCard(cardId, userId, tx);
-    return c;
-  });
+  let result: Awaited<ReturnType<typeof createCommentOnce>>;
+  try {
+    result = await createCommentOnce({ cardId, authorId: userId, body: data.body, clientKey });
+  } catch (err) {
+    if (err instanceof CommentKeyError) {
+      throw new ApiError(409, "idempotency_key_conflict", "This Idempotency-Key was already used on this card by another user.");
+    }
+    throw err;
+  }
+  const { comment, created } = result;
+  if (!created) return { comment: commentJson(comment), created };
   await notifyComment({ cardId, cardTitle: card.title, boardId, actorId: userId, actorName: actorName(ctx) }, data.body);
   revalidatePath(`/tasks/${boardId}/cards/${cardId}`);
   emitBoardEvent(boardId, "comment.created", { cardId, actorId: userId, commentId: comment.id });
-  return commentJson(comment);
+  return { comment: commentJson(comment), created };
 }
