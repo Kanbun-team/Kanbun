@@ -212,4 +212,21 @@ TEST_REDIS_URL=redis://localhost:56379 npm test
 `E2E_POSTGRES_URL` makes `scripts/e2e-serve.sh` recreate that database (and
 `<name>_setup` for the first-run tests). `E2E_SCALE_OUT=1` starts a second
 instance on the same database and Redis for `e2e/scale-out.spec.ts`, which
-checks presence and live updates across instances.
+checks presence, live updates and attachments across instances.
+
+The CI job also keeps attachments in MinIO. To do the same locally, start it,
+create a bucket and pass the `ATTACHMENTS_S3_*` variables to Playwright:
+
+```bash
+docker run -d --name kanbun-minio -p 9000:9000 \
+  -e MINIO_ROOT_USER=kanbun -e MINIO_ROOT_PASSWORD=kanbun-secret minio/minio server /data
+docker run --rm --network host -e MC_HOST_local=http://kanbun:kanbun-secret@localhost:9000 \
+  minio/mc mb local/kanbun-e2e
+ATTACHMENTS_S3_BUCKET=kanbun-e2e ATTACHMENTS_S3_ENDPOINT=http://localhost:9000 \
+ATTACHMENTS_S3_ACCESS_KEY_ID=kanbun ATTACHMENTS_S3_SECRET_ACCESS_KEY=kanbun-secret \
+E2E_POSTGRES_URL=postgresql://postgres:pw@localhost:55432/kanbun_e2e \
+REDIS_URL=redis://localhost:56379 E2E_SCALE_OUT=1 npx playwright test
+```
+
+(`--network host` works on Linux; on macOS use
+`MC_HOST_local=http://kanbun:kanbun-secret@host.docker.internal:9000` without it.)

@@ -54,4 +54,38 @@ test.describe("several instances", () => {
       await other.close();
     }
   });
+
+  test("a file uploaded on one instance downloads from the other", async ({ page, browser }) => {
+    // Attachments live in shared storage (S3 on MinIO in CI), not on either instance.
+    const other = await browser.newContext({ baseURL: second });
+    try {
+      await loginAs(page, "admin");
+      await openDemoBoard(page);
+      const title = `Scale-out file ${Date.now()}`;
+      const todo = column(page, "To do");
+      await todo.getByRole("button", { name: "Add card" }).click();
+      await todo.getByPlaceholder("Title").fill(title);
+      await todo.getByPlaceholder("Title").press("Enter");
+      await expect(card(page, "To do", title)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await card(page, "To do", title).getByRole("link").click();
+      await page.waitForURL(/\/cards\//);
+      const cardId = new URL(page.url()).pathname.split("/").pop()!;
+
+      const marta = await other.newPage();
+      await loginAs(marta, "marta");
+      const bytes = Buffer.from(`shared between instances ${Date.now()}\n`);
+      const upload = await marta.request.post(`/api/attachments?cardId=${encodeURIComponent(cardId)}`, {
+        multipart: { file: { name: "shared.txt", mimeType: "text/plain", buffer: bytes } },
+      });
+      expect(upload.status()).toBe(201);
+      const { attachment } = await upload.json();
+
+      const download = await page.request.get(`/api/attachments/${attachment.id}`);
+      expect(download.status()).toBe(200);
+      expect(Buffer.compare(await download.body(), bytes)).toBe(0);
+    } finally {
+      await other.close();
+    }
+  });
 });

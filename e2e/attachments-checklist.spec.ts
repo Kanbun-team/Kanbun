@@ -2,7 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { axeViolations, card, column, loginAs, openDemoBoard, toast } from "./helpers";
 
 // Attachments and Checklists 2.0 in the card panel. Each test creates its own
-// card so it does not depend on the other specs.
+// card so it does not depend on the other specs. The PostgreSQL CI job runs
+// them with attachments in S3 (MinIO), the other job on the local disk.
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
