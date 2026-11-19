@@ -64,7 +64,7 @@ The palette lives in one module (`src/lib/palette.ts`) with a unit test that ass
 
 ### 3.3 Typography
 
-One family: **IBM Plex Sans**, bundled with the app through `@fontsource` (no requests to Google or any CDN: self-hosted means no third-party calls). It has full Polish, German and Italian coverage, a large x-height that holds up at 13px, and tabular figures for counts and dates.
+One family: **IBM Plex Sans**, bundled with the app through `@fontsource` (no requests to Google or any CDN: self-hosted means no third-party calls). It covers every UI language (Polish, German, Italian, French, Spanish and Portuguese), has a large x-height that holds up at 13px, and tabular figures for counts and dates.
 
 | Step | Size / line height | Weight | Use |
 |---|---|---|---|

@@ -100,6 +100,6 @@ Failing PRs are blocked from merging once you turn on branch protection in repo 
 
 ## Changelog discipline
 
-Every user-visible change should land in `CHANGELOG.md` (machine-readable history) **and** `src/lib/changelog.ts` (in-app `/whats-new` page). The two files share the same entries, but the in-app version is bilingual EN/PL.
+Every user-visible change should land in `CHANGELOG.md` (machine-readable history) **and** `src/lib/changelog.ts` (in-app `/whats-new` page). The two files share the same entries. In the in-app version each title and item needs English (`en`); every other UI language is optional and falls back to English, so adding a language never means translating old release notes.
 
 For PR titles, use Conventional Commits prefixes (`feat:`, `fix:`, `docs:`, etc.) so the categorization in `release.yml` works without label churn. Add labels (`feat`, `fix`, `breaking-change`) where the prefix alone is ambiguous.

@@ -88,5 +88,8 @@ describe("describeRule", () => {
     expect(describeRule({ rule: "monthly", monthDay: 13, timeOfDay: null }, "en")).toBe("Monthly on the 13th");
     expect(describeRule({ rule: "daily", timeOfDay: "09:00" }, "en")).toBe("Every day at 09:00");
     expect(describeRule({ rule: "weekly", weekday: 1, timeOfDay: null }, "de")).toBe("Jeden Montag");
+    expect(describeRule({ rule: "monthly", monthDay: 5, timeOfDay: null }, "de")).toBe("Monatlich am 5.");
+    expect(describeRule({ rule: "monthly", monthDay: 5, timeOfDay: null }, "es")).toBe("Cada mes, el día 5");
+    expect(describeRule({ rule: "monthly", monthDay: 5, timeOfDay: null }, "pt")).toBe("Todo mês, no dia 5");
   });
 });

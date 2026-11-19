@@ -1,9 +1,26 @@
 import type { Locale } from "@/lib/i18n";
 
+/**
+ * English is required; every other language is optional and falls back to
+ * English, so a newly added UI language does not need old release notes.
+ */
+export type LocalizedText = { en: string } & Partial<Record<Exclude<Locale, "en">, string>>;
+
 export interface ChangelogEntry {
   date: string;
-  title: { en: string; it: string; pl: string; de: string };
-  items: { en: string; it: string; pl: string; de: string }[];
+  title: LocalizedText;
+  items: LocalizedText[];
+}
+
+/** The text in the reader's language, or English with lang "en" when it has none. */
+export interface ShownText {
+  text: string;
+  lang: Locale;
+}
+
+function localized(text: LocalizedText, locale: Locale): ShownText {
+  const own = text[locale];
+  return own ? { text: own, lang: locale } : { text: text.en, lang: "en" };
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
@@ -368,10 +385,10 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 ];
 
-export function localizedTitle(entry: ChangelogEntry, locale: Locale): string {
-  return entry.title[locale] ?? entry.title.en;
+export function localizedTitle(entry: ChangelogEntry, locale: Locale): ShownText {
+  return localized(entry.title, locale);
 }
 
-export function localizedItems(entry: ChangelogEntry, locale: Locale): string[] {
-  return entry.items.map((it) => it[locale] ?? it.en);
+export function localizedItems(entry: ChangelogEntry, locale: Locale): ShownText[] {
+  return entry.items.map((item) => localized(item, locale));
 }

@@ -1,20 +1,54 @@
 import enDict from "@/locales/en.json";
-import plDict from "@/locales/pl.json";
 import itDict from "@/locales/it.json";
-import deDict from "@/locales/de.json"
+import plDict from "@/locales/pl.json";
+import deDict from "@/locales/de.json";
+import frDict from "@/locales/fr.json";
+import esDict from "@/locales/es.json";
+import ptDict from "@/locales/pt.json";
 
-export type Locale = "en" | "it" | "pl" | "de";
+/**
+ * The UI languages, in the order the language picker shows them. This is the
+ * one list: the Locale type, the settings schema, Accept-Language matching
+ * and the picker all derive from it. Adding a code here makes TypeScript ask
+ * for its LOCALE_INFO and DICTS entries.
+ */
+export const LOCALES = ["en", "it", "pl", "de", "fr", "es", "pt"] as const;
 
-export const LOCALES: Locale[] = ["en", "it", "pl", "de"];
+export type Locale = (typeof LOCALES)[number];
+
 export const DEFAULT_LOCALE: Locale = "en";
 
 export type DictKey = keyof typeof enDict;
 
-const DICTS: Record<Locale, Partial<Record<DictKey, string>>> = {
+interface LocaleInfo {
+  /** The language's name in that language, shown in the language picker. */
+  name: string;
+  /** BCP 47 tag for Intl (dates, numbers, plural rules, sorting). */
+  intl: string;
+  /** Day numbers are written as ordinals with a trailing dot ("5."). */
+  dottedOrdinals?: boolean;
+}
+
+export const LOCALE_INFO: Record<Locale, LocaleInfo> = {
+  en: { name: "English", intl: "en-GB" },
+  it: { name: "Italiano", intl: "it-IT" },
+  pl: { name: "Polski", intl: "pl-PL", dottedOrdinals: true },
+  de: { name: "Deutsch", intl: "de-DE", dottedOrdinals: true },
+  fr: { name: "Français", intl: "fr-FR" },
+  es: { name: "Español", intl: "es-ES" },
+  pt: { name: "Português (Brasil)", intl: "pt-BR" },
+};
+
+type Dict = Partial<Record<DictKey, string>>;
+
+const DICTS: Record<Locale, Dict> = {
   en: enDict,
-  it: itDict as Partial<Record<DictKey, string>>,
-  pl: plDict as Partial<Record<DictKey, string>>,
-  de: deDict as Partial<Record<DictKey, string>>,
+  it: itDict as Dict,
+  pl: plDict as Dict,
+  de: deDict as Dict,
+  fr: frDict as Dict,
+  es: esDict as Dict,
+  pt: ptDict as Dict,
 };
 
 const warnedKeys = new Set<string>();
@@ -63,14 +97,11 @@ export function tn(base: PluralKey, count: number, locale: Locale = DEFAULT_LOCA
 }
 
 export function isLocale(value: unknown): value is Locale {
-  return value === "en" || value === "it" || value === "pl" || value === "de";
+  return typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 }
 
 export function intlLocale(locale: Locale): string {
-  return locale === "pl" ? "pl-PL"
-    : locale === "it" ? "it-IT"
-    : locale === "de" ? "de-DE"
-      : "en-GB";
+  return (LOCALE_INFO[locale] ?? LOCALE_INFO[DEFAULT_LOCALE]).intl;
 }
 
 export function formatDate(date: Date, locale: Locale): string {
