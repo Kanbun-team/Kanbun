@@ -70,10 +70,10 @@ Shipped in v0.5.0.
 
 Shipped in v0.6.0.
 
-1. **Presence.** Done: viewer avatars in the board header, "also viewing this card" in the card panel, a marker on cards others have open, and a soft highlight for teammates' moves and renames (moved from Phase 2). Cards created by teammates are not highlighted yet.
+1. **Presence.** Done: viewer avatars in the board header, "also viewing this card" in the card panel, a marker on cards others have open, and a soft highlight for teammates' new cards, moves and renames (moved from Phase 2).
 2. **Watchers and notification settings.** Done: watch cards and boards (automatic for cards you create, comment on or are assigned to), In-app, In-app + email or Off per type, optional SMTP, daily digest, deadline reminders.
-3. **Attachments.** Done: stored next to the database, size limit, image thumbnails, only safe image types shown inline, kept through trash and restore. No server-side thumbnail resizing yet.
-4. **Checklists 2.0.** Done: assignee and due date per item, drag and keyboard reorder, convert to card, items in My tasks. Assigning a checklist item does not send a notification yet.
+3. **Attachments.** Done: stored next to the database, size limit, image thumbnails resized on the server, only safe image types shown inline, kept through trash and restore.
+4. **Checklists 2.0.** Done: assignee and due date per item, drag and keyboard reorder, convert to card, items in My tasks, a notification when someone gives you an item.
 5. **Card templates and recurring cards.** Done: templates per board, daily, weekly and monthly schedules.
 6. **Onboarding.** Done: browser setup for the first admin and first board, board templates in "New board", teaching empty states.
 
